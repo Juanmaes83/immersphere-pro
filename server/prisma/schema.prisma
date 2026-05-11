@@ -1,0 +1,175 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+model Tenant {
+  id            String         @id @default(uuid())
+  name          String
+  slug          String         @unique
+  logoText      String         @default("IP")
+  primaryColor  String         @default("#7C3AED")
+  String          String           @default("STARTER")
+  createdAt     DateTime       @default(now())
+  users         User[]
+  properties    Property[]
+  subscription  Subscription?
+  refreshTokens RefreshToken[]
+
+  @@index([slug])
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  name          String
+  String          String           @default("TENANTADMIN")
+  tenantId      String
+  tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  refreshTokens RefreshToken[]
+
+  @@index([tenantId])
+  @@index([email])
+}
+
+model Property {
+  id          String         @id @default(uuid())
+  tenantId    String
+  tenant      Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  title       String
+  description String         @default("")
+  type        String   @default("APARTMENT")
+  status      String @default("DRAFT")
+  price       Int            @default(0)
+  area        Int            @default(0)
+  rooms       Int            @default(0)
+  bathrooms   Int            @default(0)
+  coverImage  String         @default("")
+  spaces      Space[]
+  leads       Lead[]
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+
+  @@index([tenantId])
+  @@index([status])
+  @@index([type])
+  @@index([price])
+  @@index([area])
+}
+
+model Space {
+  id         String   @id @default(uuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  name       String
+  order      Int      @default(1)
+  dimensions String?
+  assets     Asset[]
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@index([propertyId])
+  @@index([order])
+}
+
+model Asset {
+  id        String      @id @default(uuid())
+  spaceId   String
+  space     Space       @relation(fields: [spaceId], references: [id], onDelete: Cascade)
+  type      String
+  url       String
+  thumbnail String      @default("")
+  format    String
+  size      Int         @default(0)
+  hotspots  Hotspot[]
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([spaceId])
+  @@index([type])
+}
+
+model Hotspot {
+  id        String      @id @default(uuid())
+  assetId   String
+  asset     Asset       @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  label     String
+  type      String
+  position  String
+  body      String      @default("")
+  metric    String      @default("")
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([assetId])
+  @@index([type])
+}
+
+model Lead {
+  id         String   @id @default(uuid())
+  propertyId String
+  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  email      String
+  phone      String   @default("")
+  notes      String   @default("")
+  source     String   @default("viewer")
+  createdAt  DateTime @default(now())
+
+  @@index([propertyId])
+  @@index([email])
+}
+
+model Subscription {
+  id                   String             @id @default(uuid())
+  tenantId             String             @unique
+  tenant               Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  stripeCustomerId     String             @default("")
+  stripeSubscriptionId String             @default("")
+  String                 String               @default("STARTER")
+  status               String @default("TRIAL")
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+
+  @@index([stripeCustomerId])
+  @@index([stripeSubscriptionId])
+}
+
+model RefreshToken {
+  id        String    @id @default(uuid())
+  tokenHash String    @unique
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  tenantId  String
+  tenant    Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  revokedAt DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+  @@index([tenantId])
+  @@index([expiresAt])
+}
+
