@@ -1,19 +1,18 @@
-import { Router, type NextFunction, type Request, type Response } from 'express';
-import * as propertiesController from '../controllers/properties.controller.js';
-import { requireAuth } from '../middleware/auth.js';
+import { Router } from 'express';
+import {
+  listProperties,
+  getPropertyById,
+  createProperty,
+  updateProperty,
+  deleteProperty
+} from '../controllers/properties.controller';
+import { requireAuth } from '../middleware/auth';
+import { enforcePropertyLimit } from '../middleware/planLimits';
 
 export const propertiesRoutes = Router();
 
-type AsyncController = (request: Request, response: Response) => Promise<void>;
-
-function asyncHandler(controller: AsyncController) {
-  return (request: Request, response: Response, next: NextFunction): void => {
-    controller(request, response).catch(next);
-  };
-}
-
-propertiesRoutes.get('/', asyncHandler(propertiesController.listProperties));
-propertiesRoutes.get('/:id', asyncHandler(propertiesController.getPropertyById));
-propertiesRoutes.post('/', requireAuth, asyncHandler(propertiesController.createProperty));
-propertiesRoutes.put('/:id', requireAuth, asyncHandler(propertiesController.updateProperty));
-propertiesRoutes.delete('/:id', requireAuth, asyncHandler(propertiesController.deleteProperty));
+propertiesRoutes.get('/', listProperties);
+propertiesRoutes.get('/:id', getPropertyById);
+propertiesRoutes.post('/', requireAuth, enforcePropertyLimit, createProperty);
+propertiesRoutes.put('/:id', requireAuth, updateProperty);
+propertiesRoutes.delete('/:id', requireAuth, deleteProperty);

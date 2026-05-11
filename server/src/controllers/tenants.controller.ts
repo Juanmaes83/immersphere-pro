@@ -1,37 +1,71 @@
-import type { Request, Response } from 'express';
-import { z } from 'zod';
-import { AppError } from '../middleware/errorHandler.js';
-import * as tenantsService from '../services/tenants.service.js';
+import type { NextFunction, Request, Response } from 'express';
+import { AppError } from '../middleware/errorHandler';
+import {
+  getTenantSettings,
+  getTenantUsage,
+  updateTenantSettings
+} from '../services/tenants.service';
 
-const tenantSettingsSchema = z.object({
-  name: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres.'),
-  logoText: z.string().trim().min(1).max(3, 'El logoText debe tener máximo 3 caracteres.').transform((value) => value.toUpperCase()),
-  primaryColor: z.string().regex(/^#[0-9A-Fa-f]{6}$/, 'El color primario debe ser HEX, ejemplo #7C3AED.')
-});
+function getTenantId(request: Request): string {
+  const tenantId = request.auth?.tenantId;
 
-export async function getTenantSettings(request: Request, response: Response): Promise<void> {
-  if (!request.auth) {
-    throw new AppError(401, 'Usuario no autenticado.');
+  if (!tenantId) {
+    throw new AppError(401, 'Autenticación requerida.');
   }
 
-  const data = await tenantsService.getTenantSettings(request.auth.tenantId);
-
-  response.status(200).json({
-    success: true,
-    data
-  });
+  return tenantId;
 }
 
-export async function updateTenantSettings(request: Request, response: Response): Promise<void> {
-  if (!request.auth) {
-    throw new AppError(401, 'Usuario no autenticado.');
+export async function getTenantSettingsController(
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const tenantId = getTenantId(request);
+    const settings = await getTenantSettings(tenantId);
+
+    response.status(200).json({
+      success: true,
+      data: settings
+    });
+  } catch (error) {
+    next(error);
   }
+}
 
-  const input = tenantSettingsSchema.parse(request.body);
-  const data = await tenantsService.updateTenantSettings(request.auth.tenantId, input);
+export async function updateTenantSettingsController(
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const tenantId = getTenantId(request);
+    const settings = await updateTenantSettings(tenantId, request.body);
 
-  response.status(200).json({
-    success: true,
-    data
-  });
+    response.status(200).json({
+      success: true,
+      data: settings
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getTenantUsageController(
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const tenantId = getTenantId(request);
+    const usage = await getTenantUsage(tenantId);
+
+    response.status(200).json({
+      success: true,
+      data: usage
+    });
+  } catch (error) {
+    next(error);
+  }
 }

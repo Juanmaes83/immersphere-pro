@@ -26,6 +26,9 @@ importers:
       jsonwebtoken:
         specifier: 9.0.2
         version: 9.0.2
+      stripe:
+        specifier: 21.0.1
+        version: 21.0.1(@types/node@22.10.1)
       zod:
         specifier: 3.23.8
         version: 3.23.8
@@ -589,6 +592,15 @@ packages:
   statuses@2.0.1:
     resolution: {integrity: sha512-RwNA9Z/7PrK06rYLIzFMlaF+l73iwpzsqRIFgbMLbTcLD6cOao82TaWefPXQvB2fOC4AjuYSEndS7N/mTCbkdQ==}
     engines: {node: '>= 0.8'}
+
+  stripe@21.0.1:
+    resolution: {integrity: sha512-ocv0j7dWttswDWV2XL/kb6+yiLpDXNXL3RQAOB5OB2kr49z0cEatdQc12+zP/j5nrXk6rAsT4N3y/NUvBbK7Pw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      '@types/node': '>=18'
+    peerDependenciesMeta:
+      '@types/node':
+        optional: true
 
   toidentifier@1.0.1:
     resolution: {integrity: sha512-o5sSPKEkg/DIQNmH43V0/uerLrpzVedkUh8tGNvaeXpfpuwjKenlSox/2O/BTlZUtEe+JG7s5YhEz608PlAHRA==}
@@ -1162,6 +1174,10 @@ snapshots:
       side-channel-weakmap: 1.0.2
 
   statuses@2.0.1: {}
+
+  stripe@21.0.1(@types/node@22.10.1):
+    optionalDependencies:
+      '@types/node': 22.10.1
 
   toidentifier@1.0.1: {}
 
