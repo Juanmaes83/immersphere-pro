@@ -299,7 +299,8 @@ function PropertiesPage(): JSX.Element {
     area: 80,
     rooms: 2,
     bathrooms: 1,
-    coverImage: ''
+    coverImage: '',
+    panoramaUrl: ''
   });
 
   const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
@@ -319,7 +320,8 @@ function PropertiesPage(): JSX.Element {
       area: 80,
       rooms: 2,
       bathrooms: 1,
-      coverImage: ''
+      coverImage: '',
+    panoramaUrl: ''
     });
 
     setEditingPropertyId(null);
@@ -336,7 +338,8 @@ function PropertiesPage(): JSX.Element {
       area: Number(form.area ?? 0),
       rooms: Number(form.rooms ?? 0),
       bathrooms: Number(form.bathrooms ?? 0),
-      coverImage: String(form.coverImage ?? '').trim()
+      coverImage: String(form.coverImage ?? '').trim(),
+      panoramaUrl: String(form.panoramaUrl ?? '').trim()
     };
   }
 
@@ -352,7 +355,8 @@ function PropertiesPage(): JSX.Element {
       area: property.area ?? 80,
       rooms: property.rooms ?? 0,
       bathrooms: property.bathrooms ?? 0,
-      coverImage: property.coverImage ?? ''
+      coverImage: property.coverImage ?? '',
+      panoramaUrl: property.panoramaUrl ?? ''
     });
 
     setMessage('Editando propiedad seleccionada.');
@@ -403,7 +407,8 @@ function PropertiesPage(): JSX.Element {
         area: property.area,
         rooms: property.rooms,
         bathrooms: property.bathrooms,
-        coverImage: property.coverImage
+        coverImage: property.coverImage,
+        panoramaUrl: property.panoramaUrl
       });
 
       setMessage(
@@ -499,7 +504,20 @@ function PropertiesPage(): JSX.Element {
               type="text"
               value={form.coverImage ?? ''}
               onChange={(event) => setForm((current) => ({ ...current, coverImage: event.target.value }))}
-              placeholder="https://... o deja este campo vacio"
+              placeholder="https://... imagen de portada o miniatura"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+            />
+          </label>
+
+          <label className="mt-4 block">
+            <span className="mb-2 block text-sm font-black text-slate-700">
+              URL panorama 360 <span className="font-semibold text-slate-400">(opcional)</span>
+            </span>
+            <input
+              type="text"
+              value={form.panoramaUrl ?? ''}
+              onChange={(event) => setForm((current) => ({ ...current, panoramaUrl: event.target.value }))}
+              placeholder="http://localhost:5173/demo/panorama-living-room.jpg"
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
             />
           </label>
