@@ -111,6 +111,14 @@ const propertyInclude = {
   leads: true
 };
 
+const spaceInclude = {
+  assets: {
+    include: {
+      hotspots: true
+    }
+  }
+};
+
 function buildPropertyWhere(filters: PropertyFilters, tenantId?: string): Prisma.PropertyWhereInput {
   const where: Prisma.PropertyWhereInput = {};
 
@@ -157,31 +165,39 @@ function buildPropertyWhere(filters: PropertyFilters, tenantId?: string): Prisma
   return where;
 }
 
+function normalizeSpaceStatus(status: unknown): string {
+  return String(status ?? '').toUpperCase() === 'HIDDEN' ? 'HIDDEN' : 'ACTIVE';
+}
+
+function buildAssetsCreate(assets: AssetInput[] | undefined) {
+  return (assets ?? []).map((asset) => ({
+    type: asset.type,
+    url: asset.url,
+    thumbnail: asset.thumbnail ?? '',
+    format: asset.format,
+    size: asset.size ?? 0,
+    hotspots: {
+      create: (asset.hotspots ?? []).map((hotspot) => ({
+        label: hotspot.label,
+        type: hotspot.type,
+        position: JSON.stringify(hotspot.position ?? { x: 50, y: 50 }),
+        body: hotspot.body ?? '',
+        metric: hotspot.metric ?? ''
+      }))
+    }
+  }));
+}
+
 function buildSpacesCreate(spaces: SpaceInput[] | undefined): Prisma.SpaceCreateWithoutPropertyInput[] {
   if (!spaces?.length) return [];
 
   return spaces.map((space, index) => ({
     name: space.name,
     order: space.order ?? index + 1,
-    status: space.status === 'HIDDEN' ? 'HIDDEN' : 'ACTIVE',
+    status: normalizeSpaceStatus(space.status),
     dimensions: space.dimensions == null ? null : JSON.stringify(space.dimensions),
     assets: {
-      create: (space.assets ?? []).map((asset) => ({
-        type: asset.type,
-        url: asset.url,
-        thumbnail: asset.thumbnail ?? '',
-        format: asset.format,
-        size: asset.size ?? 0,
-        hotspots: {
-          create: (asset.hotspots ?? []).map((hotspot) => ({
-            label: hotspot.label,
-            type: hotspot.type,
-            position: JSON.stringify(hotspot.position ?? { x: 50, y: 50 }),
-            body: hotspot.body ?? '',
-            metric: hotspot.metric ?? ''
-          }))
-        }
-      }))
+      create: buildAssetsCreate(space.assets)
     }
   }));
 }
@@ -210,6 +226,110 @@ export async function getPropertyById(propertyId: string, tenantId?: string) {
 }
 
 
+
+async function assertTenantProperty(tenantId: string, propertyId: string) {
+  const property = await prisma.property.findFirst({
+    where: { id: propertyId, tenantId },
+    select: { id: true }
+  });
+
+  if (!property) {
+    throw new AppError(404, 'Propiedad no encontrada.');
+  }
+
+  return property;
+}
+
+async function assertTenantSpace(tenantId: string, propertyId: string, spaceId: string) {
+  const space = await prisma.space.findFirst({
+    where: {
+      id: spaceId,
+      propertyId,
+      property: { tenantId }
+    },
+    select: { id: true }
+  });
+
+  if (!space) {
+    throw new AppError(404, 'Estancia no encontrada.');
+  }
+
+  return space;
+}
+
+export async function listSpaces(tenantId: string, propertyId: string) {
+  await assertTenantProperty(tenantId, propertyId);
+
+  return prisma.space.findMany({
+    where: { propertyId },
+    orderBy: { order: 'asc' },
+    include: spaceInclude
+  });
+}
+
+export async function createSpace(tenantId: string, propertyId: string, input: SpaceInput) {
+  await assertTenantProperty(tenantId, propertyId);
+
+  const orderAggregate = await prisma.space.aggregate({
+    where: { propertyId },
+    _max: { order: true }
+  });
+
+  return prisma.space.create({
+    data: {
+      propertyId,
+      name: input.name,
+      order: input.order ?? ((orderAggregate._max.order ?? 0) + 1),
+      status: normalizeSpaceStatus(input.status),
+      dimensions: input.dimensions == null ? null : JSON.stringify(input.dimensions),
+      assets: {
+        create: buildAssetsCreate(input.assets)
+      }
+    } as any,
+    include: spaceInclude
+  });
+}
+
+export async function updateSpace(tenantId: string, propertyId: string, spaceId: string, input: Partial<SpaceInput>) {
+  await assertTenantSpace(tenantId, propertyId, spaceId);
+
+  return prisma.$transaction(async (transaction: any) => {
+    const shouldReplaceAssets = input.assets !== undefined;
+
+    if (shouldReplaceAssets) {
+      await transaction.asset.deleteMany({ where: { spaceId } });
+    }
+
+    const data: any = {};
+
+    if (input.name !== undefined) data.name = input.name;
+    if (input.order !== undefined) data.order = input.order;
+    if (input.status !== undefined) data.status = normalizeSpaceStatus(input.status);
+    if (input.dimensions !== undefined) data.dimensions = input.dimensions == null ? null : JSON.stringify(input.dimensions);
+
+    if (shouldReplaceAssets) {
+      data.assets = {
+        create: buildAssetsCreate(input.assets)
+      };
+    }
+
+    return transaction.space.update({
+      where: { id: spaceId },
+      data,
+      include: spaceInclude
+    });
+  });
+}
+
+export async function deleteSpace(tenantId: string, propertyId: string, spaceId: string) {
+  await assertTenantSpace(tenantId, propertyId, spaceId);
+
+  await prisma.space.delete({
+    where: { id: spaceId }
+  });
+
+  return { id: spaceId };
+}
 
 // DEFAULT PROPERTY SPACES START
 function buildDefaultSpaces(input: PropertyInput): SpaceInput[] {
