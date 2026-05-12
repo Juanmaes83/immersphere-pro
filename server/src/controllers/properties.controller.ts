@@ -1,3 +1,22 @@
+// LOCAL STRING ENUMS PROPERTY CONTROLLER START
+type PropertyType = string;
+const PropertyType = {
+  APARTMENT: "APARTMENT",
+  HOUSE: "HOUSE",
+  VILLA: "VILLA",
+  PENTHOUSE: "PENTHOUSE",
+  COMMERCIAL: "COMMERCIAL",
+  OFFICE: "OFFICE",
+  LAND: "LAND"
+} as const;
+
+type PropertyStatus = string;
+const PropertyStatus = {
+  DRAFT: "DRAFT",
+  PUBLISHED: "PUBLISHED",
+  ARCHIVED: "ARCHIVED"
+} as const;
+// LOCAL STRING ENUMS PROPERTY CONTROLLER END
 // SQLite compatible
 import type { Request, Response } from 'express';
 import { z } from 'zod';
@@ -29,7 +48,7 @@ const spaceSchema = z.object({
 });
 
 const propertySchema = z.object({
-  title: z.string().trim().min(2, 'El título debe tener al menos 2 caracteres.'),
+  title: z.string().trim().min(2, 'El tÃ­tulo debe tener al menos 2 caracteres.'),
   description: z.string().optional(),
   type: z.string().optional(),
   status: z.string().optional(),
@@ -48,13 +67,19 @@ function parseOptionalNumber(value: unknown): number | undefined {
 }
 
 function parsePropertyType(value: unknown): PropertyType | undefined {
-  if (typeof value !== 'string') return undefined;
-  return Object.values(PropertyType).includes(value as PropertyType) ? (value as PropertyType) : undefined;
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  return (Object.values(PropertyType) as string[]).includes(value) ? value : undefined;
 }
 
 function parsePropertyStatus(value: unknown): PropertyStatus | undefined {
-  if (typeof value !== 'string') return undefined;
-  return Object.values(PropertyStatus).includes(value as PropertyStatus) ? (value as PropertyStatus) : undefined;
+  if (typeof value !== "string") {
+    return undefined;
+  }
+
+  return (Object.values(PropertyStatus) as string[]).includes(value) ? value : undefined;
 }
 
 export async function listProperties(request: Request, response: Response): Promise<void> {
@@ -68,7 +93,11 @@ export async function listProperties(request: Request, response: Response): Prom
     maxArea: parseOptionalNumber(request.query.maxArea)
   };
 
-  const tenantId = request.auth?.tenantId;
+  if (!request.auth) {
+    throw new AppError(401, 'Usuario no autenticado.');
+  }
+
+  const tenantId = request.auth.tenantId;
   const data = await propertiesService.listProperties(filters, tenantId);
 
   response.status(200).json({
@@ -78,7 +107,11 @@ export async function listProperties(request: Request, response: Response): Prom
 }
 
 export async function getPropertyById(request: Request, response: Response): Promise<void> {
-  const data = await propertiesService.getPropertyById(request.params.id, request.auth?.tenantId);
+  if (!request.auth) {
+    throw new AppError(401, 'Usuario no autenticado.');
+  }
+
+  const data = await propertiesService.getPropertyById(request.params.id, request.auth.tenantId);
 
   response.status(200).json({
     success: true,
@@ -92,7 +125,7 @@ export async function createProperty(request: Request, response: Response): Prom
   }
 
   const input = propertySchema.parse(request.body);
-  const data = await propertiesService.createProperty(request.auth.tenantId, input);
+  const data = await propertiesService.createProperty(request.auth.tenantId, input as any);
 
   response.status(201).json({
     success: true,
@@ -106,7 +139,7 @@ export async function updateProperty(request: Request, response: Response): Prom
   }
 
   const input = propertySchema.parse(request.body);
-  const data = await propertiesService.updateProperty(request.auth.tenantId, request.params.id, input);
+  const data = await propertiesService.updateProperty(request.auth.tenantId, request.params.id, input as any);
 
   response.status(200).json({
     success: true,
@@ -126,3 +159,5 @@ export async function deleteProperty(request: Request, response: Response): Prom
     data
   });
 }
+
+

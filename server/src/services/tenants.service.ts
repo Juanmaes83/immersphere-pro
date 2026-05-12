@@ -1,5 +1,4 @@
-import { prisma } from '../index';
-
+import { prisma } from '../index.js';
 type Plan = 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
 type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'EXPIRED';
 
@@ -148,7 +147,7 @@ export async function updateTenantPlan(tenantId: string, input: TenantPlanUpdate
   const plan = normalizePlan(input.plan);
   const status = normalizeSubscriptionStatus(input.subscriptionStatus);
 
-  const tenant = await prisma.$transaction(async (tx) => {
+  const tenant = await prisma.$transaction(async (tx: any) => {
     await tx.tenant.update({
       where: { id: tenantId },
       data: {
@@ -182,7 +181,7 @@ export async function updateTenantPlan(tenantId: string, input: TenantPlanUpdate
   });
 
   if (!tenant) {
-    throw new Error('Tenant no encontrado después de actualizar el plan.');
+    throw new Error('Tenant no encontrado despuÃ©s de actualizar el plan.');
   }
 
   return serializeTenantSettings(tenant);
@@ -233,3 +232,4 @@ export async function getTenantUsage(tenantId: string) {
 
 export const getSettings = getTenantSettings;
 export const updateSettings = updateTenantSettings;
+

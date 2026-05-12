@@ -1,3 +1,4 @@
+import { prisma } from '../index.js';
 import { Prisma } from '@prisma/client';
 import type { NextFunction, Request, Response } from 'express';
 import { ZodError } from 'zod';
@@ -43,7 +44,7 @@ export function errorHandler(
   }
 
   if (error instanceof Prisma.PrismaClientKnownRequestError) {
-    const message = error.code === 'P2002' ? 'Ya existe un registro con esos datos únicos.' : 'Error de base de datos.';
+    const message = error.code === 'P2002' ? 'Ya existe un registro con esos datos Ãºnicos.' : 'Error de base de datos.';
     response.status(400).json({
       success: false,
       error: message
@@ -60,3 +61,4 @@ export function errorHandler(
     error: fallbackMessage
   });
 }
+

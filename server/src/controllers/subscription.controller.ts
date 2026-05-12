@@ -1,12 +1,12 @@
 import type { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
-import { AppError } from '../middleware/errorHandler';
+import { AppError } from '../middleware/errorHandler.js';
 import {
   createCheckoutSession,
   createCustomerPortalSession,
   getCurrentSubscription,
   handleStripeWebhook
-} from '../services/subscription.service';
+} from '../services/subscription.service.js';
 
 const createCheckoutSchema = z.object({
   plan: z.string().transform((value) => value.toUpperCase())
@@ -17,7 +17,7 @@ function getAuthenticatedContext(request: Request): { userId: string; tenantId: 
   const tenantId = request.auth?.tenantId;
 
   if (!userId || !tenantId) {
-    throw new AppError(401, 'Autenticación requerida.');
+    throw new AppError(401, 'AutenticaciÃ³n requerida.');
   }
 
   return { userId, tenantId };
@@ -51,7 +51,7 @@ export async function createCheckoutSessionController(
     const parsedBody = createCheckoutSchema.safeParse(request.body);
 
     if (!parsedBody.success) {
-      throw new AppError(400, 'Plan de suscripción inválido.');
+      throw new AppError(400, 'Plan de suscripciÃ³n invÃ¡lido.');
     }
 
     const checkout = await createCheckoutSession({
@@ -113,3 +113,4 @@ export async function handleStripeWebhookController(
     next(error);
   }
 }
+

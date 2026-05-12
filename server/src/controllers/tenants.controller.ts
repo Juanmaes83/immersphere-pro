@@ -1,16 +1,16 @@
 import type { NextFunction, Request, Response } from 'express';
-import { AppError } from '../middleware/errorHandler';
+import { AppError } from '../middleware/errorHandler.js';
 import {
   getTenantSettings,
   getTenantUsage,
   updateTenantSettings
-} from '../services/tenants.service';
+} from '../services/tenants.service.js';
 
 function getTenantId(request: Request): string {
   const tenantId = request.auth?.tenantId;
 
   if (!tenantId) {
-    throw new AppError(401, 'Autenticación requerida.');
+    throw new AppError(401, 'AutenticaciÃ³n requerida.');
   }
 
   return tenantId;
@@ -69,3 +69,4 @@ export async function getTenantUsageController(
     next(error);
   }
 }
+

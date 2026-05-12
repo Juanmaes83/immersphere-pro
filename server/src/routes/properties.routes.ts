@@ -5,14 +5,14 @@ import {
   createProperty,
   updateProperty,
   deleteProperty
-} from '../controllers/properties.controller';
-import { requireAuth } from '../middleware/auth';
-import { enforcePropertyLimit } from '../middleware/planLimits';
+} from '../controllers/properties.controller.js';
+import { requireAuth } from '../middleware/auth.js';
+import { enforcePropertyLimit } from '../middleware/planLimits.js';
 
 export const propertiesRoutes = Router();
 
-propertiesRoutes.get('/', listProperties);
-propertiesRoutes.get('/:id', getPropertyById);
+propertiesRoutes.get('/', requireAuth, listProperties);
+propertiesRoutes.get('/:id', requireAuth, getPropertyById);
 propertiesRoutes.post('/', requireAuth, enforcePropertyLimit, createProperty);
 propertiesRoutes.put('/:id', requireAuth, updateProperty);
 propertiesRoutes.delete('/:id', requireAuth, deleteProperty);

@@ -1,13 +1,15 @@
-import { PrismaClient } from '@prisma/client';
+﻿import { PrismaClient } from '@prisma/client';
 import cors from 'cors';
 import express from 'express';
-import { env } from './config/env';
-import { authRoutes } from './routes/auth.routes';
-import { propertiesRoutes } from './routes/properties.routes';
-import { subscriptionRoutes } from './routes/subscription.routes';
-import { tenantsRoutes } from './routes/tenants.routes';
-import { webhookRoutes } from './routes/webhook.routes';
-import { errorHandler, notFoundHandler } from './middleware/errorHandler';
+import path from 'node:path';
+import { env } from './config/env.js';
+import { authRoutes } from './routes/auth.routes.js';
+import { propertiesRoutes } from './routes/properties.routes.js';
+import { subscriptionRoutes } from './routes/subscription.routes.js';
+import { tenantsRoutes } from './routes/tenants.routes.js';
+import { uploadsRoutes } from './routes/uploads.routes.js';
+import { webhookRoutes } from './routes/webhook.routes.js';
+import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 export const prisma = new PrismaClient();
 
@@ -24,6 +26,7 @@ app.use(
 
 app.use('/api/webhooks', webhookRoutes);
 app.use(express.json({ limit: '2mb' }));
+app.use('/uploads', express.static(path.resolve(process.cwd(), 'uploads')));
 
 app.get('/health', (_request, response) => {
   response.status(200).json({
@@ -38,6 +41,7 @@ app.get('/health', (_request, response) => {
 
 app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertiesRoutes);
+app.use('/api/uploads', uploadsRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
 app.use('/api/tenants', tenantsRoutes);
 
@@ -64,3 +68,4 @@ startServer().catch((error: unknown) => {
   process.stderr.write(message + '\n');
   process.exit(1);
 });
+

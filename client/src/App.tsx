@@ -161,7 +161,7 @@ function DashboardPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    void fetchProperties({ status: 'DRAFT', limit: 100 });
+    void fetchProperties({ limit: 100 });
     void loadBillingState();
   }, [fetchProperties]);
 
@@ -288,7 +288,8 @@ function PropertyRoutePage(): JSX.Element {
 
 function PropertiesPage(): JSX.Element {
   const navigate = useNavigate();
-  const { properties, fetchProperties, createProperty, deleteProperty, isLoading, error } = usePropertyStore();
+  const { properties, fetchProperties, createProperty, updateProperty, deleteProperty, isLoading, error } = usePropertyStore();
+
   const [form, setForm] = useState<CreatePropertyPayload>({
     title: '',
     description: '',
@@ -300,22 +301,135 @@ function PropertiesPage(): JSX.Element {
     bathrooms: 1,
     coverImage: ''
   });
+
+  const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
-    void fetchProperties({ status: 'DRAFT', limit: 100 });
+    void fetchProperties({ limit: 100 });
   }, [fetchProperties]);
 
-  async function handleSubmit(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+  function resetForm(): void {
+    setForm({
+      title: '',
+      description: '',
+      type: 'APARTMENT',
+      status: 'DRAFT',
+      price: 0,
+      area: 80,
+      rooms: 2,
+      bathrooms: 1,
+      coverImage: ''
+    });
+
+    setEditingPropertyId(null);
+    setMessage(null);
+  }
+
+  function buildPayload(): CreatePropertyPayload {
+    return {
+      title: String(form.title ?? '').trim(),
+      description: String(form.description ?? '').trim(),
+      type: String(form.type ?? 'APARTMENT'),
+      status: String(form.status ?? 'DRAFT'),
+      price: Number(form.price ?? 0),
+      area: Number(form.area ?? 0),
+      rooms: Number(form.rooms ?? 0),
+      bathrooms: Number(form.bathrooms ?? 0),
+      coverImage: String(form.coverImage ?? '').trim()
+    };
+  }
+
+  function handleEditProperty(property: any): void {
+    setEditingPropertyId(property.id);
+
+    setForm({
+      title: property.title ?? '',
+      description: property.description ?? '',
+      type: property.type ?? 'APARTMENT',
+      status: property.status ?? 'DRAFT',
+      price: property.price ?? 0,
+      area: property.area ?? 80,
+      rooms: property.rooms ?? 0,
+      bathrooms: property.bathrooms ?? 0,
+      coverImage: property.coverImage ?? ''
+    });
+
+    setMessage('Editando propiedad seleccionada.');
+  }
+
+  async function handleSubmit(event: any): Promise<void> {
     event.preventDefault();
     setMessage(null);
 
+    const payload = buildPayload();
+
+    if (payload.title.length < 2) {
+      setMessage('El titulo debe tener al menos 2 caracteres.');
+      return;
+    }
+
+    if ((payload.area ?? 0) <= 0) {
+      setMessage('La superficie debe ser mayor que 0 m2.');
+      return;
+    }
+
     try {
-      const property = await createProperty(form);
-      setMessage('Propiedad creada correctamente.');
-      navigate(`/property/${property.id}`);
+      if (editingPropertyId) {
+        await updateProperty(editingPropertyId, payload);
+        setMessage('Propiedad actualizada correctamente.');
+      } else {
+        await createProperty(payload);
+        setMessage('Propiedad creada correctamente.');
+      }
+
+      resetForm();
+      await fetchProperties({ limit: 100 });
     } catch {
-      // El store ya expone error.
+      setMessage('No se ha podido guardar la propiedad.');
+    }
+  }
+
+  async function handleTogglePublish(property: any): Promise<void> {
+    const nextStatus = property.status === 'PUBLISHED' ? 'DRAFT' : 'PUBLISHED';
+
+    try {
+      await updateProperty(property.id, {
+        title: property.title,
+        description: property.description,
+        type: property.type,
+        status: nextStatus,
+        price: property.price,
+        area: property.area,
+        rooms: property.rooms,
+        bathrooms: property.bathrooms,
+        coverImage: property.coverImage
+      });
+
+      setMessage(
+        nextStatus === 'PUBLISHED'
+          ? 'Propiedad publicada. Ya aparece en Galeria.'
+          : 'Propiedad despublicada. Ya no aparece en Galeria.'
+      );
+
+      await fetchProperties({ limit: 100 });
+    } catch {
+      setMessage('No se ha podido cambiar el estado de publicacion.');
+    }
+  }
+
+  async function handleDeleteProperty(propertyId: string): Promise<void> {
+    try {
+      await deleteProperty(propertyId);
+
+      if (editingPropertyId === propertyId) {
+        resetForm();
+      }
+
+      setMessage('Propiedad eliminada correctamente.');
+      await fetchProperties({ limit: 100 });
+    } catch {
+      setMessage('No se ha podido eliminar la propiedad.');
     }
   }
 
@@ -326,21 +440,75 @@ function PropertiesPage(): JSX.Element {
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
         <form onSubmit={handleSubmit} className="rounded-[1.8rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
-          <h2 className="text-2xl font-black">Nueva propiedad</h2>
-          <FormInput label="Título" value={form.title ?? ''} onChange={(value) => setForm((current) => ({ ...current, title: value }))} />
-          <FormTextarea label="Descripción" value={form.description ?? ''} onChange={(value) => setForm((current) => ({ ...current, description: value }))} />
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="text-2xl font-black">{editingPropertyId ? 'Editar propiedad' : 'Nueva propiedad'}</h2>
+
+            {editingPropertyId ? (
+              <button type="button" onClick={resetForm} className="rounded-full bg-slate-100 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-200">
+                Cancelar
+              </button>
+            ) : null}
+          </div>
+
+          <FormInput label="Titulo" value={form.title ?? ''} onChange={(value) => setForm((current) => ({ ...current, title: value }))} />
+          <FormTextarea label="Descripcion" value={form.description ?? ''} onChange={(value) => setForm((current) => ({ ...current, description: value }))} />
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="mt-4 block">
+              <span className="mb-2 block text-sm font-black text-slate-700">Tipo</span>
+              <select
+                value={form.type ?? 'APARTMENT'}
+                onChange={(event) => setForm((current) => ({ ...current, type: event.target.value }))}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+              >
+                <option value="APARTMENT">Apartamento</option>
+                <option value="HOUSE">Casa</option>
+                <option value="VILLA">Villa</option>
+                <option value="OFFICE">Oficina</option>
+                <option value="COMMERCIAL">Comercial</option>
+              </select>
+            </label>
+
+            <label className="mt-4 block">
+              <span className="mb-2 block text-sm font-black text-slate-700">Estado</span>
+              <select
+                value={form.status ?? 'DRAFT'}
+                onChange={(event) => setForm((current) => ({ ...current, status: event.target.value }))}
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+              >
+                <option value="DRAFT">Borrador</option>
+                <option value="PUBLISHED">Publicado</option>
+              </select>
+            </label>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <FormInput label="Precio" type="number" value={String(form.price ?? 0)} onChange={(value) => setForm((current) => ({ ...current, price: Number(value) }))} />
-            <FormInput label="m²" type="number" value={String(form.area ?? 0)} onChange={(value) => setForm((current) => ({ ...current, area: Number(value) }))} />
+            <FormInput label="m2" type="number" value={String(form.area ?? 0)} onChange={(value) => setForm((current) => ({ ...current, area: Number(value) }))} />
           </div>
+
           <div className="grid grid-cols-2 gap-3">
             <FormInput label="Habitaciones" type="number" value={String(form.rooms ?? 0)} onChange={(value) => setForm((current) => ({ ...current, rooms: Number(value) }))} />
-            <FormInput label="Baños" type="number" value={String(form.bathrooms ?? 0)} onChange={(value) => setForm((current) => ({ ...current, bathrooms: Number(value) }))} />
+            <FormInput label="Banos" type="number" value={String(form.bathrooms ?? 0)} onChange={(value) => setForm((current) => ({ ...current, bathrooms: Number(value) }))} />
           </div>
+          <label className="mt-4 block">
+            <span className="mb-2 block text-sm font-black text-slate-700">
+              Imagen de portada <span className="font-semibold text-slate-400">(opcional)</span>
+            </span>
+            <input
+              type="text"
+              value={form.coverImage ?? ''}
+              onChange={(event) => setForm((current) => ({ ...current, coverImage: event.target.value }))}
+              placeholder="https://... o deja este campo vacio"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+            />
+          </label>
+
           {error ? <div className="mt-4 rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</div> : null}
           {message ? <div className="mt-4 rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{message}</div> : null}
+
           <button disabled={isLoading} type="submit" className="mt-5 w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-60">
-            {isLoading ? 'Guardando...' : 'Crear propiedad'}
+            {isLoading ? 'Guardando...' : editingPropertyId ? 'Guardar cambios' : 'Crear propiedad'}
           </button>
         </form>
 
@@ -349,14 +517,45 @@ function PropertiesPage(): JSX.Element {
             <article key={property.id} className="rounded-[1.5rem] bg-white p-5 shadow-sm ring-1 ring-slate-200">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
+                  <div className="mb-2 flex flex-wrap gap-2">
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
+                      {property.type}
+                    </span>
+                    <span className={`rounded-full px-3 py-1 text-xs font-black ${
+                      property.status === 'PUBLISHED'
+                        ? 'bg-emerald-50 text-emerald-700'
+                        : 'bg-amber-50 text-amber-700'
+                    }`}>
+                      {property.status === 'PUBLISHED' ? 'Publicado' : 'Borrador'}
+                    </span>
+                  </div>
+
                   <h3 className="text-xl font-black">{property.title}</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">{property.status} · {property.area} m² · {formatCurrency(property.price)}</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">{property.status === 'PUBLISHED' ? 'Publicado' : 'Borrador'} - {property.area} m2 - {formatCurrency(property.price)}</p>
                 </div>
-                <div className="flex gap-2">
+
+                <div className="flex flex-wrap gap-2">
                   <button type="button" onClick={() => navigate(`/property/${property.id}`)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
                     Ver
                   </button>
-                  <button type="button" onClick={() => void deleteProperty(property.id)} className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-700 hover:bg-red-100">
+
+                  <button type="button" onClick={() => handleEditProperty(property)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
+                    Editar
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => void handleTogglePublish(property)}
+                    className={`rounded-full px-4 py-2 text-sm font-black ${
+                      property.status === 'PUBLISHED'
+                        ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
+                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                    }`}
+                  >
+                    {property.status === 'PUBLISHED' ? 'Despublicar' : 'Publicar'}
+                  </button>
+
+                  <button type="button" onClick={() => void handleDeleteProperty(property.id)} className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-700 hover:bg-red-100">
                     Eliminar
                   </button>
                 </div>

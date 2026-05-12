@@ -1,4 +1,50 @@
-import { prisma } from '../index';
+// LOCAL STRING ENUMS PROPERTIES START
+type PropertyType = string;
+const PropertyType = {
+  APARTMENT: "APARTMENT",
+  HOUSE: "HOUSE",
+  VILLA: "VILLA",
+  PENTHOUSE: "PENTHOUSE",
+  COMMERCIAL: "COMMERCIAL",
+  OFFICE: "OFFICE",
+  LAND: "LAND"
+} as const;
+
+type PropertyStatus = string;
+const PropertyStatus = {
+  DRAFT: "DRAFT",
+  PUBLISHED: "PUBLISHED",
+  ARCHIVED: "ARCHIVED"
+} as const;
+
+type HotspotType = string;
+const HotspotType = {
+  INFO: "INFO",
+  CTA: "CTA",
+  MEASUREMENT: "MEASUREMENT",
+  MEDIA: "MEDIA"
+} as const;
+
+type AssetType = string;
+const AssetType = {
+  PANORAMA_360: "PANORAMA_360",
+  GAUSSIAN_SPLAT: "GAUSSIAN_SPLAT",
+  IMAGE: "IMAGE",
+  VIDEO: "VIDEO"
+} as const;
+
+type AssetFormat = string;
+const AssetFormat = {
+  JPG: "JPG",
+  JPEG: "JPEG",
+  PNG: "PNG",
+  WEBP: "WEBP",
+  MP4: "MP4",
+  SPLAT: "SPLAT",
+  PLY: "PLY"
+} as const;
+// LOCAL STRING ENUMS PROPERTIES END
+import type { Prisma } from '@prisma/client';
 import { prisma } from '../index.js';
 import { AppError } from '../middleware/errorHandler.js';
 
@@ -15,7 +61,7 @@ interface PropertyFilters {
 interface HotspotInput {
   label: string;
   type: HotspotType;
-  position: Prisma.InputJsonValue;
+  position: unknown;
   body?: string;
   metric?: string;
 }
@@ -32,7 +78,7 @@ interface AssetInput {
 interface SpaceInput {
   name: string;
   order?: number;
-  dimensions?: Prisma.InputJsonValue | null;
+  dimensions?: unknown;
   assets?: AssetInput[];
 }
 
@@ -82,8 +128,8 @@ function buildPropertyWhere(filters: PropertyFilters, tenantId?: string): Prisma
 
   if (filters.q) {
     where.OR = [
-      { title: { contains: filters.q, mode: 'insensitive' } },
-      { description: { contains: filters.q, mode: 'insensitive' } }
+      { title: { contains: filters.q } },
+      { description: { contains: filters.q } }
     ];
   }
 
@@ -115,7 +161,7 @@ function buildSpacesCreate(spaces: SpaceInput[] | undefined): Prisma.SpaceCreate
   return spaces.map((space, index) => ({
     name: space.name,
     order: space.order ?? index + 1,
-    dimensions: space.dimensions ?? Prisma.JsonNull,
+    dimensions: space.dimensions == null ? null : JSON.stringify(space.dimensions),
     assets: {
       create: (space.assets ?? []).map((asset) => ({
         type: asset.type,
@@ -127,7 +173,7 @@ function buildSpacesCreate(spaces: SpaceInput[] | undefined): Prisma.SpaceCreate
           create: (asset.hotspots ?? []).map((hotspot) => ({
             label: hotspot.label,
             type: hotspot.type,
-            position: hotspot.position,
+            position: JSON.stringify(hotspot.position ?? { x: 50, y: 50 }),
             body: hotspot.body ?? '',
             metric: hotspot.metric ?? ''
           }))
@@ -160,6 +206,44 @@ export async function getPropertyById(propertyId: string, tenantId?: string) {
   return property;
 }
 
+
+
+// DEFAULT PROPERTY SPACES START
+function buildDefaultSpaces(input: PropertyInput): SpaceInput[] {
+  return [
+    {
+      name: 'Vista general',
+      order: 1,
+      dimensions: null,
+      assets: [
+        {
+          type: AssetType.PANORAMA_360,
+          url: input.coverImage && input.coverImage.trim().length > 0 ? input.coverImage : 'demo://panorama/general',
+          thumbnail: input.coverImage ?? '',
+          format: AssetFormat.JPG,
+          size: 80,
+          hotspots: [
+            {
+              label: 'Vista general',
+              type: HotspotType.INFO,
+              position: { x: 52, y: 48 },
+              body: 'Hotspot inicial creado automáticamente para evitar propiedades sin experiencia inmersiva.',
+              metric: input.area ? `${input.area} m2 aprox.` : 'Medidas pendientes'
+            },
+            {
+              label: 'Contactar agente',
+              type: HotspotType.CTA,
+              position: { x: 70, y: 62 },
+              body: 'CTA comercial inicial preparado para lead o reserva de visita.',
+              metric: 'Lead'
+            }
+          ]
+        }
+      ]
+    }
+  ];
+}
+// DEFAULT PROPERTY SPACES END
 export async function createProperty(tenantId: string, input: PropertyInput) {
   return prisma.property.create({
     data: {
@@ -174,7 +258,7 @@ export async function createProperty(tenantId: string, input: PropertyInput) {
       bathrooms: input.bathrooms ?? 0,
       coverImage: input.coverImage ?? '',
       spaces: {
-        create: buildSpacesCreate(input.spaces)
+        create: buildSpacesCreate(input.spaces && input.spaces.length > 0 ? input.spaces : buildDefaultSpaces(input))
       }
     },
     include: propertyInclude
@@ -190,7 +274,7 @@ export async function updateProperty(tenantId: string, propertyId: string, input
     throw new AppError(404, 'Propiedad no encontrada.');
   }
 
-  return prisma.$transaction(async (transaction) => {
+  return prisma.$transaction(async (transaction: any) => {
     if (input.spaces) {
       await transaction.space.deleteMany({ where: { propertyId } });
     }
@@ -209,7 +293,7 @@ export async function updateProperty(tenantId: string, propertyId: string, input
         coverImage: input.coverImage ?? '',
         spaces: input.spaces
           ? {
-              create: buildSpacesCreate(input.spaces)
+              create: buildSpacesCreate(input.spaces && input.spaces.length > 0 ? input.spaces : buildDefaultSpaces(input))
             }
           : undefined
       },
@@ -231,3 +315,6 @@ export async function deleteProperty(tenantId: string, propertyId: string) {
 
   return { id: propertyId };
 }
+
+
+

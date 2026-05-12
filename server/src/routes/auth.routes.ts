@@ -14,3 +14,4 @@ function asyncHandler(controller: AsyncController) {
 authRoutes.post('/register', asyncHandler(authController.register));
 authRoutes.post('/login', asyncHandler(authController.login));
 authRoutes.post('/refresh', asyncHandler(authController.refresh));
+
