@@ -70,6 +70,7 @@ export interface ImmersiveProperty {
   bathrooms: number;
   description: string;
   coverImage: string;
+  panoramaUrl: string;
   leadScore: number;
   visits: number;
   leads: number;
@@ -98,6 +99,7 @@ export interface CreatePropertyPayload {
   rooms?: number;
   bathrooms?: number;
   coverImage?: string;
+  panoramaUrl?: string;
 }
 
 interface PropertyState {
@@ -220,11 +222,28 @@ function normalizeSpacesWithFallbacks(spaces: ApiSpace[] = [], property: ApiProp
 
       return {
         ...asset,
-        url: needsFallback ? coverImage || demoPanorama : assetUrl,
+        url: needsFallback ? demoPanorama : assetUrl,
         thumbnail: asset.thumbnail || coverImage || demoPanorama
       };
     })
   }));
+}
+
+function getPrimaryPanoramaUrl(spaces: ApiSpace[] = []): string {
+  for (const space of Array.isArray(spaces) ? spaces : []) {
+    const assets = Array.isArray(space.assets) ? space.assets : [];
+
+    for (const asset of assets) {
+      const assetType = String(asset.type ?? '').toUpperCase();
+      const assetUrl = String(asset.url ?? '').trim();
+
+      if (assetType === 'PANORAMA_360' && assetUrl.length > 0 && !assetUrl.startsWith('demo://')) {
+        return assetUrl;
+      }
+    }
+  }
+
+  return '';
 }
 
 function normalizeProperty(property: ApiProperty): ImmersiveProperty {
@@ -241,6 +260,7 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
     bathrooms: property.bathrooms,
     description: property.description,
     coverImage: property.coverImage,
+    panoramaUrl: getPrimaryPanoramaUrl(property.spaces ?? []),
     leadScore: Math.min(95, 50 + (property.leadsCount ?? 0) * 3),
     visits: 0,
     leads: property.leadsCount ?? 0,

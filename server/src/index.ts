@@ -13,14 +13,36 @@ import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 export const prisma = new PrismaClient();
 
+function isAllowedCorsOrigin(origin: string | undefined): boolean {
+  if (!origin) return true;
+
+  const configuredOrigins = env.CLIENT_ORIGIN
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+
+  if (configuredOrigins.includes(origin)) return true;
+
+  if (/^http:\/\/localhost:\d+$/.test(origin)) return true;
+
+  if (/^https:\/\/immersphere.*\.vercel\.app$/.test(origin)) return true;
+
+  return false;
+}
+
 const app = express();
 
 app.use(
   cors({
-    origin: env.CLIENT_ORIGIN,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'Stripe-Signature']
+    origin(origin: string | undefined, callback: (error: Error | null, allow?: boolean) => void) {
+      if (isAllowedCorsOrigin(origin)) {
+        callback(null, true);
+        return;
+      }
+
+      callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
+    credentials: true
   })
 );
 

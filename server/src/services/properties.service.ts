@@ -92,6 +92,7 @@ interface PropertyInput {
   rooms?: number;
   bathrooms?: number;
   coverImage?: string;
+  panoramaUrl?: string;
   spaces?: SpaceInput[];
 }
 
@@ -218,7 +219,7 @@ function buildDefaultSpaces(input: PropertyInput): SpaceInput[] {
       assets: [
         {
           type: AssetType.PANORAMA_360,
-          url: input.coverImage && input.coverImage.trim().length > 0 ? input.coverImage : 'demo://panorama/general',
+          url: input.panoramaUrl && input.panoramaUrl.trim().length > 0 ? input.panoramaUrl : 'demo://panorama/general',
           thumbnail: input.coverImage ?? '',
           format: AssetFormat.JPG,
           size: 80,
@@ -275,7 +276,9 @@ export async function updateProperty(tenantId: string, propertyId: string, input
   }
 
   return prisma.$transaction(async (transaction: any) => {
-    if (input.spaces) {
+    const shouldReplaceSpaces = Boolean(input.spaces || input.panoramaUrl !== undefined);
+
+    if (shouldReplaceSpaces) {
       await transaction.space.deleteMany({ where: { propertyId } });
     }
 
@@ -291,7 +294,7 @@ export async function updateProperty(tenantId: string, propertyId: string, input
         rooms: input.rooms ?? 0,
         bathrooms: input.bathrooms ?? 0,
         coverImage: input.coverImage ?? '',
-        spaces: input.spaces
+        spaces: shouldReplaceSpaces
           ? {
               create: buildSpacesCreate(input.spaces && input.spaces.length > 0 ? input.spaces : buildDefaultSpaces(input))
             }

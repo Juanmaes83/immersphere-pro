@@ -57,6 +57,7 @@ const propertySchema = z.object({
   rooms: z.number().int().min(0).optional(),
   bathrooms: z.number().int().min(0).optional(),
   coverImage: z.string().optional(),
+  panoramaUrl: z.string().optional(),
   spaces: z.array(spaceSchema).optional()
 });
 
