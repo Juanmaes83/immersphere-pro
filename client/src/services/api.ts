@@ -1,6 +1,17 @@
-import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
+﻿import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000/api';
+const RAW_API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL ??
+  import.meta.env.VITE_API_URL ??
+  "http://localhost:4000/api";
+
+const NORMALIZED_API_BASE_URL = RAW_API_BASE_URL.endsWith("/")
+  ? RAW_API_BASE_URL.slice(0, -1)
+  : RAW_API_BASE_URL;
+
+const API_BASE_URL = NORMALIZED_API_BASE_URL.endsWith("/api")
+  ? NORMALIZED_API_BASE_URL
+  : NORMALIZED_API_BASE_URL + "/api";
 
 export const AUTH_STORAGE_KEYS = {
   accessToken: 'immersphere.auth.accessToken',
@@ -134,7 +145,7 @@ api.interceptors.response.use(
 
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError<ApiEnvelope<unknown>>(error)) {
-    return error.response?.data?.error ?? error.message ?? 'Error de comunicación con la API.';
+    return error.response?.data?.error ?? error.message ?? 'Error de comunicaciÃ³n con la API.';
   }
 
   return error instanceof Error ? error.message : 'Error inesperado.';
@@ -144,8 +155,9 @@ export async function unwrapApiResponse<T>(request: Promise<{ data: ApiEnvelope<
   const response = await request;
 
   if (!response.data.success || typeof response.data.data === 'undefined') {
-    throw new Error(response.data.error ?? 'Respuesta inválida de la API.');
+    throw new Error(response.data.error ?? 'Respuesta invÃ¡lida de la API.');
   }
 
   return response.data.data;
 }
+
