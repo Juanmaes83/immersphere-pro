@@ -347,10 +347,18 @@ function PropertiesPage(): JSX.Element {
     setMessage(null);
   }
 
-  function resetSpaceForm(): void {
+  function getNextSpaceOrder(propertyId: string): number {
+    const property = properties.find((item) => item.id === propertyId);
+    const orders = (property?.spaces ?? []).map((space) => Number(space.order ?? 0));
+    const maxOrder = orders.length > 0 ? Math.max(...orders) : 0;
+
+    return maxOrder + 1;
+  }
+
+  function resetSpaceForm(propertyId?: string): void {
     setSpaceForm({
       name: '',
-      order: 1,
+      order: propertyId ? getNextSpaceOrder(propertyId) : 1,
       status: 'ACTIVE',
       dimensions: { width: null, height: null, depth: null }
     });
@@ -523,7 +531,7 @@ function PropertiesPage(): JSX.Element {
         setMessage('Estancia creada correctamente.');
       }
 
-      resetSpaceForm();
+      resetSpaceForm(propertyId);
       setExpandedPropertyId(propertyId);
       await fetchProperties({ limit: 100 });
     } catch {
@@ -548,7 +556,7 @@ function PropertiesPage(): JSX.Element {
       await deleteSpace(propertyId, spaceId);
 
       if (editingSpace?.spaceId === spaceId) {
-        resetSpaceForm();
+        resetSpaceForm(propertyId);
       }
 
       setExpandedPropertyId(propertyId);
@@ -711,7 +719,7 @@ function PropertiesPage(): JSX.Element {
                       <h4 className="text-lg font-black text-slate-950">Gestor de estancias</h4>
                       <p className="text-sm font-semibold text-slate-500">Crear, editar, ocultar o eliminar espacios de esta propiedad.</p>
                     </div>
-                    <button type="button" onClick={resetSpaceForm} className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
+                    <button type="button" onClick={() => resetSpaceForm(property.id)} className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
                       Nueva estancia
                     </button>
                   </div>
