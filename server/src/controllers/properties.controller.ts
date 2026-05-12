@@ -48,6 +48,14 @@ const spaceSchema = z.object({
   assets: z.array(assetSchema).optional()
 });
 
+const spaceUpdateSchema = z.object({
+  name: z.string().trim().min(1, 'La estancia necesita nombre.').optional(),
+  order: z.number().int().positive().optional(),
+  status: z.string().optional(),
+  dimensions: z.record(z.unknown()).nullable().optional(),
+  assets: z.array(assetSchema).optional()
+});
+
 const propertySchema = z.object({
   title: z.string().trim().min(2, 'El titulo debe tener al menos 2 caracteres.'),
   description: z.string().optional(),
@@ -142,6 +150,60 @@ export async function updateProperty(request: Request, response: Response): Prom
 
   const input = propertySchema.parse(request.body);
   const data = await propertiesService.updateProperty(request.auth.tenantId, request.params.id, input as any);
+
+  response.status(200).json({
+    success: true,
+    data
+  });
+}
+
+export async function listPropertySpaces(request: Request, response: Response): Promise<void> {
+  if (!request.auth) {
+    throw new AppError(401, 'Usuario no autenticado.');
+  }
+
+  const data = await propertiesService.listSpaces(request.auth.tenantId, request.params.propertyId);
+
+  response.status(200).json({
+    success: true,
+    data
+  });
+}
+
+export async function createPropertySpace(request: Request, response: Response): Promise<void> {
+  if (!request.auth) {
+    throw new AppError(401, 'Usuario no autenticado.');
+  }
+
+  const input = spaceSchema.parse(request.body);
+  const data = await propertiesService.createSpace(request.auth.tenantId, request.params.propertyId, input as any);
+
+  response.status(201).json({
+    success: true,
+    data
+  });
+}
+
+export async function updatePropertySpace(request: Request, response: Response): Promise<void> {
+  if (!request.auth) {
+    throw new AppError(401, 'Usuario no autenticado.');
+  }
+
+  const input = spaceUpdateSchema.parse(request.body);
+  const data = await propertiesService.updateSpace(request.auth.tenantId, request.params.propertyId, request.params.spaceId, input as any);
+
+  response.status(200).json({
+    success: true,
+    data
+  });
+}
+
+export async function deletePropertySpace(request: Request, response: Response): Promise<void> {
+  if (!request.auth) {
+    throw new AppError(401, 'Usuario no autenticado.');
+  }
+
+  const data = await propertiesService.deleteSpace(request.auth.tenantId, request.params.propertyId, request.params.spaceId);
 
   response.status(200).json({
     success: true,
