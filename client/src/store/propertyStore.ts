@@ -103,6 +103,15 @@ export interface CreatePropertyPayload {
   panoramaUrl?: string;
 }
 
+export interface CreateSpacePayload {
+  name: string;
+  order?: number;
+  status?: Space['status'];
+  dimensions?: Space['dimensions'] | null;
+}
+
+export type UpdateSpacePayload = Partial<CreateSpacePayload>;
+
 interface PropertyState {
   properties: ImmersiveProperty[];
   selectedProperty: ImmersiveProperty | null;
@@ -114,6 +123,9 @@ interface PropertyState {
   createProperty: (payload: CreatePropertyPayload) => Promise<ImmersiveProperty>;
   updateProperty: (propertyId: string, payload: Partial<CreatePropertyPayload>) => Promise<ImmersiveProperty>;
   deleteProperty: (propertyId: string) => Promise<void>;
+  createSpace: (propertyId: string, payload: CreateSpacePayload) => Promise<Space>;
+  updateSpace: (propertyId: string, spaceId: string, payload: UpdateSpacePayload) => Promise<Space>;
+  deleteSpace: (propertyId: string, spaceId: string) => Promise<void>;
   clearSelectedProperty: () => void;
   clearError: () => void;
 }
@@ -144,8 +156,8 @@ function normalizeHotspotType(type: string): Hotspot['type'] {
   return 'info';
 }
 
-function normalizeSpaces(spaces: ApiSpace[] = []): Space[] {
-  return (Array.isArray(spaces) ? spaces : []).map((space) => ({
+function normalizeSpace(space: ApiSpace): Space {
+  return {
     id: space.id,
     name: space.name,
     order: space.order,
@@ -167,7 +179,11 @@ function normalizeSpaces(spaces: ApiSpace[] = []): Space[] {
         metric: hotspot.metric
       }))
     }))
-  }));
+  };
+}
+
+function normalizeSpaces(spaces: ApiSpace[] = []): Space[] {
+  return (Array.isArray(spaces) ? spaces : []).map(normalizeSpace);
 }
 
 
@@ -377,6 +393,93 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
       set({
         properties: get().properties.filter((property) => property.id !== propertyId),
         selectedProperty: get().selectedProperty?.id === propertyId ? null : get().selectedProperty,
+        isLoading: false,
+        error: null
+      });
+    } catch (error) {
+      set({ isLoading: false, error: getApiErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  createSpace: async (propertyId, payload) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const response = await unwrapApiResponse<ApiSpace>(api.post(`/properties/${propertyId}/spaces`, payload));
+      const space = normalizeSpace(response);
+
+      set({
+        properties: get().properties.map((property) =>
+          property.id === propertyId
+            ? { ...property, spaces: [...property.spaces, space].sort((a, b) => a.order - b.order) }
+            : property
+        ),
+        selectedProperty:
+          get().selectedProperty?.id === propertyId
+            ? { ...get().selectedProperty!, spaces: [...get().selectedProperty!.spaces, space].sort((a, b) => a.order - b.order) }
+            : get().selectedProperty,
+        isLoading: false,
+        error: null
+      });
+
+      return space;
+    } catch (error) {
+      set({ isLoading: false, error: getApiErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  updateSpace: async (propertyId, spaceId, payload) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const response = await unwrapApiResponse<ApiSpace>(api.put(`/properties/${propertyId}/spaces/${spaceId}`, payload));
+      const space = normalizeSpace(response);
+
+      set({
+        properties: get().properties.map((property) =>
+          property.id === propertyId
+            ? {
+                ...property,
+                spaces: property.spaces.map((item) => (item.id === spaceId ? space : item)).sort((a, b) => a.order - b.order)
+              }
+            : property
+        ),
+        selectedProperty:
+          get().selectedProperty?.id === propertyId
+            ? {
+                ...get().selectedProperty!,
+                spaces: get().selectedProperty!.spaces.map((item) => (item.id === spaceId ? space : item)).sort((a, b) => a.order - b.order)
+              }
+            : get().selectedProperty,
+        isLoading: false,
+        error: null
+      });
+
+      return space;
+    } catch (error) {
+      set({ isLoading: false, error: getApiErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  deleteSpace: async (propertyId, spaceId) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      await unwrapApiResponse<{ id: string }>(api.delete(`/properties/${propertyId}/spaces/${spaceId}`));
+
+      set({
+        properties: get().properties.map((property) =>
+          property.id === propertyId
+            ? { ...property, spaces: property.spaces.filter((space) => space.id !== spaceId) }
+            : property
+        ),
+        selectedProperty:
+          get().selectedProperty?.id === propertyId
+            ? { ...get().selectedProperty!, spaces: get().selectedProperty!.spaces.filter((space) => space.id !== spaceId) }
+            : get().selectedProperty,
         isLoading: false,
         error: null
       });
