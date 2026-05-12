@@ -43,12 +43,13 @@ const assetSchema = z.object({
 const spaceSchema = z.object({
   name: z.string().trim().min(1, 'La estancia necesita nombre.'),
   order: z.number().int().positive().optional(),
+  status: z.string().optional(),
   dimensions: z.record(z.unknown()).nullable().optional(),
   assets: z.array(assetSchema).optional()
 });
 
 const propertySchema = z.object({
-  title: z.string().trim().min(2, 'El tÃ­tulo debe tener al menos 2 caracteres.'),
+  title: z.string().trim().min(2, 'El titulo debe tener al menos 2 caracteres.'),
   description: z.string().optional(),
   type: z.string().optional(),
   status: z.string().optional(),

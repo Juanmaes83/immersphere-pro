@@ -78,6 +78,7 @@ interface AssetInput {
 interface SpaceInput {
   name: string;
   order?: number;
+  status?: string;
   dimensions?: unknown;
   assets?: AssetInput[];
 }
@@ -162,6 +163,7 @@ function buildSpacesCreate(spaces: SpaceInput[] | undefined): Prisma.SpaceCreate
   return spaces.map((space, index) => ({
     name: space.name,
     order: space.order ?? index + 1,
+    status: space.status === 'HIDDEN' ? 'HIDDEN' : 'ACTIVE',
     dimensions: space.dimensions == null ? null : JSON.stringify(space.dimensions),
     assets: {
       create: (space.assets ?? []).map((asset) => ({

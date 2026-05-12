@@ -25,6 +25,7 @@ interface ApiSpace {
   id: string;
   name: string;
   order: number;
+  status: string;
   dimensions: { width: number | null; height: number | null; depth: number | null } | null;
   assets: ApiAsset[];
 }
@@ -148,6 +149,7 @@ function normalizeSpaces(spaces: ApiSpace[] = []): Space[] {
     id: space.id,
     name: space.name,
     order: space.order,
+    status: String(space.status ?? 'ACTIVE').toUpperCase() === 'HIDDEN' ? 'HIDDEN' : 'ACTIVE',
     dimensions: space.dimensions ?? { width: null, height: null, depth: null },
     assets: (Array.isArray(space.assets) ? space.assets : []).map((asset) => ({
       id: asset.id,

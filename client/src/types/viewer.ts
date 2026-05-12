@@ -62,10 +62,13 @@ export interface ViewerAsset {
   hotspots: Hotspot[];
 }
 
+export type SpaceStatus = 'ACTIVE' | 'HIDDEN';
+
 export interface Space {
   id: string;
   name: string;
   order: number;
+  status: SpaceStatus;
   dimensions: SpaceDimensions;
   assets: ViewerAsset[];
 }
