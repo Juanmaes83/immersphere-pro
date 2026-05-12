@@ -1,7 +1,6 @@
+import { prisma } from '../index.js';
 import Stripe from 'stripe';
-import { env } from '../config/env';
-import { prisma } from '../index';
-
+import { env } from '../config/env.js';
 type Plan = 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
 type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'EXPIRED';
 
@@ -20,7 +19,7 @@ let stripeClient: Stripe | null = null;
 
 function getStripe(): Stripe {
   if (!env.STRIPE_SECRET_KEY) {
-    throw new Error('STRIPE_SECRET_KEY no está configurada.');
+    throw new Error('STRIPE_SECRET_KEY no estÃ¡ configurada.');
   }
 
   if (!stripeClient) {
@@ -160,7 +159,7 @@ async function applyTenantPlan(input: {
   stripeCustomerId?: string;
   stripeSubscriptionId?: string;
 }) {
-  const tenant = await prisma.$transaction(async (tx) => {
+  const tenant = await prisma.$transaction(async (tx: any) => {
     await tx.tenant.update({
       where: { id: input.tenantId },
       data: {
@@ -194,7 +193,7 @@ async function applyTenantPlan(input: {
   });
 
   if (!tenant) {
-    throw new Error('Tenant no encontrado al actualizar suscripción.');
+    throw new Error('Tenant no encontrado al actualizar suscripciÃ³n.');
   }
 
   return tenant;
@@ -281,7 +280,7 @@ export async function createCheckoutSession(input: CheckoutSessionInput) {
   });
 
   if (!session.url) {
-    throw new Error('Stripe no devolvió URL de Checkout.');
+    throw new Error('Stripe no devolviÃ³ URL de Checkout.');
   }
 
   return {
@@ -417,7 +416,7 @@ async function handleCustomerSubscriptionDeleted(subscription: Stripe.Subscripti
 
 export async function handleStripeWebhook(rawBody: Buffer, signature: string) {
   if (!env.STRIPE_WEBHOOK_SECRET) {
-    throw new Error('STRIPE_WEBHOOK_SECRET no está configurada.');
+    throw new Error('STRIPE_WEBHOOK_SECRET no estÃ¡ configurada.');
   }
 
   const stripe = getStripe();
@@ -445,3 +444,4 @@ export async function handleStripeWebhook(rawBody: Buffer, signature: string) {
     type: event.type
   };
 }
+

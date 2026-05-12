@@ -1,9 +1,33 @@
-import { prisma } from '../index';
+// LOCAL STRING ENUMS AUTH START
+type Plan = string;
+const Plan = {
+  STARTER: "STARTER",
+  PROFESSIONAL: "PROFESSIONAL",
+  ENTERPRISE: "ENTERPRISE"
+} as const;
+
+type Role = string;
+const Role = {
+  SUPERADMIN: "SUPERADMIN",
+  TENANTADMIN: "TENANTADMIN",
+  AGENT: "AGENT",
+  VIEWER: "VIEWER"
+} as const;
+
+type SubscriptionStatus = string;
+const SubscriptionStatus = {
+  TRIAL: "TRIAL",
+  ACTIVE: "ACTIVE",
+  PAST_DUE: "PAST_DUE",
+  CANCELED: "CANCELED",
+  EXPIRED: "EXPIRED"
+} as const;
+// LOCAL STRING ENUMS AUTH END
+import { prisma } from '../index.js';
 import bcrypt from 'bcryptjs';
 import crypto from 'node:crypto';
 import jwt, { type SignOptions } from 'jsonwebtoken';
 import { env } from '../config/env.js';
-import { prisma } from '../index.js';
 import { AppError } from '../middleware/errorHandler.js';
 
 interface RegisterInput {
@@ -146,7 +170,7 @@ export async function register(input: RegisterInput): Promise<AuthResponse> {
   const passwordHash = await bcrypt.hash(input.password, env.BCRYPT_SALT_ROUNDS);
   const logoText = input.tenantName.slice(0, 2).toUpperCase() || 'IP';
 
-  const user = await prisma.$transaction(async (transaction) => {
+  const user = await prisma.$transaction(async (transaction: any) => {
     const tenant = await transaction.tenant.create({
       data: {
         name: input.tenantName,
@@ -194,13 +218,13 @@ export async function login(input: LoginInput): Promise<AuthResponse> {
   });
 
   if (!user) {
-    throw new AppError(401, 'Email o contraseña incorrectos.');
+    throw new AppError(401, 'Email o contraseÃ±a incorrectos.');
   }
 
   const passwordMatches = await bcrypt.compare(input.password, user.passwordHash);
 
   if (!passwordMatches) {
-    throw new AppError(401, 'Email o contraseña incorrectos.');
+    throw new AppError(401, 'Email o contraseÃ±a incorrectos.');
   }
 
   const tokens = await createTokenPair(user);
@@ -225,7 +249,7 @@ export async function refresh(input: RefreshInput): Promise<AuthResponse> {
   });
 
   if (!storedToken || storedToken.revokedAt || storedToken.expiresAt <= new Date()) {
-    throw new AppError(401, 'Refresh token inválido o expirado.');
+    throw new AppError(401, 'Refresh token invÃ¡lido o expirado.');
   }
 
   await prisma.refreshToken.update({
@@ -240,3 +264,6 @@ export async function refresh(input: RefreshInput): Promise<AuthResponse> {
     tokens
   };
 }
+
+
+

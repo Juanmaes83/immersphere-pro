@@ -44,6 +44,58 @@ function supportsWebGL(): boolean {
   }
 }
 
+
+function createRuntimeFallbackPanoramaUrl(label: string): string {
+  const safeLabel = (label || 'Immersphere Pro').replace(/[<>&"']/g, '');
+
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1024" viewBox="0 0 2048 1024">
+      <defs>
+        <linearGradient id="sky" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stop-color="#020617"/>
+          <stop offset="35%" stop-color="#0f172a"/>
+          <stop offset="70%" stop-color="#312e81"/>
+          <stop offset="100%" stop-color="#020617"/>
+        </linearGradient>
+        <radialGradient id="glow" cx="50%" cy="42%" r="65%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.28"/>
+          <stop offset="40%" stop-color="#22d3ee" stop-opacity="0.16"/>
+          <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+
+      <rect width="2048" height="1024" fill="url(#sky)"/>
+      <rect width="2048" height="1024" fill="url(#glow)"/>
+
+      <path d="M0 690 C260 600 420 740 690 650 C980 555 1180 760 1480 645 C1710 560 1870 650 2048 590 L2048 1024 L0 1024 Z" fill="#020617" opacity="0.72"/>
+      <path d="M0 760 C330 670 500 840 800 735 C1080 635 1300 825 1620 720 C1810 660 1940 720 2048 690 L2048 1024 L0 1024 Z" fill="#020617" opacity="0.9"/>
+
+      <g opacity="0.22">
+        <line x1="0" y1="512" x2="2048" y2="512" stroke="#ffffff" stroke-width="2"/>
+        <line x1="512" y1="0" x2="512" y2="1024" stroke="#ffffff" stroke-width="1"/>
+        <line x1="1024" y1="0" x2="1024" y2="1024" stroke="#ffffff" stroke-width="1"/>
+        <line x1="1536" y1="0" x2="1536" y2="1024" stroke="#ffffff" stroke-width="1"/>
+      </g>
+
+      <text x="1024" y="460" text-anchor="middle" font-family="Arial, sans-serif" font-size="76" font-weight="900" fill="#ffffff">${safeLabel}</text>
+      <text x="1024" y="540" text-anchor="middle" font-family="Arial, sans-serif" font-size="38" font-weight="800" fill="#a5f3fc">Panorama 360 demo seguro</text>
+      <text x="1024" y="600" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" fill="#cbd5e1">Fallback runtime activo hasta subida real de assets</text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function getRuntimePanoramaUrl(asset: ViewerAsset, propertyId: string): string {
+  const candidate = (asset.url ?? '').trim();
+
+  if (candidate.length > 0 && !candidate.startsWith('demo://')) {
+    return candidate;
+  }
+
+  return createRuntimeFallbackPanoramaUrl(asset.id || propertyId);
+}
+
 export default function PanoramaViewer({
   propertyId,
   spaceId,
@@ -58,6 +110,8 @@ export default function PanoramaViewer({
   const analyticsRef = useRef(onAnalyticsEvent);
   const hotspotClickRef = useRef(onHotspotClick);
 
+  
+  const runtimeImageUrl = getRuntimePanoramaUrl(asset, propertyId);
   const [isReady, setIsReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentFov, setCurrentFov] = useState(75);
@@ -93,7 +147,7 @@ export default function PanoramaViewer({
     try {
       const engine = new PanoramaEngine360({
         container,
-        imageUrl: asset.url,
+        imageUrl: runtimeImageUrl,
         initialYaw: 0,
         initialPitch: 0,
         initialFov: currentFovRef.current,
@@ -134,7 +188,7 @@ export default function PanoramaViewer({
       });
 
       engineRef.current = engine;
-      void engine.load();
+      void engine.load(runtimeImageUrl);
 
       const handleResize = (): void => {
         engine.resize();
@@ -165,7 +219,7 @@ export default function PanoramaViewer({
         })
       );
     }
-  }, [asset.id, asset.type, asset.url, propertyId, spaceId]);
+  }, [asset.id, asset.type, propertyId, runtimeImageUrl, spaceId]);
 
   function handleHotspotClick(hotspot: Hotspot): void {
     hotspotClickRef.current(hotspot);

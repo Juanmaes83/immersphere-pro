@@ -1,6 +1,6 @@
+import { prisma } from '../index.js';
 import type { NextFunction, Request, Response } from 'express';
-import { prisma } from '../index';
-import { AppError } from './errorHandler';
+import { AppError } from './errorHandler.js';
 
 function getPropertyLimitByPlan(plan: string): number {
   const normalizedPlan = plan.toUpperCase();

@@ -141,20 +141,20 @@ function normalizeHotspotType(type: string): Hotspot['type'] {
   return 'info';
 }
 
-function normalizeSpaces(spaces: ApiSpace[]): Space[] {
-  return spaces.map((space) => ({
+function normalizeSpaces(spaces: ApiSpace[] = []): Space[] {
+  return (Array.isArray(spaces) ? spaces : []).map((space) => ({
     id: space.id,
     name: space.name,
     order: space.order,
     dimensions: space.dimensions ?? { width: null, height: null, depth: null },
-    assets: space.assets.map((asset) => ({
+    assets: (Array.isArray(space.assets) ? space.assets : []).map((asset) => ({
       id: asset.id,
       type: normalizeAssetType(asset.type),
       url: asset.url,
       thumbnail: asset.thumbnail,
       format: normalizeAssetFormat(asset.format),
       size: asset.size,
-      hotspots: asset.hotspots.map((hotspot) => ({
+      hotspots: (Array.isArray(asset.hotspots) ? asset.hotspots : []).map((hotspot) => ({
         id: hotspot.id,
         label: hotspot.label,
         type: normalizeHotspotType(hotspot.type),
@@ -166,12 +166,73 @@ function normalizeSpaces(spaces: ApiSpace[]): Space[] {
   }));
 }
 
+
+function createDemoPanoramaUrl(title: string): string {
+  const safeTitle = (title || 'Immersphere Pro').replace(/[<>&"']/g, '');
+  const svg = `
+    <svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1024" viewBox="0 0 2048 1024">
+      <defs>
+        <linearGradient id="sky" x1="0" x2="1" y1="0" y2="1">
+          <stop offset="0%" stop-color="#0f172a"/>
+          <stop offset="35%" stop-color="#164e63"/>
+          <stop offset="70%" stop-color="#4c1d95"/>
+          <stop offset="100%" stop-color="#020617"/>
+        </linearGradient>
+        <radialGradient id="glow" cx="50%" cy="45%" r="60%">
+          <stop offset="0%" stop-color="#ffffff" stop-opacity="0.28"/>
+          <stop offset="45%" stop-color="#22d3ee" stop-opacity="0.18"/>
+          <stop offset="100%" stop-color="#000000" stop-opacity="0"/>
+        </radialGradient>
+      </defs>
+      <rect width="2048" height="1024" fill="url(#sky)"/>
+      <rect width="2048" height="1024" fill="url(#glow)"/>
+      <path d="M0 690 C260 600 420 740 690 650 C980 555 1180 760 1480 645 C1710 560 1870 650 2048 590 L2048 1024 L0 1024 Z" fill="#020617" opacity="0.72"/>
+      <path d="M0 750 C330 670 500 840 800 735 C1080 635 1300 825 1620 720 C1810 660 1940 720 2048 690 L2048 1024 L0 1024 Z" fill="#020617" opacity="0.88"/>
+      <g opacity="0.35">
+        <line x1="0" y1="512" x2="2048" y2="512" stroke="#ffffff" stroke-width="2"/>
+        <line x1="512" y1="0" x2="512" y2="1024" stroke="#ffffff" stroke-width="1"/>
+        <line x1="1024" y1="0" x2="1024" y2="1024" stroke="#ffffff" stroke-width="1"/>
+        <line x1="1536" y1="0" x2="1536" y2="1024" stroke="#ffffff" stroke-width="1"/>
+      </g>
+      <text x="1024" y="470" text-anchor="middle" font-family="Arial, sans-serif" font-size="72" font-weight="800" fill="#ffffff">${safeTitle}</text>
+      <text x="1024" y="540" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#a5f3fc">Panorama 360 demo seguro</text>
+      <text x="1024" y="600" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#cbd5e1">Sustituir por imagen equirectangular real en Fase 5</text>
+    </svg>
+  `;
+
+  return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
+}
+
+function normalizeSpacesWithFallbacks(spaces: ApiSpace[] = [], property: ApiProperty): Space[] {
+  const normalizedSpaces = normalizeSpaces(spaces);
+  const coverImage = (property.coverImage ?? '').trim();
+  const demoPanorama = createDemoPanoramaUrl(property.title);
+
+  return normalizedSpaces.map((space) => ({
+    ...space,
+    assets: space.assets.map((asset) => {
+      if (asset.type !== 'panorama_360') {
+        return asset;
+      }
+
+      const assetUrl = (asset.url ?? '').trim();
+      const needsFallback = assetUrl.length === 0 || assetUrl.startsWith('demo://');
+
+      return {
+        ...asset,
+        url: needsFallback ? coverImage || demoPanorama : assetUrl,
+        thumbnail: asset.thumbnail || coverImage || demoPanorama
+      };
+    })
+  }));
+}
+
 function normalizeProperty(property: ApiProperty): ImmersiveProperty {
   return {
     id: property.id,
     tenantId: property.tenantId,
     title: property.title,
-    location: 'Ubicación pendiente',
+    location: 'Ubicacion pendiente',
     type: property.type,
     status: property.status,
     price: property.price,
@@ -183,7 +244,7 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
     leadScore: Math.min(95, 50 + (property.leadsCount ?? 0) * 3),
     visits: 0,
     leads: property.leadsCount ?? 0,
-    spaces: normalizeSpaces(property.spaces ?? [])
+    spaces: normalizeSpacesWithFallbacks(property.spaces ?? [], property)
   };
 }
 
@@ -212,10 +273,15 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
     try {
       const params = buildQueryParams(filters);
       const response = await unwrapApiResponse<PropertiesResponse>(api.get(`/properties?${params.toString()}`));
+      const apiPayload = response as any;
+      const items = Array.isArray(apiPayload) ? apiPayload : apiPayload.items ?? apiPayload.data ?? [];
+      const pagination = Array.isArray(apiPayload)
+        ? { page: 1, limit: items.length, total: items.length, totalPages: 1 }
+        : apiPayload.pagination;
 
       set({
-        properties: response.items.map(normalizeProperty),
-        pagination: response.pagination,
+        properties: items.map(normalizeProperty),
+        pagination,
         isLoading: false,
         error: null
       });
@@ -306,3 +372,4 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
     set({ error: null });
   }
 }));
+
