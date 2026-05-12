@@ -21,6 +21,7 @@ export const demoSpaces: Space[] = [
     id: 'living-room',
     name: 'Salón',
     order: 1,
+    status: 'ACTIVE',
     dimensions: {
       width: null,
       height: null,
@@ -65,6 +66,7 @@ export const demoSpaces: Space[] = [
     id: 'kitchen',
     name: 'Cocina',
     order: 2,
+    status: 'ACTIVE',
     dimensions: {
       width: null,
       height: null,
@@ -109,6 +111,7 @@ export const demoSpaces: Space[] = [
     id: 'splat-preview',
     name: 'Showroom Splat',
     order: 3,
+    status: 'ACTIVE',
     dimensions: {
       width: null,
       height: null,
