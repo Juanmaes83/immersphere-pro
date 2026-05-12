@@ -6,7 +6,7 @@ import PlanCard from '@/components/billing/PlanCard';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
-import { usePropertyStore, type CreatePropertyPayload, type ImmersiveProperty } from '@/store/propertyStore';
+import { usePropertyStore, type CreatePropertyPayload, type CreateSpacePayload, type ImmersiveProperty } from '@/store/propertyStore';
 import PropertyDetailPage from '@/pages/PropertyDetailPage';
 
 interface SubscriptionResponse {
@@ -288,7 +288,18 @@ function PropertyRoutePage(): JSX.Element {
 
 function PropertiesPage(): JSX.Element {
   const navigate = useNavigate();
-  const { properties, fetchProperties, createProperty, updateProperty, deleteProperty, isLoading, error } = usePropertyStore();
+  const {
+    properties,
+    fetchProperties,
+    createProperty,
+    updateProperty,
+    deleteProperty,
+    createSpace,
+    updateSpace,
+    deleteSpace,
+    isLoading,
+    error
+  } = usePropertyStore();
 
   const [form, setForm] = useState<CreatePropertyPayload>({
     title: '',
@@ -304,6 +315,14 @@ function PropertiesPage(): JSX.Element {
   });
 
   const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
+  const [expandedPropertyId, setExpandedPropertyId] = useState<string | null>(null);
+  const [editingSpace, setEditingSpace] = useState<{ propertyId: string; spaceId: string } | null>(null);
+  const [spaceForm, setSpaceForm] = useState<CreateSpacePayload>({
+    name: '',
+    order: 1,
+    status: 'ACTIVE',
+    dimensions: { width: null, height: null, depth: null }
+  });
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -326,6 +345,16 @@ function PropertiesPage(): JSX.Element {
 
     setEditingPropertyId(null);
     setMessage(null);
+  }
+
+  function resetSpaceForm(): void {
+    setSpaceForm({
+      name: '',
+      order: 1,
+      status: 'ACTIVE',
+      dimensions: { width: null, height: null, depth: null }
+    });
+    setEditingSpace(null);
   }
 
   function buildPayload(): CreatePropertyPayload {
@@ -435,6 +464,98 @@ function PropertiesPage(): JSX.Element {
       await fetchProperties({ limit: 100 });
     } catch {
       setMessage('No se ha podido eliminar la propiedad.');
+    }
+  }
+
+  function handleOpenSpaces(property: ImmersiveProperty): void {
+    const nextIsOpen = expandedPropertyId !== property.id;
+    setExpandedPropertyId(nextIsOpen ? property.id : null);
+    setEditingSpace(null);
+
+    setSpaceForm({
+      name: '',
+      order: (property.spaces?.length ?? 0) + 1,
+      status: 'ACTIVE',
+      dimensions: { width: null, height: null, depth: null }
+    });
+
+    if (nextIsOpen) {
+      setMessage('Gestionando estancias de ' + property.title + '.');
+    }
+  }
+
+  function handleEditSpace(propertyId: string, space: ImmersiveProperty['spaces'][number]): void {
+    setExpandedPropertyId(propertyId);
+    setEditingSpace({ propertyId, spaceId: space.id });
+
+    setSpaceForm({
+      name: space.name,
+      order: space.order,
+      status: space.status,
+      dimensions: space.dimensions ?? { width: null, height: null, depth: null }
+    });
+
+    setMessage('Editando estancia seleccionada.');
+  }
+
+  async function handleSubmitSpace(event: any, propertyId: string): Promise<void> {
+    event.preventDefault();
+    setMessage(null);
+
+    const payload: CreateSpacePayload = {
+      name: String(spaceForm.name ?? '').trim(),
+      order: Math.max(1, Number(spaceForm.order ?? 1)),
+      status: spaceForm.status === 'HIDDEN' ? 'HIDDEN' : 'ACTIVE',
+      dimensions: spaceForm.dimensions ?? { width: null, height: null, depth: null }
+    };
+
+    if (payload.name.length < 1) {
+      setMessage('La estancia necesita nombre.');
+      return;
+    }
+
+    try {
+      if (editingSpace && editingSpace.propertyId === propertyId) {
+        await updateSpace(propertyId, editingSpace.spaceId, payload);
+        setMessage('Estancia actualizada correctamente.');
+      } else {
+        await createSpace(propertyId, payload);
+        setMessage('Estancia creada correctamente.');
+      }
+
+      resetSpaceForm();
+      setExpandedPropertyId(propertyId);
+      await fetchProperties({ limit: 100 });
+    } catch {
+      setMessage('No se ha podido guardar la estancia.');
+    }
+  }
+
+  async function handleToggleSpaceStatus(propertyId: string, space: ImmersiveProperty['spaces'][number]): Promise<void> {
+    const nextStatus = space.status === 'HIDDEN' ? 'ACTIVE' : 'HIDDEN';
+
+    try {
+      await updateSpace(propertyId, space.id, { status: nextStatus });
+      setMessage(nextStatus === 'HIDDEN' ? 'Estancia ocultada.' : 'Estancia activada.');
+      await fetchProperties({ limit: 100 });
+    } catch {
+      setMessage('No se ha podido cambiar el estado de la estancia.');
+    }
+  }
+
+  async function handleDeleteSpace(propertyId: string, spaceId: string): Promise<void> {
+    try {
+      await deleteSpace(propertyId, spaceId);
+
+      if (editingSpace?.spaceId === spaceId) {
+        resetSpaceForm();
+      }
+
+      setExpandedPropertyId(propertyId);
+      setMessage('Estancia eliminada correctamente.');
+      await fetchProperties({ limit: 100 });
+    } catch {
+      setMessage('No se ha podido eliminar la estancia.');
     }
   }
 
@@ -557,6 +678,10 @@ function PropertiesPage(): JSX.Element {
                     Ver
                   </button>
 
+                  <button type="button" onClick={() => handleOpenSpaces(property)} className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-black text-violet-700 hover:bg-violet-100">
+                    Estancias ({property.spaces.length})
+                  </button>
+
                   <button type="button" onClick={() => handleEditProperty(property)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
                     Editar
                   </button>
@@ -578,6 +703,78 @@ function PropertiesPage(): JSX.Element {
                   </button>
                 </div>
               </div>
+
+              {expandedPropertyId === property.id ? (
+                <div className="mt-5 rounded-[1.25rem] border border-violet-100 bg-violet-50/60 p-4">
+                  <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <h4 className="text-lg font-black text-slate-950">Gestor de estancias</h4>
+                      <p className="text-sm font-semibold text-slate-500">Crear, editar, ocultar o eliminar espacios de esta propiedad.</p>
+                    </div>
+                    <button type="button" onClick={resetSpaceForm} className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
+                      Nueva estancia
+                    </button>
+                  </div>
+
+                  <form onSubmit={(event) => void handleSubmitSpace(event, property.id)} className="grid grid-cols-1 gap-3 rounded-2xl bg-white p-4 ring-1 ring-slate-200 md:grid-cols-[1fr_110px_140px_auto] md:items-end">
+                    <FormInput label="Nombre estancia" value={spaceForm.name ?? ''} onChange={(value) => setSpaceForm((current) => ({ ...current, name: value }))} />
+                    <FormInput label="Orden" type="number" value={String(spaceForm.order ?? 1)} onChange={(value) => setSpaceForm((current) => ({ ...current, order: Number(value) }))} />
+
+                    <label className="mt-4 block">
+                      <span className="mb-2 block text-sm font-black text-slate-700">Estado</span>
+                      <select
+                        value={spaceForm.status ?? 'ACTIVE'}
+                        onChange={(event) => setSpaceForm((current) => ({ ...current, status: event.target.value as CreateSpacePayload['status'] }))}
+                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+                      >
+                        <option value="ACTIVE">Activa</option>
+                        <option value="HIDDEN">Oculta</option>
+                      </select>
+                    </label>
+
+                    <button disabled={isLoading} type="submit" className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-60">
+                      {editingSpace?.propertyId === property.id ? 'Guardar estancia' : 'Crear estancia'}
+                    </button>
+                  </form>
+
+                  <div className="mt-4 grid grid-cols-1 gap-3">
+                    {property.spaces.length === 0 ? (
+                      <div className="rounded-2xl bg-white p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">
+                        Esta propiedad todavia no tiene estancias.
+                      </div>
+                    ) : (
+                      property.spaces.map((space) => (
+                        <div key={space.id} className="flex flex-col gap-3 rounded-2xl bg-white p-4 ring-1 ring-slate-200 md:flex-row md:items-center md:justify-between">
+                          <div>
+                            <div className="mb-2 flex flex-wrap gap-2">
+                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">Orden {space.order}</span>
+                              <span className={space.status === 'HIDDEN' ? 'rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700' : 'rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700'}>
+                                {space.status === 'HIDDEN' ? 'Oculta' : 'Activa'}
+                              </span>
+                              <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-black text-violet-700">
+                                {space.assets.length} assets
+                              </span>
+                            </div>
+                            <p className="text-base font-black text-slate-950">{space.name}</p>
+                          </div>
+
+                          <div className="flex flex-wrap gap-2">
+                            <button type="button" onClick={() => handleEditSpace(property.id, space)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
+                              Editar
+                            </button>
+                            <button type="button" onClick={() => void handleToggleSpaceStatus(property.id, space)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
+                              {space.status === 'HIDDEN' ? 'Activar' : 'Ocultar'}
+                            </button>
+                            <button type="button" onClick={() => void handleDeleteSpace(property.id, space.id)} className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-700 hover:bg-red-100">
+                              Eliminar
+                            </button>
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </div>
+              ) : null}
             </article>
           ))}
         </section>

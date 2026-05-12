@@ -1,4 +1,4 @@
-﻿import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
 const RAW_API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
@@ -145,7 +145,7 @@ api.interceptors.response.use(
 
 export function getApiErrorMessage(error: unknown): string {
   if (axios.isAxiosError<ApiEnvelope<unknown>>(error)) {
-    return error.response?.data?.error ?? error.message ?? 'Error de comunicaciÃ³n con la API.';
+    return error.response?.data?.error ?? error.message ?? 'Error de comunicacion con la API.';
   }
 
   return error instanceof Error ? error.message : 'Error inesperado.';
@@ -155,9 +155,8 @@ export async function unwrapApiResponse<T>(request: Promise<{ data: ApiEnvelope<
   const response = await request;
 
   if (!response.data.success || typeof response.data.data === 'undefined') {
-    throw new Error(response.data.error ?? 'Respuesta invÃ¡lida de la API.');
+    throw new Error(response.data.error ?? 'Respuesta invalida de la API.');
   }
 
   return response.data.data;
 }
-
