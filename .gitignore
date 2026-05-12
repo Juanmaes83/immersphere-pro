@@ -11,3 +11,11 @@ Thumbs.db
 .vscode/*
 !.vscode/extensions.json
 .idea
+
+# Local emergency backups
+*.backup_*
+*.backup*
+*_backup_*
+server/_backup*/
+client/src/**/*.backup_*
+server/src/**/*.backup_*
