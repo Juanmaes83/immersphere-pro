@@ -1,3 +1,5 @@
+import { getApiErrorMessage, uploadAsset } from './services/api';
+import type { ChangeEvent } from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
 import LoginForm from '@/components/auth/LoginForm';
@@ -39,7 +41,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
           <Link to="/" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white">✦</span>
+            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white">ÃƒÂ¢Ã…â€œÃ‚Â¦</span>
             <span>
               <span className="block text-sm font-black uppercase tracking-[0.24em]">Immersphere</span>
               <span className="block text-xs font-bold uppercase tracking-[0.2em] text-violet-700">Pro SaaS</span>
@@ -47,7 +49,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
           </Link>
 
           <nav className="hidden items-center gap-2 lg:flex">
-            <NavLink to="/gallery">Galería</NavLink>
+            <NavLink to="/gallery">GalerÃƒÆ’Ã‚Â­a</NavLink>
             {isAuthenticated ? (
               <>
                 <NavLink to="/dashboard">Dashboard</NavLink>
@@ -61,7 +63,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
             {isAuthenticated ? (
               <>
                 <span className="hidden rounded-full bg-slate-100 px-4 py-2 text-xs font-black text-slate-600 md:inline-flex">
-                  {user?.tenant.name ?? 'Tenant'} · {user?.tenant.plan ?? 'STARTER'}
+                  {user?.tenant.name ?? 'Tenant'} Ãƒâ€šÃ‚Â· {user?.tenant.plan ?? 'STARTER'}
                 </span>
                 <button
                   type="button"
@@ -107,14 +109,14 @@ function LandingPage(): JSX.Element {
             Convierte espacios en decisiones de compra.
           </h1>
           <p className="mt-7 max-w-2xl text-lg leading-8 text-white/65">
-            Plataforma multi-tenant con 360°, Gaussian Splats, white label, analytics comercial y suscripciones Stripe.
+            Plataforma multi-tenant con 360Ãƒâ€šÃ‚Â°, Gaussian Splats, white label, analytics comercial y suscripciones Stripe.
           </p>
           <div className="mt-10 flex flex-col gap-4 sm:flex-row">
             <Link to="/register" className="rounded-full bg-white px-7 py-4 text-center text-sm font-black text-slate-950 hover:bg-cyan-300">
               Crear tenant demo
             </Link>
             <Link to="/gallery" className="rounded-full border border-white/15 px-7 py-4 text-center text-sm font-black text-white hover:bg-white/10">
-              Ver galería
+              Ver galerÃƒÆ’Ã‚Â­a
             </Link>
           </div>
         </div>
@@ -126,7 +128,7 @@ function LandingPage(): JSX.Element {
             <div className="mt-10 grid grid-cols-2 gap-3">
               {['JWT', 'API real', 'Stripe', 'Deploy'].map((item) => (
                 <div key={item} className="rounded-2xl border border-white/10 bg-black/25 p-4 font-black">
-                  ✓ {item}
+                  ÃƒÂ¢Ã…â€œÃ¢â‚¬Å“ {item}
                 </div>
               ))}
             </div>
@@ -184,7 +186,7 @@ function DashboardPage(): JSX.Element {
       <section className="rounded-[2rem] bg-slate-950 p-7 text-white md:p-9">
         <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">Dashboard</p>
         <h1 className="mt-4 text-5xl font-black tracking-tight">{user?.tenant.name ?? 'Immersphere Pro'}</h1>
-        <p className="mt-4 text-white/60">{user?.name} · {user?.email}</p>
+        <p className="mt-4 text-white/60">{user?.name} Ãƒâ€šÃ‚Â· {user?.email}</p>
       </section>
 
       {error ? <div className="mt-6 rounded-2xl bg-red-50 p-4 font-bold text-red-700">{error}</div> : null}
@@ -192,8 +194,8 @@ function DashboardPage(): JSX.Element {
       <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
         <Kpi label="Plan" value={subscription?.plan ?? user?.tenant.plan ?? 'STARTER'} />
         <Kpi label="Propiedades" value={isLoading ? '...' : properties.length} />
-        <Kpi label="Límite" value={usage?.propertyLimit ?? 'Ilimitado'} />
-        <Kpi label="Restantes" value={usage?.remaining ?? '∞'} />
+        <Kpi label="LÃƒÆ’Ã‚Â­mite" value={usage?.propertyLimit ?? 'Ilimitado'} />
+        <Kpi label="Restantes" value={usage?.remaining ?? 'ÃƒÂ¢Ã‹â€ Ã…Â¾'} />
       </div>
     </main>
   );
@@ -229,7 +231,7 @@ function GalleryPage(): JSX.Element {
     <main className="mx-auto max-w-7xl px-5 py-10">
       <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-700">Galería pública</p>
+          <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-700">GalerÃƒÆ’Ã‚Â­a pÃƒÆ’Ã‚Âºblica</p>
           <h1 className="mt-3 text-5xl font-black tracking-tight">Propiedades publicadas</h1>
         </div>
         <input
@@ -261,7 +263,7 @@ function PropertyCard({ property, onOpen }: { property: ImmersiveProperty; onOpe
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
           <div className="absolute bottom-4 left-4 right-4 text-white">
             <h3 className="text-2xl font-black leading-tight">{property.title}</h3>
-            <p className="mt-1 text-sm font-semibold text-white/75">{property.area} m² · {property.rooms} hab.</p>
+            <p className="mt-1 text-sm font-semibold text-white/75">{property.area} mÃƒâ€šÃ‚Â² Ãƒâ€šÃ‚Â· {property.rooms} hab.</p>
           </div>
         </div>
       </button>
@@ -491,6 +493,20 @@ function PropertiesPage(): JSX.Element {
             <FormInput label="Habitaciones" type="number" value={String(form.rooms ?? 0)} onChange={(value) => setForm((current) => ({ ...current, rooms: Number(value) }))} />
             <FormInput label="Banos" type="number" value={String(form.bathrooms ?? 0)} onChange={(value) => setForm((current) => ({ ...current, bathrooms: Number(value) }))} />
           </div>
+              <label className="block rounded-2xl border border-dashed border-slate-300 bg-slate-50 p-4">
+                <span className="mb-2 block text-sm font-black text-slate-700">Subir imagen de portada</span>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={handleCoverUpload}
+                  disabled={isUploadingCover}
+                  className="w-full text-sm"
+                />
+                <span className="mt-2 block text-xs leading-5 text-slate-500">
+                  La imagen se sube al backend y se guarda como URL pÃºblica de portada.
+                </span>
+              </label>
+
           <label className="mt-4 block">
             <span className="mb-2 block text-sm font-black text-slate-700">
               Imagen de portada <span className="font-semibold text-slate-400">(opcional)</span>
@@ -632,7 +648,7 @@ function SettingsPage(): JSX.Element {
       <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-700">Billing</p>
-          <h1 className="mt-3 text-5xl font-black tracking-tight">Planes y límites</h1>
+          <h1 className="mt-3 text-5xl font-black tracking-tight">Planes y lÃƒÆ’Ã‚Â­mites</h1>
           <p className="mt-3 text-slate-500">Plan actual: <strong>{currentPlan}</strong>. Propiedades usadas: {usage?.propertiesUsed ?? 0}.</p>
         </div>
         <button
@@ -641,7 +657,7 @@ function SettingsPage(): JSX.Element {
           onClick={openPortal}
           className="rounded-full bg-slate-950 px-6 py-3 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-60"
         >
-          {portalLoading ? 'Abriendo portal...' : 'Gestionar facturación'}
+          {portalLoading ? 'Abriendo portal...' : 'Gestionar facturaciÃƒÆ’Ã‚Â³n'}
         </button>
       </div>
 
@@ -651,17 +667,17 @@ function SettingsPage(): JSX.Element {
         <PlanCard
           plan="STARTER"
           title="Starter"
-          price="0 €/mes"
-          description="Para validar el flujo con pocas propiedades y visor básico."
+          price="0 ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬/mes"
+          description="Para validar el flujo con pocas propiedades y visor bÃƒÆ’Ã‚Â¡sico."
           currentPlan={currentPlan}
           onPlanChanged={loadBillingState}
-          features={['10 propiedades', 'Visor 360° básico', 'Sin white label completo']}
+          features={['10 propiedades', 'Visor 360Ãƒâ€šÃ‚Â° bÃƒÆ’Ã‚Â¡sico', 'Sin white label completo']}
         />
         <PlanCard
           plan="PROFESSIONAL"
           title="Professional"
-          price="49 €/mes"
-          description="Para inmobiliarias y estudios que necesitan analítica y marca propia."
+          price="49 ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬/mes"
+          description="Para inmobiliarias y estudios que necesitan analÃƒÆ’Ã‚Â­tica y marca propia."
           currentPlan={currentPlan}
           onPlanChanged={loadBillingState}
           features={['50 propiedades', 'Hotspots avanzados', 'Analytics', 'White label parcial']}
@@ -669,8 +685,8 @@ function SettingsPage(): JSX.Element {
         <PlanCard
           plan="ENTERPRISE"
           title="Enterprise"
-          price="199 €/mes"
-          description="Para promotoras, museos, mobiliario y experiencias volumétricas."
+          price="199 ÃƒÂ¢Ã¢â‚¬Å¡Ã‚Â¬/mes"
+          description="Para promotoras, museos, mobiliario y experiencias volumÃƒÆ’Ã‚Â©tricas."
           currentPlan={currentPlan}
           onPlanChanged={loadBillingState}
           features={['Propiedades ilimitadas', 'Gaussian Splats', 'API', 'Soporte prioritario']}
@@ -683,8 +699,8 @@ function SettingsPage(): JSX.Element {
 function BillingSuccessPage(): JSX.Element {
   return (
     <main className="mx-auto max-w-3xl px-5 py-20 text-center">
-      <h1 className="text-5xl font-black">Suscripción actualizada</h1>
-      <p className="mt-4 text-slate-500">Stripe ha procesado el checkout. El webhook actualizará tu plan en el backend.</p>
+      <h1 className="text-5xl font-black">SuscripciÃƒÆ’Ã‚Â³n actualizada</h1>
+      <p className="mt-4 text-slate-500">Stripe ha procesado el checkout. El webhook actualizarÃƒÆ’Ã‚Â¡ tu plan en el backend.</p>
       <Link to="/settings" className="mt-8 inline-flex rounded-full bg-slate-950 px-6 py-3 text-sm font-black text-white hover:bg-violet-700">
         Ver mi plan
       </Link>

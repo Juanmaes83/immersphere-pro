@@ -1,4 +1,4 @@
-﻿import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosError, type AxiosInstance, type InternalAxiosRequestConfig } from 'axios';
 
 const RAW_API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL ??
@@ -161,3 +161,51 @@ export async function unwrapApiResponse<T>(request: Promise<{ data: ApiEnvelope<
   return response.data.data;
 }
 
+export interface UploadedAsset {
+  id: string;
+  originalName: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  url: string;
+  path: string;
+  uploadedBy: string | null;
+  tenantId: string | null;
+}
+
+function getPublicApiAssetBaseUrl(): string {
+  return API_BASE_URL.endsWith("/api") ? API_BASE_URL.slice(0, -4) : API_BASE_URL;
+}
+
+export function toPublicAssetUrl(pathOrUrl: string): string {
+  if (!pathOrUrl) {
+    return "";
+  }
+
+  if (/^https?:\/\//i.test(pathOrUrl)) {
+    return pathOrUrl;
+  }
+
+  const normalizedPath = pathOrUrl.startsWith("/") ? pathOrUrl : `/${pathOrUrl}`;
+  return `${getPublicApiAssetBaseUrl()}${normalizedPath}`;
+}
+
+export async function uploadAsset(file: File): Promise<UploadedAsset> {
+  const body = new FormData();
+  body.append("file", file);
+
+  const asset = await unwrapApiResponse<UploadedAsset>(
+    api.post("/uploads", body, {
+      headers: {
+        "Content-Type": "multipart/form-data"
+      },
+      timeout: 120000
+    })
+  );
+
+  return {
+    ...asset,
+    url: toPublicAssetUrl(asset.url || asset.path),
+    path: asset.path || asset.url
+  };
+}
