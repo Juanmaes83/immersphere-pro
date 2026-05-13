@@ -1,3 +1,7 @@
+import { createHash } from 'crypto';
+function hashPassword(pwd: string): string {
+  return createHash('sha256').update(pwd).digest('hex');
+}
 // LOCAL STRING ENUMS PROPERTIES START
 type PropertyType = string;
 const PropertyType = {
@@ -97,6 +101,7 @@ interface PropertyInput {
   address?: string;
   latitude?: number | null;
   longitude?: number | null;
+  password?: string;
   spaces?: SpaceInput[];
 }
 
@@ -225,6 +230,35 @@ export async function getPropertyById(propertyId: string, tenantId?: string) {
 
   if (!property) {
     throw new AppError(404, 'Propiedad no encontrada.');
+  }
+
+  if (!tenantId && (property as any).passwordHash) {
+    return {
+      id: property.id,
+      title: property.title,
+      coverImage: property.coverImage,
+      type: property.type,
+      status: property.status,
+      isPasswordProtected: true
+    };
+  }
+
+  return property;
+}
+
+export async function verifyPropertyPassword(propertyId: string, password: string) {
+  const property = await prisma.property.findFirst({
+    where: { id: propertyId, status: PropertyStatus.PUBLISHED },
+    include: propertyInclude
+  });
+
+  if (!property) {
+    throw new AppError(404, 'Propiedad no encontrada.');
+  }
+
+  const stored = (property as any).passwordHash as string | null;
+  if (stored && hashPassword(password) !== stored) {
+    throw new AppError(401, 'Contraseña incorrecta.');
   }
 
   return property;
@@ -388,6 +422,7 @@ export async function createProperty(tenantId: string, input: PropertyInput) {
       address: input.address ?? '',
       latitude: input.latitude ?? null,
       longitude: input.longitude ?? null,
+      ...(input.password ? { passwordHash: hashPassword(input.password) } : {}),
       spaces: {
         create: buildSpacesCreate(input.spaces && input.spaces.length > 0 ? input.spaces : buildDefaultSpaces(input))
       }
@@ -427,6 +462,9 @@ export async function updateProperty(tenantId: string, propertyId: string, input
         address: input.address ?? '',
         latitude: input.latitude ?? null,
         longitude: input.longitude ?? null,
+        ...(input.password !== undefined
+          ? { passwordHash: input.password ? hashPassword(input.password) : null }
+          : {}),
         spaces: shouldReplaceSpaces
           ? {
               create: buildSpacesCreate(input.spaces && input.spaces.length > 0 ? input.spaces : buildDefaultSpaces(input))

@@ -435,7 +435,10 @@ function PropertyQRCode({ propertyId, primaryColor }: { propertyId: string; prim
 
 export default function PropertyDetailPage({ propertyId, embed = false }: PropertyDetailPageProps): JSX.Element {
   const navigate = useNavigate();
-  const { selectedProperty, fetchPropertyById, isLoading, error, clearSelectedProperty } = usePropertyStore();
+  const { selectedProperty, fetchPropertyById, unlockProperty, isLoading, error, clearSelectedProperty } = usePropertyStore();
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [unlocking, setUnlocking] = useState(false);
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const primaryColor = '#7C3AED';
   const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummary | null>(null);
@@ -542,6 +545,47 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
             Volver a galería
           </button>
         </section>
+      </main>
+    );
+  }
+
+  if (selectedProperty.isPasswordProtected) {
+    async function handleUnlock(event: React.FormEvent): Promise<void> {
+      event.preventDefault();
+      setPasswordError(null);
+      setUnlocking(true);
+      const result = await unlockProperty(propertyId, passwordInput);
+      if (!result) setPasswordError('Contraseña incorrecta. Inténtalo de nuevo.');
+      setUnlocking(false);
+    }
+    return (
+      <main className="flex min-h-[calc(100vh-73px)] items-center justify-center bg-[#F8FAFC] px-5">
+        <div className="w-full max-w-md rounded-[2rem] bg-white p-8 shadow-sm ring-1 ring-slate-200">
+          {selectedProperty.coverImage ? (
+            <img src={selectedProperty.coverImage} alt={selectedProperty.title} className="mb-6 h-40 w-full rounded-[1.3rem] object-cover" />
+          ) : null}
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-600">Propiedad protegida</p>
+          <h1 className="mt-2 text-3xl font-black">{selectedProperty.title}</h1>
+          <p className="mt-3 text-sm text-slate-500">Esta propiedad requiere contraseña para ver el tour.</p>
+          <form onSubmit={(e) => { void handleUnlock(e); }} className="mt-6 flex flex-col gap-3">
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              placeholder="Contraseña del tour"
+              autoFocus
+              className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none focus:border-violet-400"
+            />
+            {passwordError ? <p className="text-sm font-bold text-red-600">{passwordError}</p> : null}
+            <button
+              type="submit"
+              disabled={unlocking || !passwordInput}
+              className="w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50"
+            >
+              {unlocking ? 'Verificando...' : 'Entrar al tour'}
+            </button>
+          </form>
+        </div>
       </main>
     );
   }

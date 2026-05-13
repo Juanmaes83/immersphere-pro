@@ -45,6 +45,7 @@ interface ApiProperty {
   address: string;
   latitude: number | null;
   longitude: number | null;
+  isPasswordProtected?: boolean;
   spaces: ApiSpace[];
   _count?: { leads: number };
   createdAt: string;
@@ -77,6 +78,7 @@ export interface ImmersiveProperty {
   address: string;
   latitude: number | null;
   longitude: number | null;
+  isPasswordProtected?: boolean;
   leads: number;
   spaces: Space[];
 }
@@ -107,6 +109,7 @@ export interface CreatePropertyPayload {
   address?: string;
   latitude?: number | null;
   longitude?: number | null;
+  password?: string;
 }
 
 export interface CreateSpacePayload {
@@ -146,6 +149,7 @@ interface PropertyState {
   createAsset: (propertyId: string, spaceId: string, payload: CreateAssetPayload) => Promise<ViewerAsset>;
   updateAsset: (propertyId: string, spaceId: string, assetId: string, payload: UpdateAssetPayload) => Promise<ViewerAsset>;
   deleteAsset: (propertyId: string, spaceId: string, assetId: string) => Promise<void>;
+  unlockProperty: (propertyId: string, password: string) => Promise<ImmersiveProperty | null>;
   clearSelectedProperty: () => void;
   clearError: () => void;
 }
@@ -362,6 +366,28 @@ function getPrimaryPanoramaUrl(spaces: ApiSpace[] = []): string {
 }
 
 function normalizeProperty(property: ApiProperty): ImmersiveProperty {
+  if (property.isPasswordProtected) {
+    return {
+      id: property.id,
+      tenantId: '',
+      title: property.title,
+      type: property.type ?? '',
+      status: property.status ?? '',
+      price: 0,
+      area: 0,
+      rooms: 0,
+      bathrooms: 0,
+      description: '',
+      coverImage: property.coverImage ?? '',
+      panoramaUrl: '',
+      address: '',
+      latitude: null,
+      longitude: null,
+      isPasswordProtected: true,
+      leads: 0,
+      spaces: []
+    };
+  }
   return {
     id: property.id,
     tenantId: property.tenantId,
@@ -685,6 +711,19 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
     } catch (error) {
       set({ isLoading: false, error: getApiErrorMessage(error) });
       throw error;
+    }
+  },
+
+  unlockProperty: async (propertyId, password) => {
+    try {
+      const response = await unwrapApiResponse<ApiProperty>(
+        api.post(`/properties/${propertyId}/unlock`, { password })
+      );
+      const property = normalizeProperty(response);
+      set({ selectedProperty: property, error: null });
+      return property;
+    } catch {
+      return null;
     }
   },
 

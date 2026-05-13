@@ -556,7 +556,8 @@ function PropertiesPage(): JSX.Element {
     panoramaUrl: '',
     address: '',
     latitude: null,
-    longitude: null
+    longitude: null,
+    password: ''
   });
 
   const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
@@ -609,7 +610,8 @@ function PropertiesPage(): JSX.Element {
       panoramaUrl: '',
       address: '',
       latitude: null,
-      longitude: null
+      longitude: null,
+      password: ''
     });
 
     setEditingPropertyId(null);
@@ -818,7 +820,8 @@ function PropertiesPage(): JSX.Element {
       panoramaUrl: String(form.panoramaUrl ?? '').trim(),
       address: String(form.address ?? '').trim(),
       latitude: form.latitude ?? null,
-      longitude: form.longitude ?? null
+      longitude: form.longitude ?? null,
+      ...(form.password ? { password: form.password } : {})
     };
   }
 
@@ -1226,6 +1229,19 @@ function PropertiesPage(): JSX.Element {
               />
             </label>
           </div>
+
+          <label className="mt-4 block">
+            <span className="mb-2 block text-sm font-black text-slate-700">
+              Contraseña del tour <span className="font-semibold text-slate-400">(opcional — deja vacío para acceso libre)</span>
+            </span>
+            <input
+              type="password"
+              value={form.password ?? ''}
+              onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
+              placeholder="Contraseña para proteger el tour"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+            />
+          </label>
 
           {error ? <div className="mt-4 rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</div> : null}
           {message ? <div className="mt-4 rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{message}</div> : null}

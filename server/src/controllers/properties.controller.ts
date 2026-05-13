@@ -72,6 +72,7 @@ const propertySchema = z.object({
   address: z.string().optional(),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
+  password: z.string().optional(),
   spaces: z.array(spaceSchema).optional()
 });
 
@@ -122,16 +123,18 @@ export async function listProperties(request: Request, response: Response): Prom
 }
 
 export async function getPropertyById(request: Request, response: Response): Promise<void> {
-  if (!request.auth) {
-    throw new AppError(401, 'Usuario no autenticado.');
+  const tenantId = request.auth?.tenantId;
+  const data = await propertiesService.getPropertyById(request.params.id, tenantId);
+  response.status(200).json({ success: true, data });
+}
+
+export async function unlockProperty(request: Request, response: Response): Promise<void> {
+  const { password } = request.body as { password?: string };
+  if (!password || typeof password !== 'string') {
+    throw new AppError(400, 'Contraseña requerida.');
   }
-
-  const data = await propertiesService.getPropertyById(request.params.id, request.auth!.tenantId);
-
-  response.status(200).json({
-    success: true,
-    data
-  });
+  const data = await propertiesService.verifyPropertyPassword(request.params.id, password);
+  response.status(200).json({ success: true, data });
 }
 
 export async function createProperty(request: Request, response: Response): Promise<void> {

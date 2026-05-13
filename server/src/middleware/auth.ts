@@ -32,6 +32,24 @@ function isAccessTokenPayload(payload: string | JwtPayload): payload is AccessTo
   );
 }
 
+export function optionalAuth(request: Request, _response: Response, next: NextFunction): void {
+  const authorization = request.headers.authorization;
+  if (!authorization?.startsWith('Bearer ')) {
+    next();
+    return;
+  }
+  const accessToken = authorization.replace('Bearer ', '').trim();
+  try {
+    const payload = jwt.verify(accessToken, env.JWT_ACCESS_SECRET);
+    if (isAccessTokenPayload(payload)) {
+      request.auth = { userId: payload.sub, tenantId: payload.tenantId, role: payload.role };
+    }
+  } catch {
+    // ignore — treat as unauthenticated
+  }
+  next();
+}
+
 export function requireAuth(request: Request, _response: Response, next: NextFunction): void {
   const authorization = request.headers.authorization;
 
