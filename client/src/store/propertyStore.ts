@@ -79,6 +79,7 @@ export interface ImmersiveProperty {
   latitude: number | null;
   longitude: number | null;
   isPasswordProtected?: boolean;
+  thumbnailUrl: string;
   leads: number;
   spaces: Space[];
 }
@@ -348,6 +349,18 @@ function normalizeSpacesWithFallbacks(spaces: ApiSpace[] = [], property: ApiProp
   });
 }
 
+function getFirstRealAssetThumbnail(spaces: ApiSpace[] = []): string {
+  for (const space of spaces) {
+    for (const asset of space.assets ?? []) {
+      const url = (asset.thumbnail || asset.url || '').trim();
+      if (url && !url.startsWith('data:') && !url.startsWith('demo://')) {
+        return url;
+      }
+    }
+  }
+  return '';
+}
+
 function getPrimaryPanoramaUrl(spaces: ApiSpace[] = []): string {
   for (const space of Array.isArray(spaces) ? spaces : []) {
     const assets = Array.isArray(space.assets) ? space.assets : [];
@@ -380,6 +393,7 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
       description: '',
       coverImage: property.coverImage ?? '',
       panoramaUrl: '',
+      thumbnailUrl: property.coverImage ?? '',
       address: '',
       latitude: null,
       longitude: null,
@@ -388,6 +402,8 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
       spaces: []
     };
   }
+  const coverImage = property.coverImage ?? '';
+  const assetThumb = getFirstRealAssetThumbnail(property.spaces ?? []);
   return {
     id: property.id,
     tenantId: property.tenantId,
@@ -399,8 +415,9 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
     rooms: property.rooms,
     bathrooms: property.bathrooms,
     description: property.description,
-    coverImage: property.coverImage,
+    coverImage,
     panoramaUrl: getPrimaryPanoramaUrl(property.spaces ?? []),
+    thumbnailUrl: coverImage || assetThumb,
     address: property.address ?? '',
     latitude: property.latitude ?? null,
     longitude: property.longitude ?? null,

@@ -357,14 +357,34 @@ function GalleryPage(): JSX.Element {
   );
 }
 
-function PropertyCard({ property, onOpen }: { property: ImmersiveProperty; onOpen: () => void }): JSX.Element {
-  const { bgStyle } = useBrand();
+function PropertyCard({ property, onOpen, hotBadge }: { property: ImmersiveProperty; onOpen: () => void; hotBadge?: boolean }): JSX.Element {
+  const { bgStyle, colorStyle } = useBrand();
+  const thumb = property.thumbnailUrl;
   return (
     <article className="overflow-hidden rounded-[1.7rem] bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-xl">
       <button type="button" onClick={onOpen} className="block w-full text-left">
-        <div className="relative aspect-[4/3] bg-gradient-to-br from-cyan-400/35 via-violet-500/20 to-slate-950">
-          {property.coverImage ? <img src={property.coverImage} alt={property.title} className="h-full w-full object-cover" /> : null}
+        <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-cyan-400/35 via-violet-500/20 to-slate-950">
+          {thumb ? (
+            <img src={thumb} alt={property.title} className="h-full w-full object-cover" />
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+              <span className="flex h-16 w-16 items-center justify-center rounded-2xl text-2xl font-black text-white opacity-60" style={bgStyle}>
+                ✦
+              </span>
+              <span className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">Sin imagen</span>
+            </div>
+          )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+          {hotBadge ? (
+            <span className="absolute left-4 top-4 rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-slate-950">
+              🔥 Más vistas
+            </span>
+          ) : null}
+          {property.isPasswordProtected ? (
+            <span className="absolute right-4 top-4 rounded-full bg-slate-950/70 px-3 py-1 text-xs font-black text-white backdrop-blur">
+              🔒 Protegido
+            </span>
+          ) : null}
           <div className="absolute bottom-4 left-4 right-4 text-white">
             <h3 className="text-2xl font-black leading-tight">{property.title}</h3>
             <p className="mt-1 text-sm font-semibold text-white/75">{property.area} m² · {property.rooms} hab.</p>
@@ -374,6 +394,7 @@ function PropertyCard({ property, onOpen }: { property: ImmersiveProperty; onOpe
       <div className="p-5">
         <p className="text-xl font-black text-slate-950">{formatCurrency(property.price)}</p>
         <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{property.description}</p>
+        {property.address ? <p className="mt-2 text-xs font-semibold" style={colorStyle}>📍 {property.address}</p> : null}
         <button type="button" onClick={onOpen} className="mt-5 w-full rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90" style={bgStyle}>
           Abrir ficha inmersiva
         </button>
