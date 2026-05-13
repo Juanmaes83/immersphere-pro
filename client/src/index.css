@@ -10,6 +10,17 @@
   text-rendering: geometricPrecision;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+
+  /* White label brand tokens — overridden at runtime via useBrand() */
+  --brand: #7C3AED;
+  --brand-dark: #5B21B6;
+}
+
+/* Applied to inputs that should show brand color on focus */
+.brand-focus:focus {
+  outline: none;
+  border-color: var(--brand) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--brand) 18%, transparent);
 }
 
 * {

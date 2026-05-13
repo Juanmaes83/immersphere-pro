@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
-import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams, useMatch } from 'react-router-dom';
+import { useBrand } from '@/hooks/useBrand';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import PlanCard from '@/components/billing/PlanCard';
@@ -72,26 +73,36 @@ interface UploadAssetResponse {
 
 function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
   const { user, isAuthenticated, logout } = useAuthStore();
+  const { bgStyle, colorStyle } = useBrand();
+
+  const logoText = user?.tenant.logoText ?? '✦';
+  const brandName = user?.tenant.name ?? 'Immersphere';
+  const brandSub = isAuthenticated ? (user?.tenant.plan ?? 'STARTER') : 'Pro SaaS';
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-950">
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
           <Link to="/" className="flex items-center gap-3">
-            <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-950 text-white">✦</span>
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-black text-white"
+              style={bgStyle}
+            >
+              {logoText}
+            </span>
             <span>
-              <span className="block text-sm font-black uppercase tracking-[0.24em]">Immersphere</span>
-              <span className="block text-xs font-bold uppercase tracking-[0.2em] text-violet-700">Pro SaaS</span>
+              <span className="block text-sm font-black uppercase tracking-[0.24em]">{brandName}</span>
+              <span className="block text-xs font-bold uppercase tracking-[0.2em]" style={colorStyle}>{brandSub}</span>
             </span>
           </Link>
 
           <nav className="hidden items-center gap-2 lg:flex">
-            <NavLink to="/gallery">Galería</NavLink>
+            <BrandNavLink to="/gallery">Galería</BrandNavLink>
             {isAuthenticated ? (
               <>
-                <NavLink to="/dashboard">Dashboard</NavLink>
-                <NavLink to="/properties">Propiedades</NavLink>
-                <NavLink to="/settings">Planes</NavLink>
+                <BrandNavLink to="/dashboard">Dashboard</BrandNavLink>
+                <BrandNavLink to="/properties">Propiedades</BrandNavLink>
+                <BrandNavLink to="/settings">Planes</BrandNavLink>
               </>
             ) : null}
           </nav>
@@ -99,7 +110,10 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
           <div className="flex items-center gap-2">
             {isAuthenticated ? (
               <>
-                <span className="hidden rounded-full bg-slate-100 px-4 py-2 text-xs font-black text-slate-600 md:inline-flex">
+                <span
+                  className="hidden rounded-full px-4 py-2 text-xs font-black text-white md:inline-flex"
+                  style={bgStyle}
+                >
                   {user?.tenant.name ?? 'Tenant'} · {user?.tenant.plan ?? 'STARTER'}
                 </span>
                 <button
@@ -115,7 +129,11 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
                 <Link to="/login" className="rounded-full px-4 py-2 text-sm font-black text-slate-600 hover:bg-slate-100">
                   Entrar
                 </Link>
-                <Link to="/register" className="rounded-full bg-slate-950 px-5 py-2 text-sm font-black text-white hover:bg-violet-700">
+                <Link
+                  to="/register"
+                  className="rounded-full px-5 py-2 text-sm font-black text-white transition hover:opacity-90"
+                  style={bgStyle}
+                >
                   Crear cuenta
                 </Link>
               </>
@@ -128,9 +146,15 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
   );
 }
 
-function NavLink({ to, children }: { to: string; children: React.ReactNode }): JSX.Element {
+function BrandNavLink({ to, children }: { to: string; children: React.ReactNode }): JSX.Element {
+  const match = useMatch(to);
+  const { colorStyle } = useBrand();
   return (
-    <Link to={to} className="rounded-full px-4 py-2 text-sm font-black text-slate-600 hover:bg-slate-100 hover:text-slate-950">
+    <Link
+      to={to}
+      className="rounded-full px-4 py-2 text-sm font-black transition hover:bg-slate-100 hover:text-slate-950"
+      style={match ? { ...colorStyle, backgroundColor: 'color-mix(in srgb, var(--brand) 10%, transparent)' } : undefined}
+    >
       {children}
     </Link>
   );
@@ -195,6 +219,7 @@ function RegisterPage(): JSX.Element {
 function DashboardPage(): JSX.Element {
   const user = useAuthStore((state) => state.user);
   const { properties, fetchProperties, isLoading } = usePropertyStore();
+  const { colorStyle } = useBrand();
   const [usage, setUsage] = useState<TenantUsageResponse | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -221,7 +246,7 @@ function DashboardPage(): JSX.Element {
   return (
     <main className="mx-auto max-w-7xl px-5 py-10">
       <section className="rounded-[2rem] bg-slate-950 p-7 text-white md:p-9">
-        <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">Dashboard</p>
+        <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Dashboard</p>
         <h1 className="mt-4 text-5xl font-black tracking-tight">{user?.tenant.name ?? 'Immersphere Pro'}</h1>
         <p className="mt-4 text-white/60">{user?.name} · {user?.email}</p>
       </section>
@@ -266,18 +291,20 @@ function GalleryPage(): JSX.Element {
     return properties.filter((property) => `${property.title} ${property.description}`.toLowerCase().includes(normalizedQuery));
   }, [properties, query]);
 
+  const { colorStyle } = useBrand();
+
   return (
     <main className="mx-auto max-w-7xl px-5 py-10">
       <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-700">Galería pública</p>
+          <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Galería pública</p>
           <h1 className="mt-3 text-5xl font-black tracking-tight">Propiedades publicadas</h1>
         </div>
         <input
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Buscar propiedad"
-          className="rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none focus:border-violet-500 md:w-80"
+          className="brand-focus rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none md:w-80"
         />
       </div>
 
@@ -294,6 +321,7 @@ function GalleryPage(): JSX.Element {
 }
 
 function PropertyCard({ property, onOpen }: { property: ImmersiveProperty; onOpen: () => void }): JSX.Element {
+  const { bgStyle } = useBrand();
   return (
     <article className="overflow-hidden rounded-[1.7rem] bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-xl">
       <button type="button" onClick={onOpen} className="block w-full text-left">
@@ -309,7 +337,7 @@ function PropertyCard({ property, onOpen }: { property: ImmersiveProperty; onOpe
       <div className="p-5">
         <p className="text-xl font-black text-slate-950">{formatCurrency(property.price)}</p>
         <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{property.description}</p>
-        <button type="button" onClick={onOpen} className="mt-5 w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-black text-white hover:bg-violet-700">
+        <button type="button" onClick={onOpen} className="mt-5 w-full rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90" style={bgStyle}>
           Abrir ficha inmersiva
         </button>
       </div>
@@ -388,6 +416,7 @@ function PropertiesPage(): JSX.Element {
   const [hotspotDraft, setHotspotDraft] = useState<{ label: string; type: Hotspot['type']; x: number; y: number; body: string; metric: string }>({
     label: '', type: 'info', x: 50, y: 50, body: '', metric: ''
   });
+  const { bgStyle, colorStyle } = useBrand();
 
   useEffect(() => {
     void fetchProperties({ limit: 100 });
@@ -892,7 +921,7 @@ function PropertiesPage(): JSX.Element {
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-10">
-      <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-700">Property Manager</p>
+      <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Property Manager</p>
       <h1 className="mt-3 text-5xl font-black tracking-tight">Propiedades</h1>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
@@ -977,7 +1006,7 @@ function PropertiesPage(): JSX.Element {
           {error ? <div className="mt-4 rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</div> : null}
           {message ? <div className="mt-4 rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{message}</div> : null}
 
-          <button disabled={isLoading} type="submit" className="mt-5 w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-60">
+          <button disabled={isLoading} type="submit" className="mt-5 w-full rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-60" style={bgStyle}>
             {isLoading ? 'Guardando...' : editingPropertyId ? 'Guardar cambios' : 'Crear propiedad'}
           </button>
         </form>
@@ -1489,7 +1518,7 @@ function FormInput({ label, value, onChange, type = 'text' }: { label: string; v
   return (
     <label className="mt-4 block">
       <span className="mb-2 block text-sm font-black text-slate-700">{label}</span>
-      <input type={type} required value={value} onChange={(event) => onChange(event.target.value)} className="w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none focus:border-violet-500" />
+      <input type={type} required value={value} onChange={(event) => onChange(event.target.value)} className="brand-focus w-full rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none" />
     </label>
   );
 }
@@ -1498,7 +1527,7 @@ function FormTextarea({ label, value, onChange }: { label: string; value: string
   return (
     <label className="mt-4 block">
       <span className="mb-2 block text-sm font-black text-slate-700">{label}</span>
-      <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={4} className="w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none focus:border-violet-500" />
+      <textarea value={value} onChange={(event) => onChange(event.target.value)} rows={4} className="brand-focus w-full resize-none rounded-2xl border border-slate-200 px-4 py-3 font-semibold outline-none" />
     </label>
   );
 }
@@ -1546,12 +1575,13 @@ function SettingsPage(): JSX.Element {
   }
 
   const currentPlan = subscription?.plan ?? user?.tenant.plan ?? 'STARTER';
+  const { bgStyle, colorStyle } = useBrand();
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-10">
       <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-700">Billing</p>
+          <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Billing</p>
           <h1 className="mt-3 text-5xl font-black tracking-tight">Planes y límites</h1>
           <p className="mt-3 text-slate-500">Plan actual: <strong>{currentPlan}</strong>. Propiedades usadas: {usage?.propertiesUsed ?? 0}.</p>
         </div>
@@ -1559,7 +1589,8 @@ function SettingsPage(): JSX.Element {
           type="button"
           disabled={portalLoading}
           onClick={openPortal}
-          className="rounded-full bg-slate-950 px-6 py-3 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-60"
+          className="rounded-full px-6 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-60"
+          style={bgStyle}
         >
           {portalLoading ? 'Abriendo portal...' : 'Gestionar facturación'}
         </button>
@@ -1652,11 +1683,12 @@ function SettingsPage(): JSX.Element {
 }
 
 function BillingSuccessPage(): JSX.Element {
+  const { bgStyle } = useBrand();
   return (
     <main className="mx-auto max-w-3xl px-5 py-20 text-center">
       <h1 className="text-5xl font-black">Suscripción actualizada</h1>
       <p className="mt-4 text-slate-500">Stripe ha procesado el checkout. El webhook actualizará tu plan en el backend.</p>
-      <Link to="/settings" className="mt-8 inline-flex rounded-full bg-slate-950 px-6 py-3 text-sm font-black text-white hover:bg-violet-700">
+      <Link to="/settings" className="mt-8 inline-flex rounded-full px-6 py-3 text-sm font-black text-white transition hover:opacity-90" style={bgStyle}>
         Ver mi plan
       </Link>
     </main>
@@ -1664,11 +1696,12 @@ function BillingSuccessPage(): JSX.Element {
 }
 
 function BillingCancelledPage(): JSX.Element {
+  const { bgStyle } = useBrand();
   return (
     <main className="mx-auto max-w-3xl px-5 py-20 text-center">
       <h1 className="text-5xl font-black">Checkout cancelado</h1>
       <p className="mt-4 text-slate-500">No se ha cambiado tu plan.</p>
-      <Link to="/settings" className="mt-8 inline-flex rounded-full bg-slate-950 px-6 py-3 text-sm font-black text-white hover:bg-violet-700">
+      <Link to="/settings" className="mt-8 inline-flex rounded-full px-6 py-3 text-sm font-black text-white transition hover:opacity-90" style={bgStyle}>
         Volver a planes
       </Link>
     </main>

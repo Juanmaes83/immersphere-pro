@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuthStore } from '@/store/authStore';
+import { useBrand } from '@/hooks/useBrand';
 
 export default function RegisterForm(): JSX.Element {
   const navigate = useNavigate();
   const { register, isLoading, error, clearError } = useAuthStore();
+  const { bgStyle, colorStyle } = useBrand();
   const [tenantName, setTenantName] = useState('Demo Real Estate Studio');
   const [name, setName] = useState('Admin Demo');
   const [email, setEmail] = useState('admin@demo.com');
@@ -24,7 +26,7 @@ export default function RegisterForm(): JSX.Element {
 
   return (
     <form onSubmit={handleSubmit} className="w-full max-w-md rounded-[2rem] bg-white p-7 shadow-sm ring-1 ring-slate-200">
-      <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-700">Nuevo tenant</p>
+      <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Nuevo tenant</p>
       <h1 className="mt-4 text-4xl font-black text-slate-950">Crear cuenta</h1>
       <p className="mt-3 text-sm leading-6 text-slate-500">Crea una empresa demo con plan Starter para empezar a publicar experiencias.</p>
 
@@ -34,7 +36,7 @@ export default function RegisterForm(): JSX.Element {
           required
           value={tenantName}
           onChange={(event) => setTenantName(event.target.value)}
-          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none focus:border-violet-500"
+          className="brand-focus w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none"
         />
       </label>
 
@@ -44,7 +46,7 @@ export default function RegisterForm(): JSX.Element {
           required
           value={name}
           onChange={(event) => setName(event.target.value)}
-          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none focus:border-violet-500"
+          className="brand-focus w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none"
         />
       </label>
 
@@ -55,7 +57,7 @@ export default function RegisterForm(): JSX.Element {
           required
           value={email}
           onChange={(event) => setEmail(event.target.value)}
-          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none focus:border-violet-500"
+          className="brand-focus w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none"
         />
       </label>
 
@@ -67,7 +69,7 @@ export default function RegisterForm(): JSX.Element {
           minLength={8}
           value={password}
           onChange={(event) => setPassword(event.target.value)}
-          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none focus:border-violet-500"
+          className="brand-focus w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none"
         />
       </label>
 
@@ -78,7 +80,8 @@ export default function RegisterForm(): JSX.Element {
       <button
         type="submit"
         disabled={isLoading}
-        className="mt-6 w-full rounded-2xl bg-slate-950 px-5 py-4 text-sm font-black text-white transition hover:bg-violet-700 disabled:cursor-not-allowed disabled:opacity-60"
+        className="mt-6 w-full rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-60"
+        style={bgStyle}
       >
         {isLoading ? 'Creando...' : 'Crear tenant'}
       </button>
