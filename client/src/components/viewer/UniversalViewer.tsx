@@ -71,6 +71,20 @@ function selectPrimaryAsset(space: Space | undefined, preferredType?: ViewerAsse
   return space.assets[0] ?? null;
 }
 
+interface TourStop { spaceId: string; hotspot: Hotspot }
+
+function buildTourStops(spaces: Space[]): TourStop[] {
+  const stops: TourStop[] = [];
+  for (const space of sortSpaces(spaces)) {
+    for (const asset of space.assets) {
+      for (const hotspot of asset.hotspots ?? []) {
+        stops.push({ spaceId: space.id, hotspot });
+      }
+    }
+  }
+  return stops;
+}
+
 export default function UniversalViewer({
   propertyId,
   spaces,
@@ -84,6 +98,9 @@ export default function UniversalViewer({
   const [activeSpaceId, setActiveSpaceId] = useState(initialSpaceId ?? firstSpaceId);
   const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null);
   const [showLeadModal, setShowLeadModal] = useState(false);
+  const [isTourActive, setIsTourActive] = useState(false);
+  const tourIndexRef = useRef(0);
+  const tourStops = useMemo(() => buildTourStops(spaces), [spaces]);
   const sessionId = useRef(`s-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
   const activeSpace = sortedSpaces.find((space) => space.id === activeSpaceId) ?? sortedSpaces[0];
@@ -100,10 +117,37 @@ export default function UniversalViewer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  useEffect(() => {
+    if (!isTourActive || tourStops.length === 0) return;
+
+    const interval = setInterval(() => {
+      tourIndexRef.current = (tourIndexRef.current + 1) % tourStops.length;
+      const stop = tourStops[tourIndexRef.current];
+      if (!stop) return;
+
+      if (stop.spaceId !== activeSpaceId) {
+        setActiveSpaceId(stop.spaceId);
+      }
+      setActiveHotspot(stop.hotspot);
+    }, 4000);
+
+    return () => clearInterval(interval);
+  }, [isTourActive, tourStops, activeSpaceId]);
+
+  function toggleTour(): void {
+    if (isTourActive) {
+      setIsTourActive(false);
+      return;
+    }
+    tourIndexRef.current = -1;
+    setIsTourActive(true);
+  }
+
   function handleSpaceChange(spaceId: string): void {
     const nextSpace = sortedSpaces.find((space) => space.id === spaceId);
     if (!nextSpace) return;
 
+    setIsTourActive(false);
     setActiveSpaceId(spaceId);
     setActiveHotspot(null);
 
@@ -122,6 +166,7 @@ export default function UniversalViewer({
   }
 
   function handleHotspotClick(hotspot: Hotspot): void {
+    setIsTourActive(false);
     setActiveHotspot(hotspot);
 
     const event = createViewerEvent('hotspot_click', {
@@ -228,6 +273,19 @@ export default function UniversalViewer({
               {space.order}. {space.name}
             </button>
           ))}
+          {tourStops.length > 1 ? (
+            <button
+              type="button"
+              onClick={toggleTour}
+              className={`rounded-full px-4 py-2 text-sm font-black transition ${
+                isTourActive
+                  ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
+                  : 'bg-white/10 text-white/70 hover:bg-white/15'
+              }`}
+            >
+              {isTourActive ? '⏸ Pausar tour' : '▶ Tour guiado'}
+            </button>
+          ) : null}
         </div>
       </div>
 
