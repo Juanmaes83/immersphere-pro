@@ -12,7 +12,9 @@ model Tenant {
   name         String
   slug         String @unique
   logoText     String @default("IP")
+  logoUrl      String @default("")
   primaryColor String @default("#7C3AED")
+  webhookUrl   String @default("")
 
   plan          String         @default("STARTER")
   createdAt     DateTime       @default(now())
@@ -54,6 +56,9 @@ model Property {
   rooms       Int      @default(0)
   bathrooms   Int      @default(0)
   coverImage  String   @default("")
+  address     String   @default("")
+  latitude    Float?
+  longitude   Float?
   spaces        Space[]
   leads         Lead[]
   viewerEvents  ViewerEvent[]
