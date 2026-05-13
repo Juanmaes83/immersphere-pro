@@ -193,6 +193,20 @@ export class GaussianSplatRenderer implements RendererLifecycle {
     };
   }
 
+  public getPoint3D(
+    relX: number,
+    relY: number,
+    containerWidth: number,
+    containerHeight: number
+  ): { x: number; y: number; z: number } {
+    const ndcX = (relX / containerWidth) * 2 - 1;
+    const ndcY = -((relY / containerHeight) * 2 - 1);
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+    const pos = raycaster.ray.origin.clone().addScaledVector(raycaster.ray.direction, 1.5);
+    return { x: pos.x, y: pos.y, z: pos.z };
+  }
+
   private removeCurrentSplat(): void {
     if (this.splatMesh) {
       this.clearSdfEdits();

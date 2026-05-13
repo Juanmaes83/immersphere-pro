@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { GaussianSplatRenderer } from '@/engines/GaussianSplatRenderer';
+import MeasurementOverlay from '@/components/viewer/MeasurementOverlay';
 import type { RemovedSplatZone, ViewerAsset, ViewerEvent } from '@/types/viewer';
 
 interface GaussianSplatViewerProps {
@@ -7,6 +8,7 @@ interface GaussianSplatViewerProps {
   spaceId: string;
   asset: ViewerAsset;
   primaryColor?: string;
+  measureMode?: boolean;
   onAnalyticsEvent: (event: ViewerEvent) => void;
 }
 
@@ -37,6 +39,7 @@ export default function GaussianSplatViewer({
   spaceId,
   asset,
   primaryColor = '#7C3AED',
+  measureMode = false,
   onAnalyticsEvent
 }: GaussianSplatViewerProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -279,6 +282,12 @@ export default function GaussianSplatViewer({
             <p className="mt-1 text-2xl font-black">{formatLabel}</p>
             <p className="mt-1 text-xs text-white/50">WASD + ratón para navegar</p>
           </div>
+
+          <MeasurementOverlay
+            active={measureMode}
+            getPoint3D={(relX, relY, w, h) => rendererRef.current?.getPoint3D(relX, relY, w, h) ?? null}
+            scaleToMeters={1}
+          />
         </div>
 
         <aside className="border-t border-white/10 bg-white/[0.04] p-5 text-white lg:border-l lg:border-t-0">

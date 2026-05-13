@@ -100,6 +100,7 @@ export default function UniversalViewer({
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isMeasuring, setIsMeasuring] = useState(false);
   const tourIndexRef = useRef(0);
   const tourStops = useMemo(() => buildTourStops(spaces), [spaces]);
   const viewerRef = useRef<HTMLElement>(null);
@@ -167,6 +168,7 @@ export default function UniversalViewer({
     if (!nextSpace) return;
 
     setIsTourActive(false);
+    setIsMeasuring(false);
     setActiveSpaceId(spaceId);
     setActiveHotspot(null);
 
@@ -305,6 +307,20 @@ export default function UniversalViewer({
               {isTourActive ? '⏸ Pausar tour' : '▶ Tour guiado'}
             </button>
           ) : null}
+          <button
+            type="button"
+            onClick={() => {
+              setIsTourActive(false);
+              setIsMeasuring((prev) => !prev);
+            }}
+            className={`rounded-full px-4 py-2 text-sm font-black transition ${
+              isMeasuring
+                ? 'bg-emerald-400 text-slate-950 hover:bg-emerald-300'
+                : 'bg-white/10 text-white/70 hover:bg-white/15'
+            }`}
+          >
+            {isMeasuring ? '📏 Midiendo' : '📏 Medir'}
+          </button>
           {document.fullscreenEnabled ? (
             <button
               type="button"
@@ -326,6 +342,7 @@ export default function UniversalViewer({
               spaceId={activeSpace.id}
               asset={activeAsset}
               primaryColor={primaryColor}
+              measureMode={isMeasuring}
               onHotspotClick={handleHotspotClick}
               onAnalyticsEvent={onAnalyticsEvent}
             />
@@ -335,6 +352,7 @@ export default function UniversalViewer({
               spaceId={activeSpace.id}
               asset={activeAsset}
               primaryColor={primaryColor}
+              measureMode={isMeasuring}
               onAnalyticsEvent={onAnalyticsEvent}
             />
           ) : (

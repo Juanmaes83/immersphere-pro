@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { PanoramaEngine360 } from '@/engines/PanoramaEngine360';
+import MeasurementOverlay from '@/components/viewer/MeasurementOverlay';
 import type { Hotspot, ViewerAsset, ViewerEvent } from '@/types/viewer';
 
 interface PanoramaViewerProps {
@@ -7,6 +8,7 @@ interface PanoramaViewerProps {
   spaceId: string;
   asset: ViewerAsset;
   primaryColor?: string;
+  measureMode?: boolean;
   onHotspotClick: (hotspot: Hotspot) => void;
   onAnalyticsEvent: (event: ViewerEvent) => void;
 }
@@ -101,6 +103,7 @@ export default function PanoramaViewer({
   spaceId,
   asset,
   primaryColor = '#7C3AED',
+  measureMode = false,
   onHotspotClick,
   onAnalyticsEvent
 }: PanoramaViewerProps): JSX.Element {
@@ -353,6 +356,12 @@ export default function PanoramaViewer({
       <div className="absolute left-5 top-5 z-30 rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-xs font-black text-white/75 backdrop-blur">
         FOV {Math.round(currentFov)}°
       </div>
+
+      <MeasurementOverlay
+        active={measureMode}
+        getPoint3D={(relX, relY, w, h) => engineRef.current?.getPoint3D(relX, relY, w, h) ?? null}
+        scaleToMeters={3 / 500}
+      />
     </div>
   );
 }

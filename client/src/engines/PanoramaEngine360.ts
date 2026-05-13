@@ -177,6 +177,20 @@ export class PanoramaEngine360 implements RendererLifecycle {
     };
   }
 
+  public getPoint3D(
+    relX: number,
+    relY: number,
+    containerWidth: number,
+    containerHeight: number
+  ): { x: number; y: number; z: number } {
+    const ndcX = (relX / containerWidth) * 2 - 1;
+    const ndcY = -((relY / containerHeight) * 2 - 1);
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+    const dir = raycaster.ray.direction.clone().normalize().multiplyScalar(500);
+    return { x: dir.x, y: dir.y, z: dir.z };
+  }
+
   private loadTexture(imageUrl: string): Promise<THREE.Texture> {
     return new Promise((resolve, reject) => {
       this.textureLoader.load(
