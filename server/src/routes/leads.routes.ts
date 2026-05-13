@@ -4,7 +4,8 @@ import {
   exportPropertyLeadsCsvController,
   getPropertyLeadsController,
   getAllLeadsController,
-  exportAllLeadsCsvController
+  exportAllLeadsCsvController,
+  getLeadsCountController
 } from '../controllers/leads.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 import { leadRateLimit } from '../middleware/rateLimit.js';
@@ -12,6 +13,7 @@ import { leadRateLimit } from '../middleware/rateLimit.js';
 export const leadsRoutes = Router();
 
 leadsRoutes.post('/', leadRateLimit, createLeadController);
+leadsRoutes.get('/count', requireAuth, getLeadsCountController);
 leadsRoutes.get('/', requireAuth, getAllLeadsController);
 leadsRoutes.get('/export.csv', requireAuth, exportAllLeadsCsvController);
 leadsRoutes.get('/properties/:propertyId', requireAuth, getPropertyLeadsController);

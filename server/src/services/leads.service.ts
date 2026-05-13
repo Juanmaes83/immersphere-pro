@@ -120,6 +120,10 @@ export interface LeadWithProperty extends LeadRecord {
   propertyTitle: string;
 }
 
+export async function getTenantLeadsCount(tenantId: string): Promise<number> {
+  return prisma.lead.count({ where: { property: { tenantId } } });
+}
+
 export async function getAllTenantLeads(
   tenantId: string,
   filters: AllLeadsFilters = {}

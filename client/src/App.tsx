@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams, useMatch, useSearchParams } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
+import { useLeadsBadge, markLeadsAsSeen } from '@/hooks/useLeadsBadge';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
 import PlanCard from '@/components/billing/PlanCard';
@@ -104,6 +105,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
   const { user, isAuthenticated, logout } = useAuthStore();
   const { bgStyle, colorStyle } = useBrand();
   const [dark, toggleDark] = useDarkMode();
+  const { unreadCount } = useLeadsBadge(isAuthenticated);
 
   const logoText = user?.tenant.logoText ?? '✦';
   const logoUrl = user?.tenant.logoUrl ?? '';
@@ -137,7 +139,14 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
               <>
                 <BrandNavLink to="/dashboard">Dashboard</BrandNavLink>
                 <BrandNavLink to="/properties">Propiedades</BrandNavLink>
-                <BrandNavLink to="/leads">Leads</BrandNavLink>
+                <div className="relative">
+                  <BrandNavLink to="/leads">Leads</BrandNavLink>
+                  {unreadCount > 0 ? (
+                    <span className="pointer-events-none absolute -right-1 -top-0.5 flex min-h-[1.1rem] min-w-[1.1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-black leading-none text-white">
+                      {unreadCount > 99 ? '99+' : unreadCount}
+                    </span>
+                  ) : null}
+                </div>
                 <BrandNavLink to="/settings">Planes</BrandNavLink>
               </>
             ) : null}
@@ -2540,6 +2549,15 @@ function LeadsPage(): JSX.Element {
   const { bgStyle } = useBrand();
   const token = useAuthStore((s) => s.accessToken);
   const [leads, setLeads] = useState<LeadWithProperty[]>([]);
+
+  useEffect(() => {
+    api.get('/leads/count')
+      .then((res) => {
+        const count = (res.data as { data: { count: number } }).data?.count ?? 0;
+        markLeadsAsSeen(count);
+      })
+      .catch(() => {});
+  }, []);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [filterProperty, setFilterProperty] = useState('');

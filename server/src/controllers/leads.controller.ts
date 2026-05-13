@@ -1,8 +1,23 @@
 import type { NextFunction, Request, Response } from 'express';
 import { AppError } from '../middleware/errorHandler.js';
-import { createLead, exportPropertyLeadsCsv, getPropertyLeads, getAllTenantLeads, exportAllTenantLeadsCsv } from '../services/leads.service.js';
+import { createLead, exportPropertyLeadsCsv, getPropertyLeads, getAllTenantLeads, exportAllTenantLeadsCsv, getTenantLeadsCount } from '../services/leads.service.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+export async function getLeadsCountController(
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const tenantId = request.auth?.tenantId;
+    if (!tenantId) throw new AppError(401, 'Autenticación requerida.');
+    const count = await getTenantLeadsCount(tenantId);
+    response.status(200).json({ success: true, data: { count } });
+  } catch (error) {
+    next(error);
+  }
+}
 
 export async function createLeadController(
   request: Request,
