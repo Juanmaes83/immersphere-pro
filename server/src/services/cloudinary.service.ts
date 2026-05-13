@@ -87,6 +87,10 @@ function buildVideoThumbnailUrl(publicId: string): string {
   return `https://res.cloudinary.com/${env.CLOUDINARY_CLOUD_NAME}/video/upload/so_0,w_640,q_auto/${publicId}.jpg`;
 }
 
+function buildGlbThumbnailUrl(publicId: string): string {
+  return `https://res.cloudinary.com/${env.CLOUDINARY_CLOUD_NAME}/image/upload/f_jpg,q_auto,w_640/${publicId}.jpg`;
+}
+
 async function removeTempFile(filePath: string | undefined): Promise<void> {
   if (!filePath) return;
 
@@ -156,7 +160,9 @@ export async function storeUploadFile(file: Express.Multer.File, metadata: Store
           ? buildImageThumbnailUrl(secureUrl)
           : resourceType === 'video'
             ? buildVideoThumbnailUrl(publicId)
-            : '',
+            : path.extname(file.originalname).toLowerCase() === '.glb'
+              ? buildGlbThumbnailUrl(publicId)
+              : '',
       resourceType,
       publicId,
       storageKey: publicId,

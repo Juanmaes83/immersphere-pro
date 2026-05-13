@@ -1147,16 +1147,36 @@ function PropertiesPage(): JSX.Element {
                               ) : (
                                 space.assets.map((asset) => (
                                   <div key={asset.id} className="flex flex-col gap-3 rounded-xl bg-white p-3 ring-1 ring-slate-200 md:flex-row md:items-center md:justify-between">
-                                    <div>
-                                      <div className="mb-2 flex flex-wrap gap-2">
-                                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{asset.type}</span>
-                                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{asset.format}</span>
-                                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{asset.size} MB</span>
-                                        {isFallbackAssetId(asset.id) ? (
-                                          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700">Demo temporal</span>
-                                        ) : null}
+                                    <div className="flex items-start gap-3">
+                                      {asset.thumbnail && !isFallbackAssetId(asset.id) ? (
+                                        <img
+                                          src={asset.thumbnail}
+                                          alt={asset.type}
+                                          className="h-14 w-14 flex-shrink-0 rounded-xl object-cover ring-1 ring-slate-200"
+                                          onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                        />
+                                      ) : (
+                                        <div className={`flex h-14 w-14 flex-shrink-0 items-center justify-center rounded-xl text-xs font-black ${
+                                          asset.type === 'gaussian_splat'
+                                            ? 'bg-violet-100 text-violet-700'
+                                            : asset.type === 'mesh'
+                                              ? 'bg-fuchsia-100 text-fuchsia-700'
+                                              : 'bg-cyan-100 text-cyan-700'
+                                        }`}>
+                                          {asset.type === 'gaussian_splat' ? 'SPLAT' : asset.type === 'mesh' ? 'GLB' : '360'}
+                                        </div>
+                                      )}
+                                      <div>
+                                        <div className="mb-2 flex flex-wrap gap-2">
+                                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{asset.type}</span>
+                                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{asset.format}</span>
+                                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{asset.size} MB</span>
+                                          {isFallbackAssetId(asset.id) ? (
+                                            <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700">Demo temporal</span>
+                                          ) : null}
+                                        </div>
+                                        <p className="max-w-xl truncate text-sm font-bold text-slate-700">{asset.url || 'Sin URL'}</p>
                                       </div>
-                                      <p className="max-w-xl truncate text-sm font-bold text-slate-700">{asset.url || 'Sin URL'}</p>
                                     </div>
 
                                     <div className="flex flex-wrap gap-2">
