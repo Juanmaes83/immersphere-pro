@@ -112,6 +112,17 @@ export interface CreateSpacePayload {
 
 export type UpdateSpacePayload = Partial<CreateSpacePayload>;
 
+export interface CreateAssetPayload {
+  type: ViewerAsset['type'];
+  url: string;
+  thumbnail?: string;
+  format: ViewerAsset['format'];
+  size?: number;
+  hotspots?: Hotspot[];
+}
+
+export type UpdateAssetPayload = Partial<CreateAssetPayload>;
+
 interface PropertyState {
   properties: ImmersiveProperty[];
   selectedProperty: ImmersiveProperty | null;
@@ -126,6 +137,9 @@ interface PropertyState {
   createSpace: (propertyId: string, payload: CreateSpacePayload) => Promise<Space>;
   updateSpace: (propertyId: string, spaceId: string, payload: UpdateSpacePayload) => Promise<Space>;
   deleteSpace: (propertyId: string, spaceId: string) => Promise<void>;
+  createAsset: (propertyId: string, spaceId: string, payload: CreateAssetPayload) => Promise<ViewerAsset>;
+  updateAsset: (propertyId: string, spaceId: string, assetId: string, payload: UpdateAssetPayload) => Promise<ViewerAsset>;
+  deleteAsset: (propertyId: string, spaceId: string, assetId: string) => Promise<void>;
   clearSelectedProperty: () => void;
   clearError: () => void;
 }
@@ -156,6 +170,70 @@ function normalizeHotspotType(type: string): Hotspot['type'] {
   return 'info';
 }
 
+function normalizeAsset(asset: ApiAsset): ViewerAsset {
+  return {
+    id: asset.id,
+    type: normalizeAssetType(asset.type),
+    url: asset.url,
+    thumbnail: asset.thumbnail,
+    format: normalizeAssetFormat(asset.format),
+    size: asset.size,
+    hotspots: (Array.isArray(asset.hotspots) ? asset.hotspots : []).map((hotspot) => ({
+      id: hotspot.id,
+      label: hotspot.label,
+      type: normalizeHotspotType(hotspot.type),
+      position: hotspot.position,
+      body: hotspot.body,
+      metric: hotspot.metric
+    }))
+  };
+}
+
+function isFallbackAsset(asset: ViewerAsset): boolean {
+  return asset.id.endsWith('-fallback-panorama');
+}
+
+function toApiAssetType(type: ViewerAsset['type']): string {
+  if (type === 'gaussian_splat') return 'GAUSSIAN_SPLAT';
+  if (type === 'mesh') return 'MESH';
+
+  return 'PANORAMA_360';
+}
+
+function toApiAssetFormat(format: ViewerAsset['format']): string {
+  return String(format).toUpperCase();
+}
+
+function toApiHotspotType(type: Hotspot['type']): string {
+  if (type === 'cta') return 'CTA';
+  if (type === 'navigation') return 'NAVIGATION';
+  if (type === 'measurement') return 'MEASUREMENT';
+
+  return 'INFO';
+}
+
+function buildAssetApiPayload(payload: CreateAssetPayload | UpdateAssetPayload): Record<string, unknown> {
+  const result: Record<string, unknown> = {};
+
+  if (payload.type !== undefined) result.type = toApiAssetType(payload.type);
+  if (payload.url !== undefined) result.url = payload.url;
+  if (payload.thumbnail !== undefined) result.thumbnail = payload.thumbnail;
+  if (payload.format !== undefined) result.format = toApiAssetFormat(payload.format);
+  if (payload.size !== undefined) result.size = payload.size;
+
+  if (payload.hotspots !== undefined) {
+    result.hotspots = payload.hotspots.map((hotspot) => ({
+      label: hotspot.label,
+      type: toApiHotspotType(hotspot.type),
+      position: hotspot.position,
+      body: hotspot.body,
+      metric: hotspot.metric
+    }));
+  }
+
+  return result;
+}
+
 function normalizeSpace(space: ApiSpace): Space {
   return {
     id: space.id,
@@ -163,22 +241,7 @@ function normalizeSpace(space: ApiSpace): Space {
     order: space.order,
     status: String(space.status ?? 'ACTIVE').toUpperCase() === 'HIDDEN' ? 'HIDDEN' : 'ACTIVE',
     dimensions: space.dimensions ?? { width: null, height: null, depth: null },
-    assets: (Array.isArray(space.assets) ? space.assets : []).map((asset) => ({
-      id: asset.id,
-      type: normalizeAssetType(asset.type),
-      url: asset.url,
-      thumbnail: asset.thumbnail,
-      format: normalizeAssetFormat(asset.format),
-      size: asset.size,
-      hotspots: (Array.isArray(asset.hotspots) ? asset.hotspots : []).map((hotspot) => ({
-        id: hotspot.id,
-        label: hotspot.label,
-        type: normalizeHotspotType(hotspot.type),
-        position: hotspot.position,
-        body: hotspot.body,
-        metric: hotspot.metric
-      }))
-    }))
+    assets: (Array.isArray(space.assets) ? space.assets : []).map(normalizeAsset)
   };
 }
 
@@ -517,6 +580,108 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
     }
   },
 
+  createAsset: async (propertyId, spaceId, payload) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const response = await unwrapApiResponse<ApiAsset>(
+        api.post(`/properties/${propertyId}/spaces/${spaceId}/assets`, buildAssetApiPayload(payload))
+      );
+      const asset = normalizeAsset(response);
+
+      const appendAsset = (spaces: Space[]) =>
+        spaces.map((space) =>
+          space.id === spaceId
+            ? { ...space, assets: [...space.assets.filter((item) => !isFallbackAsset(item)), asset] }
+            : space
+        );
+
+      set({
+        properties: get().properties.map((property) =>
+          property.id === propertyId ? { ...property, spaces: appendAsset(property.spaces) } : property
+        ),
+        selectedProperty:
+          get().selectedProperty?.id === propertyId
+            ? { ...get().selectedProperty!, spaces: appendAsset(get().selectedProperty!.spaces) }
+            : get().selectedProperty,
+        isLoading: false,
+        error: null
+      });
+
+      return asset;
+    } catch (error) {
+      set({ isLoading: false, error: getApiErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  updateAsset: async (propertyId, spaceId, assetId, payload) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      const response = await unwrapApiResponse<ApiAsset>(
+        api.put(`/properties/${propertyId}/spaces/${spaceId}/assets/${assetId}`, buildAssetApiPayload(payload))
+      );
+      const asset = normalizeAsset(response);
+
+      const replaceAsset = (spaces: Space[]) =>
+        spaces.map((space) =>
+          space.id === spaceId
+            ? { ...space, assets: space.assets.map((item) => (item.id === assetId ? asset : item)) }
+            : space
+        );
+
+      set({
+        properties: get().properties.map((property) =>
+          property.id === propertyId ? { ...property, spaces: replaceAsset(property.spaces) } : property
+        ),
+        selectedProperty:
+          get().selectedProperty?.id === propertyId
+            ? { ...get().selectedProperty!, spaces: replaceAsset(get().selectedProperty!.spaces) }
+            : get().selectedProperty,
+        isLoading: false,
+        error: null
+      });
+
+      return asset;
+    } catch (error) {
+      set({ isLoading: false, error: getApiErrorMessage(error) });
+      throw error;
+    }
+  },
+
+  deleteAsset: async (propertyId, spaceId, assetId) => {
+    set({ isLoading: true, error: null });
+
+    try {
+      await unwrapApiResponse<{ id: string; deleted: boolean }>(
+        api.delete(`/properties/${propertyId}/spaces/${spaceId}/assets/${assetId}`)
+      );
+
+      const removeAsset = (spaces: Space[]) =>
+        spaces.map((space) =>
+          space.id === spaceId
+            ? { ...space, assets: space.assets.filter((asset) => asset.id !== assetId) }
+            : space
+        );
+
+      set({
+        properties: get().properties.map((property) =>
+          property.id === propertyId ? { ...property, spaces: removeAsset(property.spaces) } : property
+        ),
+        selectedProperty:
+          get().selectedProperty?.id === propertyId
+            ? { ...get().selectedProperty!, spaces: removeAsset(get().selectedProperty!.spaces) }
+            : get().selectedProperty,
+        isLoading: false,
+        error: null
+      });
+    } catch (error) {
+      set({ isLoading: false, error: getApiErrorMessage(error) });
+      throw error;
+    }
+  },
+
   clearSelectedProperty: () => {
     set({ selectedProperty: null });
   },
@@ -525,4 +690,3 @@ export const usePropertyStore = create<PropertyState>((set, get) => ({
     set({ error: null });
   }
 }));
-
