@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import UniversalViewer from '@/components/viewer/UniversalViewer';
-import { api, unwrapApiResponse } from '@/services/api';
+import { AUTH_STORAGE_KEYS, api, unwrapApiResponse } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type ImmersiveProperty } from '@/store/propertyStore';
 import type { Space, ViewerEvent } from '@/types/viewer';
@@ -276,10 +276,17 @@ interface LeadRecord {
   createdAt: string;
 }
 
+const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL ??
+  import.meta.env.VITE_API_URL ??
+  'http://localhost:4000/api'
+).replace(/\/$/, '');
+
 function PropertyLeadsList({ propertyId, leadCount }: { propertyId: string; leadCount: number }): JSX.Element {
   const [leads, setLeads] = useState<LeadRecord[]>([]);
   const [open, setOpen] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   function handleToggle(): void {
     setOpen((v) => !v);
@@ -290,23 +297,60 @@ function PropertyLeadsList({ propertyId, leadCount }: { propertyId: string; lead
     }
   }
 
+  async function handleExportCsv(): Promise<void> {
+    if (downloading) return;
+    setDownloading(true);
+    try {
+      const token = window.localStorage.getItem(AUTH_STORAGE_KEYS.accessToken);
+      const res = await fetch(
+        `${API_BASE}/leads/properties/${propertyId}/export.csv`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+      if (!res.ok) return;
+
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // fire-and-forget — no error shown to user
+    } finally {
+      setDownloading(false);
+    }
+  }
+
   return (
     <section className="mt-6 overflow-hidden rounded-[1.6rem] bg-white ring-1 ring-slate-200">
-      <button
-        type="button"
-        onClick={handleToggle}
-        className="flex w-full items-center justify-between px-6 py-4 text-left"
-      >
-        <div className="flex items-center gap-3">
+      <div className="flex items-center justify-between px-6 py-4">
+        <button
+          type="button"
+          onClick={handleToggle}
+          className="flex items-center gap-3"
+        >
           <span className="text-sm font-black uppercase tracking-[0.16em] text-slate-700">
             Leads capturados
           </span>
           <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-black text-emerald-700">
             {loaded ? leads.length : leadCount}
           </span>
-        </div>
-        <span className="text-slate-400 text-sm">{open ? '▲' : '▼'}</span>
-      </button>
+          <span className="text-slate-400 text-sm">{open ? '▲' : '▼'}</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={() => { void handleExportCsv(); }}
+          disabled={downloading}
+          title="Descargar CSV"
+          className="flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-black text-slate-600 transition hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40"
+        >
+          {downloading ? 'Exportando…' : '↓ CSV'}
+        </button>
+      </div>
 
       {open ? (
         <div className="border-t border-slate-100 px-6 pb-5">
