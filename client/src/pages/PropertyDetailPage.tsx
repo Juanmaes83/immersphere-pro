@@ -391,6 +391,35 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const primaryColor = '#7C3AED';
   const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummary | null>(null);
+  const [downloadingTour, setDownloadingTour] = useState(false);
+
+  async function handleDownloadTour(): Promise<void> {
+    if (downloadingTour) return;
+    setDownloadingTour(true);
+    try {
+      const token = window.localStorage.getItem(AUTH_STORAGE_KEYS.accessToken);
+      const res = await fetch(
+        `${API_BASE}/properties/${propertyId}/export-tour`,
+        { headers: token ? { Authorization: `Bearer ${token}` } : {} }
+      );
+      if (!res.ok) return;
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const cd = res.headers.get('Content-Disposition') ?? '';
+      const match = cd.match(/filename="([^"]+)"/);
+      a.download = match?.[1] ?? `tour-${propertyId}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch {
+      // fire-and-forget
+    } finally {
+      setDownloadingTour(false);
+    }
+  }
 
   useEffect(() => {
     void fetchPropertyById(propertyId);
@@ -524,6 +553,16 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
               >
                 Contactar agente
               </button>
+              {isAuthenticated ? (
+                <button
+                  type="button"
+                  onClick={() => { void handleDownloadTour(); }}
+                  disabled={downloadingTour}
+                  className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 disabled:opacity-40"
+                >
+                  {downloadingTour ? 'Generando ZIP…' : '↓ Descargar tour'}
+                </button>
+              ) : null}
               <p className="mt-4 text-center text-xs leading-5 text-slate-500">
                 En producción, este CTA abrirá lead, email, CRM o reserva de visita física.
               </p>
