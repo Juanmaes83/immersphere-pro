@@ -6,6 +6,7 @@ import { env } from './config/env.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { propertiesRoutes } from './routes/properties.routes.js';
 import { subscriptionRoutes } from './routes/subscription.routes.js';
+import { analyticsRoutes } from './routes/analytics.routes.js';
 import { tenantsRoutes } from './routes/tenants.routes.js';
 import { uploadsRoutes } from './routes/uploads.routes.js';
 import { webhookRoutes } from './routes/webhook.routes.js';
@@ -65,6 +66,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertiesRoutes);
 app.use('/api/uploads', uploadsRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/analytics', analyticsRoutes);
 app.use('/api/tenants', tenantsRoutes);
 
 app.use(notFoundHandler);

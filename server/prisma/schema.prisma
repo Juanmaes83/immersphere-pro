@@ -146,6 +146,23 @@ model Subscription {
   @@index([stripeSubscriptionId])
 }
 
+model ViewerEvent {
+  id         String   @id @default(uuid())
+  tenantId   String
+  propertyId String
+  spaceId    String?
+  assetId    String?
+  type       String
+  label      String?
+  payload    String?
+  sessionId  String?
+  createdAt  DateTime @default(now())
+
+  @@index([tenantId])
+  @@index([propertyId])
+  @@index([type])
+}
+
 model RefreshToken {
   id        String    @id @default(uuid())
   tokenHash String    @unique
