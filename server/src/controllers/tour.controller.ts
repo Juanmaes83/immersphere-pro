@@ -8,7 +8,7 @@ export async function exportPropertyTourController(request: Request, response: R
   const result = await buildPropertyTourZip(tenantId, propertyId);
 
   if (!result) {
-    response.status(404).json({ success: false, error: 'No se encontró un asset Gaussian Splat en esta propiedad.' });
+    response.status(404).json({ success: false, error: 'No se encontró ningún asset exportable. Esta propiedad necesita un Panorama 360° o Gaussian Splat con URL real (no demo).' });
     return;
   }
 
