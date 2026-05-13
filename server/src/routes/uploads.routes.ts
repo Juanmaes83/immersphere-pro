@@ -10,6 +10,19 @@ const uploadDirectory = path.resolve(process.cwd(), 'uploads');
 
 mkdirSync(uploadDirectory, { recursive: true });
 
+const allowedExtensions = new Set([
+  '.jpg',
+  '.jpeg',
+  '.png',
+  '.webp',
+  '.gif',
+  '.mp4',
+  '.webm',
+  '.splat',
+  '.ply',
+  '.glb'
+]);
+
 const allowedMimeTypes = new Set([
   'image/jpeg',
   'image/png',
@@ -17,15 +30,22 @@ const allowedMimeTypes = new Set([
   'image/gif',
   'video/mp4',
   'video/webm',
-  'application/octet-stream'
+  'model/gltf-binary',
+  'model/gltf+json',
+  'application/octet-stream',
+  'text/plain'
 ]);
+
+function getSafeExtension(originalName: string): string {
+  return path.extname(originalName).toLowerCase();
+}
 
 const storage = multer.diskStorage({
   destination: (_request, _file, callback) => {
     callback(null, uploadDirectory);
   },
   filename: (_request, file, callback) => {
-    const extension = path.extname(file.originalname).toLowerCase() || '.bin';
+    const extension = getSafeExtension(file.originalname) || '.bin';
     callback(null, `${Date.now()}-${randomUUID()}${extension}`);
   }
 });
@@ -36,6 +56,13 @@ const upload = multer({
     fileSize: 100 * 1024 * 1024
   },
   fileFilter: (_request, file, callback) => {
+    const extension = getSafeExtension(file.originalname);
+
+    if (!allowedExtensions.has(extension)) {
+      callback(new Error('Extension de archivo no permitida.'));
+      return;
+    }
+
     if (!allowedMimeTypes.has(file.mimetype)) {
       callback(new Error('Tipo de archivo no permitido.'));
       return;
