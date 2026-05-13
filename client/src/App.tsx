@@ -823,6 +823,7 @@ function PropertiesPage(): JSX.Element {
   });
   const [selectedAssetFileName, setSelectedAssetFileName] = useState<string | null>(null);
   const [isUploadingAsset, setIsUploadingAsset] = useState(false);
+  const [isDragOver, setIsDragOver] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [leadsPropertyId, setLeadsPropertyId] = useState<string | null>(null);
   const [leads, setLeads] = useState<LeadRecord[]>([]);
@@ -939,22 +940,17 @@ function PropertiesPage(): JSX.Element {
     return Math.round((raw / (1024 * 1024)) * 100) / 100;
   }
 
-  async function handleAssetFileUpload(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
+  async function processAssetFile(file: File): Promise<void> {
     const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'splat', 'ply', 'glb'];
     const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
 
     if (!allowedExtensions.includes(ext)) {
       setMessage('Formato no permitido. Usa JPG, JPEG, PNG, WEBP, SPLAT, PLY o GLB.');
-      event.target.value = '';
       return;
     }
 
     if (file.size > 100 * 1024 * 1024) {
       setMessage('El archivo supera el limite de 100 MB.');
-      event.target.value = '';
       return;
     }
 
@@ -988,8 +984,14 @@ function PropertiesPage(): JSX.Element {
       setMessage(getApiErrorMessage(error));
     } finally {
       setIsUploadingAsset(false);
-      event.target.value = '';
     }
+  }
+
+  async function handleAssetFileUpload(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) return;
+    await processAssetFile(file);
   }
 
   async function handleViewLeads(propertyId: string): Promise<void> {
@@ -1672,7 +1674,25 @@ function PropertiesPage(): JSX.Element {
 
                               <div className="md:col-span-2">
                                 <span className="mb-2 block text-sm font-black text-slate-700">Subir archivo</span>
-                                <label className={`flex w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-5 text-center transition ${isUploadingAsset ? 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-60' : 'border-violet-300 bg-violet-50/50 hover:bg-violet-50'}`}>
+                                <label
+                                  className={`flex w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-5 text-center transition ${
+                                    isUploadingAsset
+                                      ? 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-60'
+                                      : isDragOver
+                                        ? 'border-violet-500 bg-violet-100 scale-[1.01]'
+                                        : 'border-violet-300 bg-violet-50/50 hover:bg-violet-50'
+                                  }`}
+                                  onDragOver={(e) => { e.preventDefault(); if (!isUploadingAsset) setIsDragOver(true); }}
+                                  onDragEnter={(e) => { e.preventDefault(); if (!isUploadingAsset) setIsDragOver(true); }}
+                                  onDragLeave={() => { setIsDragOver(false); }}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    setIsDragOver(false);
+                                    if (isUploadingAsset) return;
+                                    const file = e.dataTransfer.files[0];
+                                    if (file) void processAssetFile(file);
+                                  }}
+                                >
                                   <input
                                     type="file"
                                     accept=".jpg,.jpeg,.png,.webp,.splat,.ply,.glb"
@@ -1681,7 +1701,7 @@ function PropertiesPage(): JSX.Element {
                                     className="sr-only"
                                   />
                                   <span className="text-sm font-bold text-violet-700">
-                                    {isUploadingAsset ? 'Subiendo...' : 'Haz clic para seleccionar archivo'}
+                                    {isUploadingAsset ? 'Subiendo...' : isDragOver ? 'Suelta el archivo aquí' : 'Haz clic o arrastra un archivo aquí'}
                                   </span>
                                   <span className="mt-1 text-xs font-semibold text-slate-400">
                                     JPG, JPEG, PNG, WEBP, SPLAT, PLY o GLB. Maximo 100 MB.
