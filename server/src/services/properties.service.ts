@@ -350,7 +350,7 @@ function buildDefaultSpaces(input: PropertyInput): SpaceInput[] {
               label: 'Vista general',
               type: HotspotType.INFO,
               position: { x: 52, y: 48 },
-              body: 'Hotspot inicial creado automáticamente para evitar propiedades sin experiencia inmersiva.',
+              body: 'Hotspot inicial creado automÃ¡ticamente para evitar propiedades sin experiencia inmersiva.',
               metric: input.area ? `${input.area} m2 aprox.` : 'Medidas pendientes'
             },
             {
@@ -398,7 +398,7 @@ export async function updateProperty(tenantId: string, propertyId: string, input
   }
 
   return prisma.$transaction(async (transaction: any) => {
-    const shouldReplaceSpaces = Boolean(input.spaces || input.panoramaUrl !== undefined);
+    const shouldReplaceSpaces = Array.isArray(input.spaces);
 
     if (shouldReplaceSpaces) {
       await transaction.space.deleteMany({ where: { propertyId } });
