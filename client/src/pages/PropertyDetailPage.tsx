@@ -36,6 +36,7 @@ interface AnalyticsSummary {
 
 interface PropertyDetailPageProps {
   propertyId: string;
+  embed?: boolean;
 }
 
 function formatCurrency(value: number): string {
@@ -385,7 +386,7 @@ function PropertyLeadsList({ propertyId, leadCount }: { propertyId: string; lead
   );
 }
 
-export default function PropertyDetailPage({ propertyId }: PropertyDetailPageProps): JSX.Element {
+export default function PropertyDetailPage({ propertyId, embed = false }: PropertyDetailPageProps): JSX.Element {
   const navigate = useNavigate();
   const { selectedProperty, fetchPropertyById, isLoading, error, clearSelectedProperty } = usePropertyStore();
   const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
@@ -393,6 +394,16 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
   const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummary | null>(null);
   const [downloadingTour, setDownloadingTour] = useState(false);
   const [tourErrorMsg, setTourErrorMsg] = useState<string | null>(null);
+  const [iframeCopied, setIframeCopied] = useState(false);
+
+  function handleCopyIframe(): void {
+    const embedUrl = `${window.location.origin}/embed/${propertyId}`;
+    const code = `<iframe src="${embedUrl}" width="100%" height="600" frameborder="0" allow="fullscreen" loading="lazy"></iframe>`;
+    void navigator.clipboard.writeText(code).then(() => {
+      setIframeCopied(true);
+      setTimeout(() => setIframeCopied(false), 2500);
+    });
+  }
 
   async function handleDownloadTour(): Promise<void> {
     if (downloadingTour) return;
@@ -491,14 +502,16 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
   const property = selectedProperty;
 
   return (
-    <main className="min-h-[calc(100vh-73px)] bg-[#F8FAFC] text-slate-950">
+    <main className={embed ? 'bg-[#F8FAFC] text-slate-950' : 'min-h-[calc(100vh-73px)] bg-[#F8FAFC] text-slate-950'}>
       <section className="mx-auto max-w-7xl px-5 py-10">
-        <Link
-          to="/gallery"
-          className="mb-5 inline-flex rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50"
-        >
-          ← Volver a galería
-        </Link>
+        {!embed ? (
+          <Link
+            to="/gallery"
+            className="mb-5 inline-flex rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50"
+          >
+            ← Volver a galería
+          </Link>
+        ) : null}
 
         <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-slate-200/70">
           <PropertyHero property={property} primaryColor={primaryColor} />
@@ -577,6 +590,13 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
                       {tourErrorMsg}
                     </p>
                   ) : null}
+                  <button
+                    type="button"
+                    onClick={handleCopyIframe}
+                    className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:opacity-40"
+                  >
+                    {iframeCopied ? '✓ Código copiado' : '</> Copiar código iframe'}
+                  </button>
                 </>
               ) : null}
               <p className="mt-4 text-center text-xs leading-5 text-slate-500">

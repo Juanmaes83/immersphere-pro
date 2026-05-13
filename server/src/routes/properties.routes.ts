@@ -1,5 +1,5 @@
 import {
-  Router } from 'express';
+  Router, type Request, type Response } from 'express';
 import {
   listProperties,
   getPropertyById,
@@ -18,8 +18,28 @@ import {
 import { exportPropertyTourController } from '../controllers/tour.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 import { enforcePropertyLimit } from '../middleware/planLimits.js';
+import { env } from '../config/env.js';
+import { prisma } from '../index.js';
 
 export const propertiesRoutes = Router();
+
+// Public embed endpoint — CORS open for third-party iframes
+propertiesRoutes.get('/:propertyId/embed', async (req: Request, res: Response) => {
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  const { propertyId } = req.params;
+  const property = await prisma.property.findUnique({
+    where: { id: propertyId },
+    select: { id: true, title: true, status: true }
+  });
+  if (!property || property.status !== 'PUBLISHED') {
+    res.status(404).json({ success: false, error: 'Propiedad no encontrada o no publicada.' });
+    return;
+  }
+  const appUrl = env.APP_URL.replace(/\/$/, '');
+  const embedUrl = `${appUrl}/embed/${propertyId}`;
+  const iframeCode = `<iframe src="${embedUrl}" width="100%" height="600" frameborder="0" allow="fullscreen" loading="lazy" title="${property.title}"></iframe>`;
+  res.status(200).json({ success: true, data: { embedUrl, iframeCode, propertyTitle: property.title } });
+});
 
 propertiesRoutes.get('/', requireAuth, listProperties);
 propertiesRoutes.post('/', requireAuth, enforcePropertyLimit, createProperty);

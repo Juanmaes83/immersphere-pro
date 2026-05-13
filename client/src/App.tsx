@@ -366,6 +366,20 @@ function PropertyRoutePage(): JSX.Element {
   return <PropertyDetailPage propertyId={id} />;
 }
 
+function EmbedRoutePage(): JSX.Element {
+  const { id } = useParams();
+
+  if (!id) {
+    return <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>Tour no encontrado.</div>;
+  }
+
+  return (
+    <div className="bg-[#F8FAFC] text-slate-950">
+      <PropertyDetailPage propertyId={id} embed />
+    </div>
+  );
+}
+
 function PropertiesPage(): JSX.Element {
   const navigate = useNavigate();
   const {
@@ -1744,6 +1758,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
         <Route path="/property/:id" element={<PropertyRoutePage />} />
+        <Route path="/embed/:id" element={<EmbedRoutePage />} />
         <Route path="/billing/success" element={<BillingSuccessPage />} />
         <Route path="/billing/cancelled" element={<BillingCancelledPage />} />
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
