@@ -22,7 +22,7 @@ const HotspotType = {
   INFO: "INFO",
   CTA: "CTA",
   MEASUREMENT: "MEASUREMENT",
-  MEDIA: "MEDIA"
+  NAVIGATION: "NAVIGATION"
 } as const;
 
 type AssetType = string;
