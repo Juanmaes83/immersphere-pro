@@ -3,13 +3,25 @@ import { Link, useNavigate } from 'react-router-dom';
 import UniversalViewer from '@/components/viewer/UniversalViewer';
 import { api, unwrapApiResponse } from '@/services/api';
 import { usePropertyStore, type ImmersiveProperty } from '@/store/propertyStore';
-import type { ViewerEvent } from '@/types/viewer';
+import type { Space, ViewerEvent } from '@/types/viewer';
+
+interface AnalyticsCountByKey {
+  key: string;
+  count: number;
+}
 
 interface AnalyticsSummary {
   totalEvents: number;
   hotspotClicks: number;
   spaceChanges: number;
   leadCtas: number;
+  engagementScore: number;
+  topSpaceId: string | null;
+  topHotspotLabel: string | null;
+  eventsByType: AnalyticsCountByKey[];
+  eventsBySpace: AnalyticsCountByKey[];
+  eventsByAsset: AnalyticsCountByKey[];
+  topHotspots: AnalyticsCountByKey[];
   lastEvents: Array<{
     id: string;
     type: string;
@@ -70,6 +82,187 @@ function PropertyHero({ property, primaryColor }: { property: ImmersiveProperty;
         <p className="mt-4 text-lg font-semibold text-white/75">{property.location}</p>
       </div>
     </div>
+  );
+}
+
+const EVENT_TYPE_LABELS: Record<string, string> = {
+  viewer_open: 'Apertura',
+  space_change: 'Cambio espacio',
+  hotspot_click: 'Hotspot',
+  viewer_drag: 'Navegación',
+  lead_cta: 'Lead CTA',
+  asset_load_error: 'Error carga'
+};
+
+const EVENT_TYPE_COLORS: Record<string, string> = {
+  viewer_open: 'text-slate-400',
+  space_change: 'text-cyan-400',
+  hotspot_click: 'text-violet-400',
+  viewer_drag: 'text-sky-400',
+  lead_cta: 'text-emerald-400',
+  asset_load_error: 'text-red-400'
+};
+
+function ScoreBadge({ score }: { score: number }): JSX.Element {
+  const color = score >= 70 ? 'from-emerald-500 to-cyan-500' : score >= 35 ? 'from-amber-500 to-orange-500' : 'from-slate-600 to-slate-500';
+  return (
+    <div className={`flex h-20 w-20 flex-col items-center justify-center rounded-full bg-gradient-to-br ${color} shadow-lg`}>
+      <span className="text-2xl font-black text-white leading-none">{score}</span>
+      <span className="text-[10px] font-bold uppercase text-white/70 leading-none mt-0.5">score</span>
+    </div>
+  );
+}
+
+function AnalyticsDashboard({ summary, primaryColor, spaces }: {
+  summary: AnalyticsSummary | null;
+  primaryColor: string;
+  spaces: Space[];
+}): JSX.Element | null {
+  if (!summary) return null;
+
+  const topSpaceName = summary.topSpaceId
+    ? (spaces.find((s) => s.id === summary.topSpaceId)?.name ?? summary.topSpaceId.slice(0, 8) + '…')
+    : null;
+
+  return (
+    <section className="mt-6 overflow-hidden rounded-[1.6rem] bg-slate-950 text-white">
+      <div className="border-b border-white/10 px-6 py-5">
+        <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
+          Analytics del visor
+        </p>
+        <p className="mt-1 text-xs text-white/40">Comportamiento real de visitantes en esta propiedad</p>
+      </div>
+
+      <div className="p-6">
+        {/* Top row: score + counters */}
+        <div className="flex flex-wrap items-center gap-6">
+          <ScoreBadge score={summary.engagementScore} />
+          <div className="grid flex-1 grid-cols-2 gap-3 md:grid-cols-4">
+            <div className="rounded-2xl bg-white/[0.07] p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-white/45">Eventos</p>
+              <p className="mt-1 text-3xl font-black">{summary.totalEvents}</p>
+            </div>
+            <div className="rounded-2xl bg-white/[0.07] p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-violet-400/80">Hotspots</p>
+              <p className="mt-1 text-3xl font-black text-violet-300">{summary.hotspotClicks}</p>
+            </div>
+            <div className="rounded-2xl bg-white/[0.07] p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-400/80">Lead CTAs</p>
+              <p className="mt-1 text-3xl font-black text-emerald-300">{summary.leadCtas}</p>
+            </div>
+            <div className="rounded-2xl bg-white/[0.07] p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-cyan-400/80">Estancias</p>
+              <p className="mt-1 text-3xl font-black text-cyan-300">{summary.spaceChanges}</p>
+            </div>
+          </div>
+        </div>
+
+        {/* Highlights row */}
+        {(topSpaceName || summary.topHotspotLabel) ? (
+          <div className="mt-5 flex flex-wrap gap-3">
+            {topSpaceName ? (
+              <div className="flex items-center gap-2 rounded-full bg-cyan-500/15 px-4 py-2 text-sm">
+                <span className="text-cyan-400 font-bold">Estancia top</span>
+                <span className="text-white font-black">{topSpaceName}</span>
+              </div>
+            ) : null}
+            {summary.topHotspotLabel ? (
+              <div className="flex items-center gap-2 rounded-full bg-violet-500/15 px-4 py-2 text-sm">
+                <span className="text-violet-400 font-bold">Hotspot top</span>
+                <span className="text-white font-black">{summary.topHotspotLabel}</span>
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Top hotspots */}
+        {summary.topHotspots.length > 0 ? (
+          <div className="mt-6">
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-white/40">
+              Hotspots más clicados
+            </p>
+            <div className="space-y-2">
+              {summary.topHotspots.map((h, i) => {
+                const maxCount = summary.topHotspots[0]?.count ?? 1;
+                const pct = Math.round((h.count / maxCount) * 100);
+                return (
+                  <div key={h.key} className="flex items-center gap-3">
+                    <span className="w-4 text-right text-xs font-bold text-white/30">{i + 1}</span>
+                    <div className="flex-1 rounded-xl bg-white/[0.06] px-3 py-2">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-black">{h.key}</span>
+                        <span className="text-sm font-bold text-violet-300">{h.count}×</span>
+                      </div>
+                      <div className="mt-1 h-1 rounded-full bg-white/10">
+                        <div
+                          className="h-1 rounded-full bg-violet-500"
+                          style={{ width: `${pct}%` }}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Events by type */}
+        {summary.eventsByType.length > 0 ? (
+          <div className="mt-6">
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-white/40">
+              Distribución por tipo
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {summary.eventsByType.map((et) => (
+                <div
+                  key={et.key}
+                  className="flex items-center gap-2 rounded-full bg-white/[0.07] px-3 py-1.5 text-xs"
+                >
+                  <span className={`font-bold ${EVENT_TYPE_COLORS[et.key] ?? 'text-white/60'}`}>
+                    {EVENT_TYPE_LABELS[et.key] ?? et.key}
+                  </span>
+                  <span className="font-black text-white">{et.count}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {/* Last events */}
+        {summary.lastEvents.length > 0 ? (
+          <div className="mt-6">
+            <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-white/40">
+              Últimos eventos
+            </p>
+            <div className="space-y-1.5">
+              {summary.lastEvents.slice(0, 6).map((ev) => (
+                <div
+                  key={ev.id}
+                  className="flex items-center justify-between rounded-xl bg-white/[0.05] px-4 py-2 text-sm"
+                >
+                  <span className={`font-black ${EVENT_TYPE_COLORS[ev.type] ?? 'text-white/70'}`}>
+                    {EVENT_TYPE_LABELS[ev.type] ?? ev.type}
+                  </span>
+                  {ev.label ? (
+                    <span className="mx-3 flex-1 truncate text-white/55">{ev.label}</span>
+                  ) : null}
+                  <span className="shrink-0 text-xs text-white/30">
+                    {new Date(ev.createdAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : null}
+
+        {summary.totalEvents === 0 ? (
+          <p className="mt-4 text-sm text-white/35">
+            Sin eventos registrados todavía. Abre el visor para comenzar a acumular datos.
+          </p>
+        ) : null}
+      </div>
+    </section>
   );
 }
 
@@ -176,49 +369,7 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
                 onAnalyticsEvent={handleAnalyticsEvent}
               />
 
-              {analyticsSummary ? (
-                <section className="mt-6 rounded-[1.6rem] bg-slate-950 p-6 text-white">
-                  <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
-                    Analytics del visor
-                  </p>
-                  <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-4">
-                    <div className="rounded-2xl bg-white/10 p-4">
-                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">Eventos</p>
-                      <p className="mt-2 text-3xl font-black">{analyticsSummary.totalEvents}</p>
-                    </div>
-                    <div className="rounded-2xl bg-white/10 p-4">
-                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">Cambios espacio</p>
-                      <p className="mt-2 text-3xl font-black">{analyticsSummary.spaceChanges}</p>
-                    </div>
-                    <div className="rounded-2xl bg-white/10 p-4">
-                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">Hotspots</p>
-                      <p className="mt-2 text-3xl font-black">{analyticsSummary.hotspotClicks}</p>
-                    </div>
-                    <div className="rounded-2xl bg-white/10 p-4">
-                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">Lead CTAs</p>
-                      <p className="mt-2 text-3xl font-black">{analyticsSummary.leadCtas}</p>
-                    </div>
-                  </div>
-                  {analyticsSummary.lastEvents.length > 0 ? (
-                    <div className="mt-5">
-                      <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-white/40">
-                        Últimos eventos
-                      </p>
-                      <div className="space-y-2">
-                        {analyticsSummary.lastEvents.slice(0, 5).map((ev) => (
-                          <div key={ev.id} className="flex items-center justify-between rounded-xl bg-white/[0.06] px-4 py-2 text-sm">
-                            <span className="font-black text-cyan-300">{ev.type}</span>
-                            {ev.label ? <span className="text-white/60">{ev.label}</span> : null}
-                            <span className="text-white/35 text-xs">
-                              {new Date(ev.createdAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  ) : null}
-                </section>
-              ) : null}
+              <AnalyticsDashboard summary={analyticsSummary} primaryColor={primaryColor} spaces={property.spaces} />
             </div>
 
             <aside className="rounded-[1.6rem] bg-slate-50 p-6 ring-1 ring-slate-200">
