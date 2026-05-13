@@ -218,13 +218,13 @@ export async function login(input: LoginInput): Promise<AuthResponse> {
   });
 
   if (!user) {
-    throw new AppError(401, 'Email o contraseÃ±a incorrectos.');
+    throw new AppError(401, 'Email o contraseña incorrectos.');
   }
 
   const passwordMatches = await bcrypt.compare(input.password, user.passwordHash);
 
   if (!passwordMatches) {
-    throw new AppError(401, 'Email o contraseÃ±a incorrectos.');
+    throw new AppError(401, 'Email o contraseña incorrectos.');
   }
 
   const tokens = await createTokenPair(user);
@@ -249,7 +249,7 @@ export async function refresh(input: RefreshInput): Promise<AuthResponse> {
   });
 
   if (!storedToken || storedToken.revokedAt || storedToken.expiresAt <= new Date()) {
-    throw new AppError(401, 'Refresh token invÃ¡lido o expirado.');
+    throw new AppError(401, 'Refresh token inválido o expirado.');
   }
 
   await prisma.refreshToken.update({

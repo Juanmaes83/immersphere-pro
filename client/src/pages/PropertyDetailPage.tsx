@@ -392,17 +392,26 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
   const primaryColor = '#7C3AED';
   const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummary | null>(null);
   const [downloadingTour, setDownloadingTour] = useState(false);
+  const [tourErrorMsg, setTourErrorMsg] = useState<string | null>(null);
 
   async function handleDownloadTour(): Promise<void> {
     if (downloadingTour) return;
     setDownloadingTour(true);
+    setTourErrorMsg(null);
     try {
       const token = window.localStorage.getItem(AUTH_STORAGE_KEYS.accessToken);
       const res = await fetch(
         `${API_BASE}/properties/${propertyId}/export-tour`,
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
-      if (!res.ok) return;
+      if (res.status === 404) {
+        setTourErrorMsg('Esta propiedad no tiene archivos exportables todavía. Sube un asset Gaussian Splat primero.');
+        return;
+      }
+      if (!res.ok) {
+        setTourErrorMsg('Error al generar el tour. Inténtalo de nuevo.');
+        return;
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -415,7 +424,7 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
       a.remove();
       URL.revokeObjectURL(url);
     } catch {
-      // fire-and-forget
+      setTourErrorMsg('Error de conexión al generar el tour.');
     } finally {
       setDownloadingTour(false);
     }
@@ -554,14 +563,21 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
                 Contactar agente
               </button>
               {isAuthenticated ? (
-                <button
-                  type="button"
-                  onClick={() => { void handleDownloadTour(); }}
-                  disabled={downloadingTour}
-                  className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 disabled:opacity-40"
-                >
-                  {downloadingTour ? 'Generando ZIP…' : '↓ Descargar tour'}
-                </button>
+                <>
+                  <button
+                    type="button"
+                    onClick={() => { void handleDownloadTour(); }}
+                    disabled={downloadingTour}
+                    className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 disabled:opacity-40"
+                  >
+                    {downloadingTour ? 'Generando ZIP…' : '↓ Descargar tour'}
+                  </button>
+                  {tourErrorMsg ? (
+                    <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700 ring-1 ring-amber-200">
+                      {tourErrorMsg}
+                    </p>
+                  ) : null}
+                </>
               ) : null}
               <p className="mt-4 text-center text-xs leading-5 text-slate-500">
                 En producción, este CTA abrirá lead, email, CRM o reserva de visita física.

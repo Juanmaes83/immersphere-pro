@@ -69,10 +69,6 @@ export async function exportPropertyLeadsCsvController(
     const { propertyId } = request.params;
     const csv = await exportPropertyLeadsCsv(propertyId, tenantId);
 
-    if (csv === null) {
-      throw new AppError(404, 'Propiedad no encontrada.');
-    }
-
     const filename = `leads-${propertyId.slice(0, 8)}-${new Date().toISOString().slice(0, 10)}.csv`;
 
     response

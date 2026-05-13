@@ -19,7 +19,7 @@ let stripeClient: Stripe | null = null;
 
 function getStripe(): Stripe {
   if (!env.STRIPE_SECRET_KEY) {
-    throw new Error('STRIPE_SECRET_KEY no estÃ¡ configurada.');
+    throw new Error('STRIPE_SECRET_KEY no está configurada.');
   }
 
   if (!stripeClient) {
@@ -193,7 +193,7 @@ async function applyTenantPlan(input: {
   });
 
   if (!tenant) {
-    throw new Error('Tenant no encontrado al actualizar suscripciÃ³n.');
+    throw new Error('Tenant no encontrado al actualizar suscripción.');
   }
 
   return tenant;
@@ -280,7 +280,7 @@ export async function createCheckoutSession(input: CheckoutSessionInput) {
   });
 
   if (!session.url) {
-    throw new Error('Stripe no devolviÃ³ URL de Checkout.');
+    throw new Error('Stripe no devolvió URL de Checkout.');
   }
 
   return {
@@ -416,7 +416,7 @@ async function handleCustomerSubscriptionDeleted(subscription: Stripe.Subscripti
 
 export async function handleStripeWebhook(rawBody: Buffer, signature: string) {
   if (!env.STRIPE_WEBHOOK_SECRET) {
-    throw new Error('STRIPE_WEBHOOK_SECRET no estÃ¡ configurada.');
+    throw new Error('STRIPE_WEBHOOK_SECRET no está configurada.');
   }
 
   const stripe = getStripe();

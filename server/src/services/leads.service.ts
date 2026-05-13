@@ -1,5 +1,6 @@
 import { prisma } from '../index.js';
 import { env } from '../config/env.js';
+import { AppError } from '../middleware/errorHandler.js';
 
 export interface CreateLeadInput {
   propertyId: string;
@@ -44,8 +45,12 @@ export async function getPropertyLeads(
     select: { tenantId: true }
   });
 
-  if (!property || property.tenantId !== tenantId) {
-    return [];
+  if (!property) {
+    throw new AppError(404, 'Propiedad no encontrada.');
+  }
+
+  if (property.tenantId !== tenantId) {
+    throw new AppError(403, 'No tienes acceso a los leads de esta propiedad.');
   }
 
   return prisma.lead.findMany({
@@ -66,14 +71,18 @@ function csvEscape(value: string): string {
 export async function exportPropertyLeadsCsv(
   propertyId: string,
   tenantId: string
-): Promise<string | null> {
+): Promise<string> {
   const property = await prisma.property.findUnique({
     where: { id: propertyId },
     select: { tenantId: true, title: true }
   });
 
-  if (!property || property.tenantId !== tenantId) {
-    return null;
+  if (!property) {
+    throw new AppError(404, 'Propiedad no encontrada.');
+  }
+
+  if (property.tenantId !== tenantId) {
+    throw new AppError(403, 'No tienes acceso a los leads de esta propiedad.');
   }
 
   const leads = await prisma.lead.findMany({

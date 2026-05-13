@@ -22,7 +22,7 @@ const HotspotType = {
   INFO: "INFO",
   CTA: "CTA",
   MEASUREMENT: "MEASUREMENT",
-  MEDIA: "MEDIA"
+  NAVIGATION: "NAVIGATION"
 } as const;
 
 type AssetType = string;
@@ -352,7 +352,7 @@ function buildDefaultSpaces(input: PropertyInput): SpaceInput[] {
               label: 'Vista general',
               type: HotspotType.INFO,
               position: { x: 52, y: 48 },
-              body: 'Hotspot inicial creado automÃ¡ticamente para evitar propiedades sin experiencia inmersiva.',
+              body: 'Hotspot inicial creado automáticamente para evitar propiedades sin experiencia inmersiva.',
               metric: input.area ? `${input.area} m2 aprox.` : 'Medidas pendientes'
             },
             {
