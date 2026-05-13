@@ -62,7 +62,6 @@ export interface ImmersiveProperty {
   id: string;
   tenantId: string;
   title: string;
-  location: string;
   type: string;
   status: string;
   price: number;
@@ -72,8 +71,6 @@ export interface ImmersiveProperty {
   description: string;
   coverImage: string;
   panoramaUrl: string;
-  leadScore: number;
-  visits: number;
   leads: number;
   spaces: Space[];
 }
@@ -360,7 +357,6 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
     id: property.id,
     tenantId: property.tenantId,
     title: property.title,
-    location: 'Ubicacion pendiente',
     type: property.type,
     status: property.status,
     price: property.price,
@@ -370,8 +366,6 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
     description: property.description,
     coverImage: property.coverImage,
     panoramaUrl: getPrimaryPanoramaUrl(property.spaces ?? []),
-    leadScore: 0,
-    visits: 0,
     leads: property._count?.leads ?? 0,
     spaces: normalizeSpacesWithFallbacks(property.spaces ?? [], property)
   };
