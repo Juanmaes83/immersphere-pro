@@ -1,4 +1,5 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import QRCode from 'qrcode';
@@ -667,9 +668,11 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
               />
 
               {property.latitude && property.longitude ? (
-                <Suspense fallback={<div className="mt-8 h-[320px] rounded-[1.6rem] bg-slate-100 ring-1 ring-slate-200" />}>
-                  <PropertyMap lat={property.latitude} lng={property.longitude} title={property.title} />
-                </Suspense>
+                <ErrorBoundary fallback={null}>
+                  <Suspense fallback={<div className="mt-8 h-[320px] rounded-[1.6rem] bg-slate-100 ring-1 ring-slate-200" />}>
+                    <PropertyMap lat={property.latitude} lng={property.longitude} title={property.title} />
+                  </Suspense>
+                </ErrorBoundary>
               ) : null}
 
               <AnalyticsDashboard summary={analyticsSummary} primaryColor={primaryColor} spaces={property.spaces} />

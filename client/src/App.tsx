@@ -11,6 +11,7 @@ import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type CreateAssetPayload, type CreatePropertyPayload, type CreateSpacePayload, type ImmersiveProperty } from '@/store/propertyStore';
 import type { Hotspot, Space } from '@/types/viewer';
+import ErrorBoundary from '@/components/ErrorBoundary';
 const PanoramaViewer = lazy(() => import('@/components/viewer/PanoramaViewer'));
 const PropertyDetailPage = lazy(() => import('@/pages/PropertyDetailPage'));
 const TenantAnalyticsDashboard = lazy(() => import('@/pages/TenantAnalyticsDashboard'));
@@ -341,9 +342,11 @@ function DashboardPage(): JSX.Element {
         <Kpi label="Restantes" value={usage?.remaining ?? '∞'} />
       </div>
 
-      <Suspense fallback={<div className="mt-8 h-64 animate-pulse rounded-[1.6rem] bg-slate-100 dark:bg-slate-800" />}>
-        <TenantAnalyticsDashboard />
-      </Suspense>
+      <ErrorBoundary fallback={null}>
+        <Suspense fallback={<div className="mt-8 h-64 animate-pulse rounded-[1.6rem] bg-slate-100 dark:bg-slate-800" />}>
+          <TenantAnalyticsDashboard />
+        </Suspense>
+      </ErrorBoundary>
     </main>
   );
 }
@@ -699,9 +702,11 @@ function PropertyRoutePage(): JSX.Element {
   }
 
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" /></div>}>
-      <PropertyDetailPage propertyId={id} />
-    </Suspense>
+    <ErrorBoundary fallback={<div className="flex min-h-screen items-center justify-center text-slate-500">Error al cargar la propiedad.</div>}>
+      <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" /></div>}>
+        <PropertyDetailPage propertyId={id} />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 
@@ -713,11 +718,13 @@ function EmbedRoutePage(): JSX.Element {
   }
 
   return (
-    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" /></div>}>
-      <div className="bg-[#F8FAFC] text-slate-950">
-        <PropertyDetailPage propertyId={id} embed />
-      </div>
-    </Suspense>
+    <ErrorBoundary fallback={<div className="flex min-h-screen items-center justify-center text-slate-500">Error al cargar el tour.</div>}>
+      <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" /></div>}>
+        <div className="bg-[#F8FAFC] text-slate-950">
+          <PropertyDetailPage propertyId={id} embed />
+        </div>
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 
@@ -2498,17 +2505,19 @@ function CompareColumn({ propertyId }: { propertyId: string }): JSX.Element {
 
       {/* Lazy panorama viewer */}
       {viewerVisible && firstPanoramaSpace && firstPanoramaAsset && (
-        <Suspense fallback={<div className="h-[520px] animate-pulse bg-slate-100 dark:bg-slate-800" />}>
-          <div className="border-t border-slate-100 dark:border-slate-700">
-            <PanoramaViewer
-              propertyId={propertyId}
-              spaceId={firstPanoramaSpace.id}
-              asset={firstPanoramaAsset}
-              onHotspotClick={() => {}}
-              onAnalyticsEvent={() => {}}
-            />
-          </div>
-        </Suspense>
+        <ErrorBoundary fallback={<div className="h-[520px] flex items-center justify-center text-slate-400">Error al cargar el visor.</div>}>
+          <Suspense fallback={<div className="h-[520px] animate-pulse bg-slate-100 dark:bg-slate-800" />}>
+            <div className="border-t border-slate-100 dark:border-slate-700">
+              <PanoramaViewer
+                propertyId={propertyId}
+                spaceId={firstPanoramaSpace.id}
+                asset={firstPanoramaAsset}
+                onHotspotClick={() => {}}
+                onAnalyticsEvent={() => {}}
+              />
+            </div>
+          </Suspense>
+        </ErrorBoundary>
       )}
     </div>
   );
@@ -2769,9 +2778,11 @@ function MobileViewerRoutePage(): JSX.Element {
   const { id } = useParams();
   if (!id) return <Navigate to="/gallery" replace />;
   return (
-    <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center bg-slate-950"><div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" /></div>}>
-      <MobileViewerPage />
-    </Suspense>
+    <ErrorBoundary fallback={<div className="fixed inset-0 flex items-center justify-center bg-slate-950 text-white">Error al cargar el visor móvil.</div>}>
+      <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center bg-slate-950"><div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" /></div>}>
+        <MobileViewerPage />
+      </Suspense>
+    </ErrorBoundary>
   );
 }
 
