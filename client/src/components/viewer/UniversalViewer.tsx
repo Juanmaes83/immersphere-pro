@@ -99,8 +99,10 @@ export default function UniversalViewer({
   const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null);
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [isTourActive, setIsTourActive] = useState(false);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const tourIndexRef = useRef(0);
   const tourStops = useMemo(() => buildTourStops(spaces), [spaces]);
+  const viewerRef = useRef<HTMLElement>(null);
   const sessionId = useRef(`s-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
   const activeSpace = sortedSpaces.find((space) => space.id === activeSpaceId) ?? sortedSpaces[0];
@@ -133,6 +135,23 @@ export default function UniversalViewer({
 
     return () => clearInterval(interval);
   }, [isTourActive, tourStops, activeSpaceId]);
+
+  useEffect(() => {
+    function onFullscreenChange(): void {
+      setIsFullscreen(Boolean(document.fullscreenElement));
+    }
+    document.addEventListener('fullscreenchange', onFullscreenChange);
+    return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  function toggleFullscreen(): void {
+    if (!document.fullscreenEnabled) return;
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch(() => {});
+    } else if (viewerRef.current) {
+      viewerRef.current.requestFullscreen().catch(() => {});
+    }
+  }
 
   function toggleTour(): void {
     if (isTourActive) {
@@ -230,7 +249,7 @@ export default function UniversalViewer({
   }
 
   return (
-    <section className={`overflow-hidden rounded-[1.6rem] bg-slate-950 text-white ${className}`}>
+    <section ref={viewerRef} className={`overflow-hidden rounded-[1.6rem] bg-slate-950 text-white ${className} ${isFullscreen ? 'fixed inset-0 z-[9999] rounded-none' : ''}`}>
       {showLeadModal && activeHotspot ? (
         <LeadCaptureModal
           propertyId={propertyId}
@@ -284,6 +303,16 @@ export default function UniversalViewer({
               }`}
             >
               {isTourActive ? '⏸ Pausar tour' : '▶ Tour guiado'}
+            </button>
+          ) : null}
+          {document.fullscreenEnabled ? (
+            <button
+              type="button"
+              onClick={toggleFullscreen}
+              title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+              className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white/70 transition hover:bg-white/15"
+            >
+              {isFullscreen ? '⊠ Salir' : '⛶ Presentar'}
             </button>
           ) : null}
         </div>
