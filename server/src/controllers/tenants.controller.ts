@@ -3,7 +3,8 @@ import { AppError } from '../middleware/errorHandler.js';
 import {
   getTenantSettings,
   getTenantUsage,
-  updateTenantSettings
+  updateTenantSettings,
+  getPublicTenantProfile
 } from '../services/tenants.service.js';
 import { checkTenantStorageQuota } from '../services/quota.service.js';
 
@@ -100,3 +101,16 @@ export async function getTenantStorageController(
   }
 }
 
+export async function getPublicTenantProfileController(
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const { slug } = request.params;
+    const profile = await getPublicTenantProfile(slug);
+    response.status(200).json({ success: true, data: profile });
+  } catch (error) {
+    next(error);
+  }
+}

@@ -241,3 +241,48 @@ export async function getTenantUsage(tenantId: string) {
 export const getSettings = getTenantSettings;
 export const updateSettings = updateTenantSettings;
 
+export async function getPublicTenantProfile(slug: string) {
+  const { AppError } = await import('../middleware/errorHandler.js');
+
+  const tenant = await prisma.tenant.findUnique({
+    where: { slug },
+    select: {
+      name: true,
+      slug: true,
+      logoText: true,
+      logoUrl: true,
+      primaryColor: true,
+      properties: {
+        where: { status: 'PUBLISHED' },
+        select: {
+          id: true,
+          title: true,
+          description: true,
+          type: true,
+          price: true,
+          area: true,
+          rooms: true,
+          bathrooms: true,
+          coverImage: true,
+          address: true,
+          createdAt: true
+        },
+        orderBy: { createdAt: 'desc' }
+      }
+    }
+  });
+
+  if (!tenant) {
+    throw new AppError(404, 'Agencia no encontrada.');
+  }
+
+  return {
+    name: tenant.name,
+    slug: tenant.slug,
+    logoText: tenant.logoText,
+    logoUrl: tenant.logoUrl,
+    primaryColor: tenant.primaryColor,
+    properties: tenant.properties
+  };
+}
+
