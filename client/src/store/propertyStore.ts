@@ -228,23 +228,51 @@ function normalizeSpacesWithFallbacks(spaces: ApiSpace[] = [], property: ApiProp
   const coverImage = (property.coverImage ?? '').trim();
   const demoPanorama = createDemoPanoramaUrl(property.title);
 
-  return normalizedSpaces.map((space) => ({
-    ...space,
-    assets: space.assets.map((asset) => {
-      if (asset.type !== 'panorama_360') {
-        return asset;
-      }
-
-      const assetUrl = (asset.url ?? '').trim();
-      const needsFallback = assetUrl.length === 0 || assetUrl.startsWith('demo://');
-
+  return normalizedSpaces.map((space) => {
+    if (space.assets.length === 0) {
       return {
-        ...asset,
-        url: needsFallback ? demoPanorama : assetUrl,
-        thumbnail: asset.thumbnail || coverImage || demoPanorama
+        ...space,
+        assets: [
+          {
+            id: `${space.id}-fallback-panorama`,
+            type: 'panorama_360',
+            url: demoPanorama,
+            thumbnail: coverImage || demoPanorama,
+            format: 'jpg',
+            size: 0,
+            hotspots: [
+              {
+                id: `${space.id}-fallback-info`,
+                label: 'Vista demo',
+                type: 'info',
+                position: { x: 50, y: 50 },
+                body: 'Asset demo generado automaticamente para evitar estancias sin visor.',
+                metric: 'Fallback temporal'
+              }
+            ]
+          }
+        ]
       };
-    })
-  }));
+    }
+
+    return {
+      ...space,
+      assets: space.assets.map((asset) => {
+        if (asset.type !== 'panorama_360') {
+          return asset;
+        }
+
+        const assetUrl = (asset.url ?? '').trim();
+        const needsFallback = assetUrl.length === 0 || assetUrl.startsWith('demo://');
+
+        return {
+          ...asset,
+          url: needsFallback ? demoPanorama : assetUrl,
+          thumbnail: asset.thumbnail || coverImage || demoPanorama
+        };
+      })
+    };
+  });
 }
 
 function getPrimaryPanoramaUrl(spaces: ApiSpace[] = []): string {
