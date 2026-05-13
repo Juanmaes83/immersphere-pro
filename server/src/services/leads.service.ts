@@ -55,6 +55,50 @@ export async function getPropertyLeads(
   });
 }
 
+function csvEscape(value: string): string {
+  const s = String(value ?? '');
+  if (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+export async function exportPropertyLeadsCsv(
+  propertyId: string,
+  tenantId: string
+): Promise<string | null> {
+  const property = await prisma.property.findUnique({
+    where: { id: propertyId },
+    select: { tenantId: true, title: true }
+  });
+
+  if (!property || property.tenantId !== tenantId) {
+    return null;
+  }
+
+  const leads = await prisma.lead.findMany({
+    where: { propertyId },
+    orderBy: { createdAt: 'desc' }
+  });
+
+  const header = ['id', 'email', 'phone', 'notes', 'source', 'createdAt'].map(csvEscape).join(',');
+
+  const rows = leads.map((l) =>
+    [
+      l.id,
+      l.email,
+      l.phone,
+      l.notes,
+      l.source,
+      l.createdAt.toISOString()
+    ]
+      .map(csvEscape)
+      .join(',')
+  );
+
+  return [header, ...rows].join('\r\n');
+}
+
 async function fireLeadWebhook(lead: LeadRecord): Promise<void> {
   const webhookUrl = env.LEAD_NOTIFICATION_WEBHOOK_URL;
   if (!webhookUrl) return;
