@@ -1,5 +1,33 @@
 import { prisma } from '../index.js';
 
+export interface TenantPropertyStat {
+  propertyId: string;
+  title: string;
+  totalEvents: number;
+  hotspotClicks: number;
+  leadCtas: number;
+  spaceChanges: number;
+  viewerOpens: number;
+  engagementScore: number;
+}
+
+export interface TenantAnalyticsSummary {
+  totalEvents: number;
+  totalViewerOpens: number;
+  totalHotspotClicks: number;
+  totalLeadCtas: number;
+  totalSpaceChanges: number;
+  propertiesWithEvents: number;
+  overallEngagementScore: number;
+  topProperties: TenantPropertyStat[];
+  recentLeads: Array<{
+    propertyId: string;
+    propertyTitle: string;
+    createdAt: Date;
+    sessionId: string | null;
+  }>;
+}
+
 export interface CreateViewerEventInput {
   tenantId: string;
   propertyId: string;
@@ -135,5 +163,96 @@ export async function getPropertyAnalyticsSummary(propertyId: string) {
     eventsByAsset,
     topHotspots,
     lastEvents
+  };
+}
+
+export async function getTenantAnalyticsSummary(tenantId: string): Promise<TenantAnalyticsSummary> {
+  const [allEvents, properties] = await Promise.all([
+    prisma.viewerEvent.findMany({
+      where: { tenantId },
+      select: {
+        propertyId: true,
+        type: true,
+        sessionId: true,
+        createdAt: true
+      },
+      orderBy: { createdAt: 'desc' }
+    }),
+    prisma.property.findMany({
+      where: { tenantId },
+      select: { id: true, title: true }
+    })
+  ]);
+
+  const propertyTitleMap = new Map(properties.map((p) => [p.id, p.title]));
+
+  // per-property buckets
+  const buckets = new Map<string, { total: number; hotspot: number; lead: number; space: number; open: number }>();
+  for (const ev of allEvents) {
+    const b = buckets.get(ev.propertyId) ?? { total: 0, hotspot: 0, lead: 0, space: 0, open: 0 };
+    b.total += 1;
+    if (ev.type === 'hotspot_click') b.hotspot += 1;
+    if (ev.type === 'lead_cta') b.lead += 1;
+    if (ev.type === 'space_change') b.space += 1;
+    if (ev.type === 'viewer_open') b.open += 1;
+    buckets.set(ev.propertyId, b);
+  }
+
+  const topProperties: TenantPropertyStat[] = Array.from(buckets.entries())
+    .map(([propertyId, b]) => {
+      const score = computeEngagementScore({
+        viewer_open: b.open,
+        space_change: b.space,
+        hotspot_click: b.hotspot,
+        lead_cta: b.lead
+      });
+      return {
+        propertyId,
+        title: propertyTitleMap.get(propertyId) ?? propertyId.slice(0, 8) + '…',
+        totalEvents: b.total,
+        hotspotClicks: b.hotspot,
+        leadCtas: b.lead,
+        spaceChanges: b.space,
+        viewerOpens: b.open,
+        engagementScore: score
+      };
+    })
+    .sort((a, b) => b.engagementScore - a.engagementScore)
+    .slice(0, 8);
+
+  const totalEvents = allEvents.length;
+  const totalHotspotClicks = allEvents.filter((e) => e.type === 'hotspot_click').length;
+  const totalLeadCtas = allEvents.filter((e) => e.type === 'lead_cta').length;
+  const totalSpaceChanges = allEvents.filter((e) => e.type === 'space_change').length;
+  const totalViewerOpens = allEvents.filter((e) => e.type === 'viewer_open').length;
+  const propertiesWithEvents = buckets.size;
+
+  const overallEngagementScore = computeEngagementScore({
+    viewer_open: totalViewerOpens,
+    space_change: totalSpaceChanges,
+    hotspot_click: totalHotspotClicks,
+    lead_cta: totalLeadCtas
+  });
+
+  const recentLeads = allEvents
+    .filter((e) => e.type === 'lead_cta')
+    .slice(0, 10)
+    .map((e) => ({
+      propertyId: e.propertyId,
+      propertyTitle: propertyTitleMap.get(e.propertyId) ?? e.propertyId.slice(0, 8) + '…',
+      createdAt: e.createdAt,
+      sessionId: e.sessionId
+    }));
+
+  return {
+    totalEvents,
+    totalViewerOpens,
+    totalHotspotClicks,
+    totalLeadCtas,
+    totalSpaceChanges,
+    propertiesWithEvents,
+    overallEngagementScore,
+    topProperties,
+    recentLeads
   };
 }

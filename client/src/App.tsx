@@ -8,6 +8,7 @@ import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type CreateAssetPayload, type CreatePropertyPayload, type CreateSpacePayload, type ImmersiveProperty } from '@/store/propertyStore';
 import PropertyDetailPage from '@/pages/PropertyDetailPage';
+import TenantAnalyticsDashboard from '@/pages/TenantAnalyticsDashboard';
 
 interface SubscriptionResponse {
   tenantId: string;
@@ -223,6 +224,8 @@ function DashboardPage(): JSX.Element {
         <Kpi label="Límite" value={usage?.propertyLimit ?? 'Ilimitado'} />
         <Kpi label="Restantes" value={usage?.remaining ?? '∞'} />
       </div>
+
+      <TenantAnalyticsDashboard />
     </main>
   );
 }
