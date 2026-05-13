@@ -1,7 +1,7 @@
 ﻿import { randomUUID } from 'node:crypto';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
-import { Router, type Request, type Response, type NextFunction, type RequestHandler } from 'express';
+import { Router, type RequestHandler } from 'express';
 import multer from 'multer';
 import { uploadAsset } from '../controllers/uploads.controller.js';
 import { requireAuth } from '../middleware/auth.js';
@@ -73,9 +73,10 @@ const upload = multer({
   }
 });
 
-const rawUploadSingle = upload.single('file');
+type MulterMiddleware = (req: unknown, res: unknown, cb: (err?: unknown) => void) => void;
+const rawUploadSingle = upload.single('file') as unknown as MulterMiddleware;
 
-function uploadSingleFile(request: Request, response: Response, next: NextFunction): void {
+const uploadSingleFile: RequestHandler = (request, response, next) => {
   rawUploadSingle(request, response, (err) => {
     if (err instanceof multer.MulterError) {
       next(new AppError(400, `Error de subida: ${err.message}`));
@@ -87,8 +88,8 @@ function uploadSingleFile(request: Request, response: Response, next: NextFuncti
     }
     next();
   });
-}
+};
 
 export const uploadsRoutes = Router();
 
-uploadsRoutes.post('/', requireAuth, uploadSingleFile as RequestHandler, uploadAsset);
+uploadsRoutes.post('/', requireAuth, uploadSingleFile, uploadAsset);
