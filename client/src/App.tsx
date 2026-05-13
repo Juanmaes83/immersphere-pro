@@ -429,7 +429,10 @@ function PropertiesPage(): JSX.Element {
     rooms: 2,
     bathrooms: 1,
     coverImage: '',
-    panoramaUrl: ''
+    panoramaUrl: '',
+    address: '',
+    latitude: null,
+    longitude: null
   });
 
   const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
@@ -479,7 +482,10 @@ function PropertiesPage(): JSX.Element {
       rooms: 2,
       bathrooms: 1,
       coverImage: '',
-    panoramaUrl: ''
+      panoramaUrl: '',
+      address: '',
+      latitude: null,
+      longitude: null
     });
 
     setEditingPropertyId(null);
@@ -685,7 +691,10 @@ function PropertiesPage(): JSX.Element {
       rooms: Number(form.rooms ?? 0),
       bathrooms: Number(form.bathrooms ?? 0),
       coverImage: String(form.coverImage ?? '').trim(),
-      panoramaUrl: String(form.panoramaUrl ?? '').trim()
+      panoramaUrl: String(form.panoramaUrl ?? '').trim(),
+      address: String(form.address ?? '').trim(),
+      latitude: form.latitude ?? null,
+      longitude: form.longitude ?? null
     };
   }
 
@@ -702,7 +711,10 @@ function PropertiesPage(): JSX.Element {
       rooms: property.rooms ?? 0,
       bathrooms: property.bathrooms ?? 0,
       coverImage: property.coverImage ?? '',
-      panoramaUrl: property.panoramaUrl ?? ''
+      panoramaUrl: property.panoramaUrl ?? '',
+      address: property.address ?? '',
+      latitude: property.latitude ?? null,
+      longitude: property.longitude ?? null
     });
 
     setMessage('Editando propiedad seleccionada.');
@@ -1048,6 +1060,48 @@ function PropertiesPage(): JSX.Element {
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
             />
           </label>
+
+          <label className="mt-4 block">
+            <span className="mb-2 block text-sm font-black text-slate-700">
+              Dirección <span className="font-semibold text-slate-400">(opcional)</span>
+            </span>
+            <input
+              type="text"
+              value={form.address ?? ''}
+              onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
+              placeholder="Calle Mayor 1, Madrid"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+            />
+          </label>
+
+          <div className="grid grid-cols-2 gap-3">
+            <label className="mt-4 block">
+              <span className="mb-2 block text-sm font-black text-slate-700">
+                Latitud <span className="font-semibold text-slate-400">(opcional)</span>
+              </span>
+              <input
+                type="number"
+                step="any"
+                value={form.latitude ?? ''}
+                onChange={(event) => setForm((current) => ({ ...current, latitude: event.target.value !== '' ? Number(event.target.value) : null }))}
+                placeholder="40.4168"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+              />
+            </label>
+            <label className="mt-4 block">
+              <span className="mb-2 block text-sm font-black text-slate-700">
+                Longitud <span className="font-semibold text-slate-400">(opcional)</span>
+              </span>
+              <input
+                type="number"
+                step="any"
+                value={form.longitude ?? ''}
+                onChange={(event) => setForm((current) => ({ ...current, longitude: event.target.value !== '' ? Number(event.target.value) : null }))}
+                placeholder="-3.7038"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+              />
+            </label>
+          </div>
 
           {error ? <div className="mt-4 rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</div> : null}
           {message ? <div className="mt-4 rounded-2xl bg-emerald-50 p-3 text-sm font-bold text-emerald-700">{message}</div> : null}

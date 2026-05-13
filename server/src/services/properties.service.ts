@@ -94,6 +94,9 @@ interface PropertyInput {
   bathrooms?: number;
   coverImage?: string;
   panoramaUrl?: string;
+  address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
   spaces?: SpaceInput[];
 }
 
@@ -382,6 +385,9 @@ export async function createProperty(tenantId: string, input: PropertyInput) {
       rooms: input.rooms ?? 0,
       bathrooms: input.bathrooms ?? 0,
       coverImage: input.coverImage ?? '',
+      address: input.address ?? '',
+      latitude: input.latitude ?? null,
+      longitude: input.longitude ?? null,
       spaces: {
         create: buildSpacesCreate(input.spaces && input.spaces.length > 0 ? input.spaces : buildDefaultSpaces(input))
       }
@@ -418,6 +424,9 @@ export async function updateProperty(tenantId: string, propertyId: string, input
         rooms: input.rooms ?? 0,
         bathrooms: input.bathrooms ?? 0,
         coverImage: input.coverImage ?? '',
+        address: input.address ?? '',
+        latitude: input.latitude ?? null,
+        longitude: input.longitude ?? null,
         spaces: shouldReplaceSpaces
           ? {
               create: buildSpacesCreate(input.spaces && input.spaces.length > 0 ? input.spaces : buildDefaultSpaces(input))

@@ -69,6 +69,9 @@ const propertySchema = z.object({
   bathrooms: z.number().int().min(0).optional(),
   coverImage: z.string().optional(),
   panoramaUrl: z.string().optional(),
+  address: z.string().optional(),
+  latitude: z.number().nullable().optional(),
+  longitude: z.number().nullable().optional(),
   spaces: z.array(spaceSchema).optional()
 });
 

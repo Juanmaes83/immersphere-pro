@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import QRCode from 'qrcode';
 import UniversalViewer from '@/components/viewer/UniversalViewer';
 import { AUTH_STORAGE_KEYS, api, unwrapApiResponse } from '@/services/api';
@@ -431,6 +432,27 @@ function PropertyQRCode({ propertyId, primaryColor }: { propertyId: string; prim
   );
 }
 
+function PropertyMap({ lat, lng, title }: { lat: number; lng: number; title: string }): JSX.Element {
+  return (
+    <section className="mt-8 overflow-hidden rounded-[1.6rem] ring-1 ring-slate-200">
+      <MapContainer
+        center={[lat, lng]}
+        zoom={15}
+        style={{ height: '320px', width: '100%' }}
+        scrollWheelZoom={false}
+      >
+        <TileLayer
+          attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+        />
+        <Marker position={[lat, lng]}>
+          <Popup>{title}</Popup>
+        </Marker>
+      </MapContainer>
+    </section>
+  );
+}
+
 export default function PropertyDetailPage({ propertyId, embed = false }: PropertyDetailPageProps): JSX.Element {
   const navigate = useNavigate();
   const { selectedProperty, fetchPropertyById, isLoading, error, clearSelectedProperty } = usePropertyStore();
@@ -617,6 +639,10 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 className="mt-8"
                 onAnalyticsEvent={handleAnalyticsEvent}
               />
+
+              {property.latitude && property.longitude ? (
+                <PropertyMap lat={property.latitude} lng={property.longitude} title={property.title} />
+              ) : null}
 
               <AnalyticsDashboard summary={analyticsSummary} primaryColor={primaryColor} spaces={property.spaces} />
 

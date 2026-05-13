@@ -42,6 +42,9 @@ interface ApiProperty {
   rooms: number;
   bathrooms: number;
   coverImage: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
   spaces: ApiSpace[];
   _count?: { leads: number };
   createdAt: string;
@@ -71,6 +74,9 @@ export interface ImmersiveProperty {
   description: string;
   coverImage: string;
   panoramaUrl: string;
+  address: string;
+  latitude: number | null;
+  longitude: number | null;
   leads: number;
   spaces: Space[];
 }
@@ -98,6 +104,9 @@ export interface CreatePropertyPayload {
   bathrooms?: number;
   coverImage?: string;
   panoramaUrl?: string;
+  address?: string;
+  latitude?: number | null;
+  longitude?: number | null;
 }
 
 export interface CreateSpacePayload {
@@ -366,6 +375,9 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
     description: property.description,
     coverImage: property.coverImage,
     panoramaUrl: getPrimaryPanoramaUrl(property.spaces ?? []),
+    address: property.address ?? '',
+    latitude: property.latitude ?? null,
+    longitude: property.longitude ?? null,
     leads: property._count?.leads ?? 0,
     spaces: normalizeSpacesWithFallbacks(property.spaces ?? [], property)
   };
