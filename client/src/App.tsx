@@ -31,6 +31,25 @@ interface TenantUsageResponse {
   canCreateMore: boolean;
 }
 
+interface UploadAssetResponse {
+  provider: string;
+  id: string;
+  originalName: string;
+  filename: string;
+  mimeType: string;
+  size: number;
+  bytes: number;
+  url: string;
+  path: string;
+  thumbnailUrl: string;
+  resourceType: string;
+  publicId: string | null;
+  storageKey: string | null;
+  width: number | null;
+  height: number | null;
+  format: string;
+}
+
 function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
   const { user, isAuthenticated, logout } = useAuthStore();
 
@@ -336,6 +355,8 @@ function PropertiesPage(): JSX.Element {
     size: 0,
     hotspots: []
   });
+  const [selectedAssetFileName, setSelectedAssetFileName] = useState<string | null>(null);
+  const [isUploadingAsset, setIsUploadingAsset] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
   useEffect(() => {
@@ -392,6 +413,7 @@ function PropertiesPage(): JSX.Element {
   function resetAssetForm(): void {
     setAssetForm(getDefaultAssetForm());
     setEditingAsset(null);
+    setSelectedAssetFileName(null);
   }
 
   function closeAssetForm(): void {
@@ -416,6 +438,77 @@ function PropertiesPage(): JSX.Element {
 
   function isFallbackAssetId(assetId: string): boolean {
     return assetId.endsWith('-fallback-panorama');
+  }
+
+  function getUploadedAssetFormat(filename: string, serverFormat: string): CreateAssetPayload['format'] {
+    const ext = (serverFormat || filename.split('.').pop() || '').toLowerCase();
+    const allowed: CreateAssetPayload['format'][] = ['jpg', 'jpeg', 'png', 'webp', 'splat', 'ply', 'glb'];
+    return allowed.includes(ext as CreateAssetPayload['format']) ? (ext as CreateAssetPayload['format']) : 'jpg';
+  }
+
+  function getUploadedAssetType(filename: string): CreateAssetPayload['type'] {
+    const ext = filename.split('.').pop()?.toLowerCase() ?? '';
+    if (ext === 'glb') return 'mesh';
+    if (ext === 'splat' || ext === 'ply') return 'gaussian_splat';
+    return 'panorama_360';
+  }
+
+  function getUploadSizeMb(bytes: number, fallbackSize: number, fileSize: number): number {
+    const raw = bytes || fallbackSize || fileSize || 0;
+    return Math.round((raw / (1024 * 1024)) * 100) / 100;
+  }
+
+  async function handleAssetFileUpload(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'splat', 'ply', 'glb'];
+    const ext = file.name.split('.').pop()?.toLowerCase() ?? '';
+
+    if (!allowedExtensions.includes(ext)) {
+      setMessage('Formato no permitido. Usa JPG, JPEG, PNG, WEBP, SPLAT, PLY o GLB.');
+      event.target.value = '';
+      return;
+    }
+
+    if (file.size > 100 * 1024 * 1024) {
+      setMessage('El archivo supera el limite de 100 MB.');
+      event.target.value = '';
+      return;
+    }
+
+    setIsUploadingAsset(true);
+    setMessage(null);
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    try {
+      const upload = await unwrapApiResponse<UploadAssetResponse>(
+        api.post('/uploads', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      );
+
+      const detectedFormat = getUploadedAssetFormat(file.name, upload.format);
+      const detectedType = getUploadedAssetType(file.name);
+      const sizeMb = getUploadSizeMb(upload.bytes, upload.size, file.size);
+
+      setAssetForm((current) => ({
+        ...current,
+        url: upload.url,
+        thumbnail: upload.thumbnailUrl || current.thumbnail || '',
+        format: detectedFormat,
+        type: detectedType,
+        size: sizeMb
+      }));
+
+      setSelectedAssetFileName(upload.originalName || file.name);
+      setMessage('Archivo subido correctamente. Revisa y guarda el asset.');
+    } catch (error) {
+      setMessage(getApiErrorMessage(error));
+    } finally {
+      setIsUploadingAsset(false);
+      event.target.value = '';
+    }
   }
 
   function buildPayload(): CreatePropertyPayload {
@@ -966,11 +1059,34 @@ function PropertiesPage(): JSX.Element {
                                 </select>
                               </label>
 
+                              <div className="md:col-span-2">
+                                <span className="mb-2 block text-sm font-black text-slate-700">Subir archivo</span>
+                                <label className={`flex w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-5 text-center transition ${isUploadingAsset ? 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-60' : 'border-violet-300 bg-violet-50/50 hover:bg-violet-50'}`}>
+                                  <input
+                                    type="file"
+                                    accept=".jpg,.jpeg,.png,.webp,.splat,.ply,.glb"
+                                    onChange={(event) => void handleAssetFileUpload(event)}
+                                    disabled={isUploadingAsset}
+                                    className="sr-only"
+                                  />
+                                  <span className="text-sm font-bold text-violet-700">
+                                    {isUploadingAsset ? 'Subiendo...' : 'Haz clic para seleccionar archivo'}
+                                  </span>
+                                  <span className="mt-1 text-xs font-semibold text-slate-400">
+                                    JPG, JPEG, PNG, WEBP, SPLAT, PLY o GLB. Maximo 100 MB.
+                                  </span>
+                                </label>
+                                {selectedAssetFileName ? (
+                                  <p className="mt-2 text-xs font-bold text-emerald-700">
+                                    Archivo seleccionado: {selectedAssetFileName}
+                                  </p>
+                                ) : null}
+                              </div>
+
                               <label className="block md:col-span-2">
-                                <span className="mb-2 block text-sm font-black text-slate-700">URL del asset</span>
+                                <span className="mb-2 block text-sm font-black text-slate-700">URL del asset <span className="font-semibold text-slate-400">(o pega una URL directamente)</span></span>
                                 <input
                                   type="url"
-                                  required
                                   value={assetForm.url ?? ''}
                                   onChange={(event) => setAssetForm((current) => ({ ...current, url: event.target.value }))}
                                   placeholder="https://..."
@@ -1001,8 +1117,12 @@ function PropertiesPage(): JSX.Element {
                               </label>
 
                               <div className="flex flex-wrap gap-2 md:col-span-2">
-                                <button disabled={isLoading} type="submit" className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-60">
-                                  {editingAsset?.propertyId === property.id && editingAsset?.spaceId === space.id ? 'Guardar asset' : 'Crear asset'}
+                                <button disabled={isLoading || isUploadingAsset} type="submit" className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-60">
+                                  {isUploadingAsset
+                                    ? 'Subiendo archivo...'
+                                    : editingAsset?.propertyId === property.id && editingAsset?.spaceId === space.id
+                                      ? 'Guardar asset'
+                                      : 'Crear asset'}
                                 </button>
                                 <button type="button" onClick={closeAssetForm} className="rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
                                   Cancelar
