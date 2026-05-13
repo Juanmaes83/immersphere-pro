@@ -1,4 +1,13 @@
-import * as pc from 'playcanvas';
+import * as THREE from 'three';
+import {
+  SparkRenderer,
+  SplatMesh,
+  SplatEdit,
+  SplatEditSdf,
+  SplatEditSdfType,
+  SplatEditRgbaBlendMode,
+  SparkControls
+} from '@sparkjsdev/spark';
 import type {
   GaussianSplatRendererConfig,
   GaussianSplatViewState,
@@ -8,259 +17,189 @@ import type {
 export class GaussianSplatRenderer implements RendererLifecycle {
   private readonly container: HTMLDivElement;
   private readonly canvas: HTMLCanvasElement;
-  private readonly app: pc.Application;
-  private readonly camera: pc.Entity;
+  private readonly threeRenderer: THREE.WebGLRenderer;
+  private readonly scene: THREE.Scene;
+  private readonly camera: THREE.PerspectiveCamera;
+  private readonly spark: SparkRenderer;
+  private readonly controls: SparkControls;
   private readonly onReady?: () => void;
   private readonly onError?: (error: Error) => void;
   private readonly onViewChange?: (state: GaussianSplatViewState) => void;
 
-  private splatEntity: pc.Entity | null = null;
-  private splatAsset: pc.Asset | null = null;
+  private splatMesh: SplatMesh | null = null;
+  private sdfEdits: SplatEdit[] = [];
   private isDisposed = false;
-  private isPointerDown = false;
-  private pointerStartX = 0;
-  private pointerStartY = 0;
-  private startYaw = 0;
-  private startPitch = 0;
-  private yaw: number;
-  private pitch: number;
-  private position: pc.Vec3;
-  private pressedKeys = new Set<string>();
+  private lastTime = 0;
 
   public constructor(config: GaussianSplatRendererConfig) {
     this.container = config.container;
     this.onReady = config.onReady;
     this.onError = config.onError;
     this.onViewChange = config.onViewChange;
-    this.yaw = config.initialYaw ?? 0;
-    this.pitch = config.initialPitch ?? -8;
-    this.position = new pc.Vec3(
+
+    this.canvas = document.createElement('canvas');
+    this.canvas.tabIndex = 0;
+    this.canvas.className = 'h-full w-full outline-none';
+    this.container.innerHTML = '';
+    this.container.appendChild(this.canvas);
+
+    this.threeRenderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: false });
+    this.threeRenderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+    this.threeRenderer.setSize(this.container.clientWidth || 800, this.container.clientHeight || 520);
+
+    this.scene = new THREE.Scene();
+    this.scene.background = new THREE.Color(0x030408);
+
+    this.camera = new THREE.PerspectiveCamera(
+      60,
+      (this.container.clientWidth || 800) / (this.container.clientHeight || 520),
+      0.01,
+      1000
+    );
+    this.camera.position.set(
       config.initialPosition?.x ?? 0,
       config.initialPosition?.y ?? 0,
       config.initialPosition?.z ?? 2.8
     );
 
-    this.canvas = document.createElement('canvas');
-    this.canvas.tabIndex = 0;
-    this.canvas.className = 'h-full w-full outline-none';
+    this.spark = new SparkRenderer({ renderer: this.threeRenderer });
+    this.scene.add(this.spark);
 
-    this.container.innerHTML = '';
-    this.container.appendChild(this.canvas);
+    this.controls = new SparkControls({
+      canvas: this.canvas,
+      moveSpeed: 1.7,
+      rotateSpeed: 2.0
+    } as ConstructorParameters<typeof SparkControls>[0]);
 
-    this.app = new pc.Application(this.canvas, {
-      graphicsDeviceOptions: {
-        antialias: false,
-        powerPreference: 'high-performance'
-      }
-    });
+    // Three.js r170 types use XRFrameRequestCallback; cast avoids overload mismatch
+    (this.threeRenderer as unknown as { setAnimationLoop: (cb: ((t: number) => void) | null) => void })
+      .setAnimationLoop((time) => this.animate(time));
+  }
 
-    this.app.setCanvasFillMode(pc.FILLMODE_FILL_WINDOW);
-    this.app.setCanvasResolution(pc.RESOLUTION_AUTO);
-    this.app.start();
-
-    this.camera = new pc.Entity('Immersphere Splat Camera');
-    this.camera.addComponent('camera', {
-      clearColor: new pc.Color(0.015, 0.018, 0.03)
-    });
-    this.app.root.addChild(this.camera);
-    this.updateCameraTransform();
-
-    this.handlePointerDown = this.handlePointerDown.bind(this);
-    this.handlePointerMove = this.handlePointerMove.bind(this);
-    this.handlePointerUp = this.handlePointerUp.bind(this);
-    this.handleKeyDown = this.handleKeyDown.bind(this);
-    this.handleKeyUp = this.handleKeyUp.bind(this);
-    this.handleUpdate = this.handleUpdate.bind(this);
-
-    this.canvas.addEventListener('pointerdown', this.handlePointerDown);
-    window.addEventListener('pointermove', this.handlePointerMove);
-    window.addEventListener('pointerup', this.handlePointerUp);
-    window.addEventListener('keydown', this.handleKeyDown);
-    window.addEventListener('keyup', this.handleKeyUp);
-    this.app.on('update', this.handleUpdate);
+  private animate(time: number): void {
+    if (this.isDisposed) return;
+    const dt = Math.min((time - this.lastTime) / 1000, 0.1);
+    this.lastTime = time;
+    // SparkControls TS types diverge from documented API; cast avoids mismatch
+    (this.controls as unknown as { update: (dt: number, cam: { position: THREE.Vector3; quaternion: THREE.Quaternion }) => void })
+      .update(dt, { position: this.camera.position, quaternion: this.camera.quaternion });
+    this.threeRenderer.render(this.scene, this.camera);
+    this.emitViewChange();
   }
 
   public async load(assetUrl?: string): Promise<void> {
     const sourceUrl = assetUrl ?? '';
-
     if (!sourceUrl) {
       this.emitError(new Error('No se ha proporcionado URL de Gaussian Splat.'));
       return;
     }
-
     if (this.isDisposed) return;
 
     this.removeCurrentSplat();
 
-    await new Promise<void>((resolve) => {
-      const asset = new pc.Asset('Immersphere Gaussian Splat', 'gsplat', {
-        url: sourceUrl
-      });
+    let loadResolved = false;
 
-      this.splatAsset = asset;
-      this.app.assets.add(asset);
-
-      const handleAssetReady = (): void => {
-        if (this.isDisposed) {
-          resolve();
-          return;
-        }
-
-        const splat = new pc.Entity('Immersphere Splat Entity');
-        splat.setPosition(0, -0.65, 0);
-        splat.setEulerAngles(0, 0, 180);
-        splat.addComponent('gsplat', {
-          asset
-        });
-
-        this.splatEntity = splat;
-        this.app.root.addChild(splat);
-        this.onReady?.();
-        resolve();
-      };
-
-      const handleAssetError = (error: unknown): void => {
-        const message = typeof error === 'string' ? error : 'No se pudo cargar el Gaussian Splat.';
-        this.emitError(new Error(message));
-        resolve();
-      };
-
-      asset.ready(handleAssetReady);
-      asset.once('error', handleAssetError);
-      this.app.assets.load(asset);
+    const splat = new SplatMesh({
+      url: sourceUrl,
+      onLoad: () => {
+        loadResolved = true;
+        if (!this.isDisposed) this.onReady?.();
+      }
     });
+
+    splat.position.set(0, -0.65, 0);
+    splat.rotation.set(Math.PI, 0, 0);
+    this.scene.add(splat);
+    this.splatMesh = splat;
+
+    splat.initialized.catch((err: unknown) => {
+      if (this.isDisposed || loadResolved) return;
+      const message = err instanceof Error ? err.message : 'No se pudo cargar el Gaussian Splat.';
+      this.emitError(new Error(message));
+    });
+  }
+
+  public addSdfSphere(screenX: number, screenY: number): void {
+    if (!this.splatMesh) return;
+
+    const ndcX = (screenX / 100) * 2 - 1;
+    const ndcY = -((screenY / 100) * 2 - 1);
+
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+
+    const pos = raycaster.ray.origin.clone().addScaledVector(raycaster.ray.direction, 1.5);
+
+    const edit = new SplatEdit({
+      rgbaBlendMode: SplatEditRgbaBlendMode.MULTIPLY,
+      sdfSmooth: 0.05,
+      sdfs: [
+        new SplatEditSdf({
+          type: SplatEditSdfType.SPHERE,
+          radius: 0.3,
+          opacity: 0.0,
+          color: new THREE.Color(1, 1, 1)
+        })
+      ]
+    });
+    edit.position.copy(pos);
+    this.splatMesh.add(edit);
+    this.sdfEdits.push(edit);
+  }
+
+  public clearSdfEdits(): void {
+    for (const edit of this.sdfEdits) {
+      this.splatMesh?.remove(edit);
+    }
+    this.sdfEdits = [];
   }
 
   public resize(): void {
     if (this.isDisposed) return;
-    this.app.resizeCanvas();
+    const w = this.container.clientWidth;
+    const h = this.container.clientHeight;
+    if (!w || !h) return;
+    this.threeRenderer.setSize(w, h);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
   }
 
   public dispose(): void {
     this.isDisposed = true;
-
-    this.canvas.removeEventListener('pointerdown', this.handlePointerDown);
-    window.removeEventListener('pointermove', this.handlePointerMove);
-    window.removeEventListener('pointerup', this.handlePointerUp);
-    window.removeEventListener('keydown', this.handleKeyDown);
-    window.removeEventListener('keyup', this.handleKeyUp);
-    this.app.off('update', this.handleUpdate);
-
+    (this.threeRenderer as unknown as { setAnimationLoop: (cb: null) => void }).setAnimationLoop(null);
     this.removeCurrentSplat();
-    this.camera.destroy();
-    this.app.destroy();
-
+    this.spark.dispose();
+    this.threeRenderer.dispose();
     if (this.canvas.parentElement === this.container) {
       this.container.removeChild(this.canvas);
     }
   }
 
-  public setYaw(value: number): void {
-    this.yaw = value;
-    this.updateCameraTransform();
-    this.emitViewChange();
-  }
-
-  public setPitch(value: number): void {
-    this.pitch = Math.max(-85, Math.min(85, value));
-    this.updateCameraTransform();
-    this.emitViewChange();
-  }
-
+  public setYaw(_value: number): void { /* controlled by SparkControls */ }
+  public setPitch(_value: number): void { /* controlled by SparkControls */ }
   public setPosition(x: number, y: number, z: number): void {
-    this.position.set(x, y, z);
-    this.updateCameraTransform();
-    this.emitViewChange();
+    this.camera.position.set(x, y, z);
   }
 
   public getViewState(): GaussianSplatViewState {
     return {
       position: {
-        x: this.position.x,
-        y: this.position.y,
-        z: this.position.z
+        x: this.camera.position.x,
+        y: this.camera.position.y,
+        z: this.camera.position.z
       },
-      yaw: this.yaw,
-      pitch: this.pitch
+      yaw: 0,
+      pitch: 0
     };
   }
 
   private removeCurrentSplat(): void {
-    if (this.splatEntity) {
-      this.splatEntity.destroy();
-      this.splatEntity = null;
+    if (this.splatMesh) {
+      this.clearSdfEdits();
+      this.scene.remove(this.splatMesh);
+      this.splatMesh.dispose();
+      this.splatMesh = null;
     }
-
-    if (this.splatAsset) {
-      this.splatAsset.unload();
-      this.app.assets.remove(this.splatAsset);
-      this.splatAsset = null;
-    }
-  }
-
-  private handlePointerDown(event: PointerEvent): void {
-    this.canvas.focus();
-    this.isPointerDown = true;
-    this.pointerStartX = event.clientX;
-    this.pointerStartY = event.clientY;
-    this.startYaw = this.yaw;
-    this.startPitch = this.pitch;
-    this.canvas.setPointerCapture(event.pointerId);
-  }
-
-  private handlePointerMove(event: PointerEvent): void {
-    if (!this.isPointerDown) return;
-
-    const deltaX = event.clientX - this.pointerStartX;
-    const deltaY = event.clientY - this.pointerStartY;
-
-    this.setYaw(this.startYaw - deltaX * 0.16);
-    this.setPitch(this.startPitch + deltaY * 0.16);
-  }
-
-  private handlePointerUp(event: PointerEvent): void {
-    this.isPointerDown = false;
-
-    if (this.canvas.hasPointerCapture(event.pointerId)) {
-      this.canvas.releasePointerCapture(event.pointerId);
-    }
-  }
-
-  private handleKeyDown(event: KeyboardEvent): void {
-    this.pressedKeys.add(event.key.toLowerCase());
-  }
-
-  private handleKeyUp(event: KeyboardEvent): void {
-    this.pressedKeys.delete(event.key.toLowerCase());
-  }
-
-  private handleUpdate(deltaTime: number): void {
-    if (this.pressedKeys.size === 0) return;
-
-    const speed = 1.7 * deltaTime;
-    const yawRad = (this.yaw * Math.PI) / 180;
-    const forward = new pc.Vec3(Math.sin(yawRad), 0, -Math.cos(yawRad));
-    const right = new pc.Vec3(Math.cos(yawRad), 0, Math.sin(yawRad));
-    const move = new pc.Vec3();
-
-    if (this.pressedKeys.has('w')) move.add(forward);
-    if (this.pressedKeys.has('s')) move.sub(forward);
-    if (this.pressedKeys.has('d')) move.add(right);
-    if (this.pressedKeys.has('a')) move.sub(right);
-    if (this.pressedKeys.has('q')) move.y += 1;
-    if (this.pressedKeys.has('e')) move.y -= 1;
-
-    if (move.lengthSq() > 0) {
-      move.normalize().mulScalar(speed);
-      this.position.add(move);
-      this.updateCameraTransform();
-      this.emitViewChange();
-    }
-  }
-
-  private updateCameraTransform(): void {
-    this.camera.setPosition(this.position);
-    this.camera.setEulerAngles(this.pitch, this.yaw, 0);
   }
 
   private emitViewChange(): void {

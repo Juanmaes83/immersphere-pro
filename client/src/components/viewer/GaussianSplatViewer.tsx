@@ -187,6 +187,8 @@ export default function GaussianSplatViewer({
     };
 
     setRemovedZones((current) => [...current, zone]);
+    rendererRef.current?.addSdfSphere(x, y);
+
     analyticsRef.current(
       createViewerEvent('splat_editor_remove', {
         spaceId,
@@ -220,6 +222,7 @@ export default function GaussianSplatViewer({
     setRemovedZones([]);
     setClipEnabled(false);
     setEditorMode(false);
+    rendererRef.current?.clearSdfEdits();
   }
 
   return (
@@ -231,7 +234,7 @@ export default function GaussianSplatViewer({
           {!isReady && !errorMessage ? (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950 text-white">
               <div className="rounded-2xl border border-white/10 bg-white/10 px-5 py-4 text-sm font-bold backdrop-blur">
-                Cargando Gaussian Splat con PlayCanvas...
+                Cargando Gaussian Splat con SparkJS...
               </div>
             </div>
           ) : null}
@@ -239,10 +242,10 @@ export default function GaussianSplatViewer({
           {errorMessage ? (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-br from-fuchsia-500/25 via-violet-900/35 to-slate-950 p-6 text-center text-white">
               <div className="max-w-lg rounded-3xl border border-white/10 bg-black/35 p-6 backdrop-blur">
-                <p className="text-xl font-black">Fallback Splat controlado</p>
+                <p className="text-xl font-black">Splat no disponible</p>
                 <p className="mt-3 text-sm leading-6 text-white/65">{errorMessage}</p>
                 <p className="mt-4 text-xs leading-5 text-white/45">
-                  El visor PlayCanvas está integrado. Si el asset no es un splat válido, la UI mantiene la experiencia estable y registra el error.
+                  El visor SparkJS está activo. Si el asset no es un splat válido, la experiencia se mantiene estable y el error queda registrado.
                 </p>
               </div>
             </div>
@@ -272,9 +275,9 @@ export default function GaussianSplatViewer({
           </div>
 
           <div className="absolute bottom-5 left-5 z-40 rounded-2xl border border-white/10 bg-black/45 p-4 text-white backdrop-blur">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">Gaussian Splat</p>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">Gaussian Splat · SparkJS</p>
             <p className="mt-1 text-2xl font-black">{formatLabel}</p>
-            <p className="mt-1 text-xs text-white/50">WASD para moverse · Ratón para mirar</p>
+            <p className="mt-1 text-xs text-white/50">WASD + ratón para navegar</p>
           </div>
         </div>
 
@@ -324,7 +327,7 @@ export default function GaussianSplatViewer({
               <p className="mt-1 text-2xl font-black">{removedCount}</p>
             </div>
             <p className="mt-4 text-xs leading-5 text-white/45">
-              Esta fase implementa edición no destructiva tipo máscara. La exportación destructiva del splat queda preparada para pipeline SuperSplat/SplatTransform.
+              Editor SDF real con SparkJS. Las zonas eliminadas usan esferas SDF con opacidad 0 aplicadas directamente sobre el SplatMesh.
             </p>
           </div>
         </aside>
