@@ -6,7 +6,7 @@ import PlanCard from '@/components/billing/PlanCard';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
-import { usePropertyStore, type CreatePropertyPayload, type CreateSpacePayload, type ImmersiveProperty } from '@/store/propertyStore';
+import { usePropertyStore, type CreateAssetPayload, type CreatePropertyPayload, type CreateSpacePayload, type ImmersiveProperty } from '@/store/propertyStore';
 import PropertyDetailPage from '@/pages/PropertyDetailPage';
 
 interface SubscriptionResponse {
@@ -297,6 +297,9 @@ function PropertiesPage(): JSX.Element {
     createSpace,
     updateSpace,
     deleteSpace,
+    createAsset,
+    updateAsset,
+    deleteAsset,
     isLoading,
     error
   } = usePropertyStore();
@@ -317,11 +320,21 @@ function PropertiesPage(): JSX.Element {
   const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
   const [expandedPropertyId, setExpandedPropertyId] = useState<string | null>(null);
   const [editingSpace, setEditingSpace] = useState<{ propertyId: string; spaceId: string } | null>(null);
+  const [editingAsset, setEditingAsset] = useState<{ propertyId: string; spaceId: string; assetId: string } | null>(null);
+  const [activeAssetFormTarget, setActiveAssetFormTarget] = useState<{ propertyId: string; spaceId: string } | null>(null);
   const [spaceForm, setSpaceForm] = useState<CreateSpacePayload>({
     name: '',
     order: 1,
     status: 'ACTIVE',
     dimensions: { width: null, height: null, depth: null }
+  });
+  const [assetForm, setAssetForm] = useState<CreateAssetPayload>({
+    type: 'panorama_360',
+    url: '',
+    thumbnail: '',
+    format: 'jpg',
+    size: 0,
+    hotspots: []
   });
   const [message, setMessage] = useState<string | null>(null);
 
@@ -363,6 +376,46 @@ function PropertiesPage(): JSX.Element {
       dimensions: { width: null, height: null, depth: null }
     });
     setEditingSpace(null);
+  }
+
+  function getDefaultAssetForm(): CreateAssetPayload {
+    return {
+      type: 'panorama_360',
+      url: '',
+      thumbnail: '',
+      format: 'jpg',
+      size: 0,
+      hotspots: []
+    };
+  }
+
+  function resetAssetForm(): void {
+    setAssetForm(getDefaultAssetForm());
+    setEditingAsset(null);
+  }
+
+  function closeAssetForm(): void {
+    resetAssetForm();
+    setActiveAssetFormTarget(null);
+  }
+
+  function getDefaultAssetFormat(type: CreateAssetPayload['type']): CreateAssetPayload['format'] {
+    if (type === 'gaussian_splat') return 'splat';
+    if (type === 'mesh') return 'glb';
+
+    return 'jpg';
+  }
+
+  function handleAssetTypeChange(type: CreateAssetPayload['type']): void {
+    setAssetForm((current) => ({
+      ...current,
+      type,
+      format: getDefaultAssetFormat(type)
+    }));
+  }
+
+  function isFallbackAssetId(assetId: string): boolean {
+    return assetId.endsWith('-fallback-panorama');
   }
 
   function buildPayload(): CreatePropertyPayload {
@@ -567,6 +620,95 @@ function PropertiesPage(): JSX.Element {
     }
   }
 
+  function handleOpenAssetForm(propertyId: string, spaceId: string): void {
+    setActiveAssetFormTarget({ propertyId, spaceId });
+    setEditingAsset(null);
+    setAssetForm(getDefaultAssetForm());
+    setMessage('Preparando nuevo asset para la estancia.');
+  }
+
+  function handleEditAsset(
+    propertyId: string,
+    spaceId: string,
+    asset: ImmersiveProperty['spaces'][number]['assets'][number]
+  ): void {
+    setActiveAssetFormTarget({ propertyId, spaceId });
+
+    if (isFallbackAssetId(asset.id)) {
+      setEditingAsset(null);
+      setAssetForm(getDefaultAssetForm());
+      setMessage('Este asset es demo temporal. Crea un asset real para sustituirlo.');
+      return;
+    }
+
+    setEditingAsset({ propertyId, spaceId, assetId: asset.id });
+    setAssetForm({
+      type: asset.type,
+      url: asset.url,
+      thumbnail: asset.thumbnail ?? '',
+      format: asset.format,
+      size: asset.size ?? 0,
+      hotspots: asset.hotspots ?? []
+    });
+    setMessage('Editando asset seleccionado.');
+  }
+
+  async function handleSubmitAsset(event: any, propertyId: string, spaceId: string): Promise<void> {
+    event.preventDefault();
+    setMessage(null);
+
+    const payload: CreateAssetPayload = {
+      type: assetForm.type,
+      url: String(assetForm.url ?? '').trim(),
+      thumbnail: String(assetForm.thumbnail ?? '').trim(),
+      format: assetForm.format,
+      size: Math.max(0, Number(assetForm.size ?? 0)),
+      hotspots: assetForm.hotspots ?? []
+    };
+
+    if (payload.url.length < 1) {
+      setMessage('El asset necesita una URL.');
+      return;
+    }
+
+    try {
+      if (editingAsset && editingAsset.propertyId === propertyId && editingAsset.spaceId === spaceId) {
+        await updateAsset(propertyId, spaceId, editingAsset.assetId, payload);
+        setMessage('Asset actualizado correctamente.');
+      } else {
+        await createAsset(propertyId, spaceId, payload);
+        setMessage('Asset creado correctamente.');
+      }
+
+      closeAssetForm();
+      setExpandedPropertyId(propertyId);
+      await fetchProperties({ limit: 100 });
+    } catch {
+      setMessage('No se ha podido guardar el asset.');
+    }
+  }
+
+  async function handleDeleteAsset(propertyId: string, spaceId: string, assetId: string): Promise<void> {
+    if (isFallbackAssetId(assetId)) {
+      setMessage('No se puede eliminar el asset demo temporal. Crea un asset real para sustituirlo.');
+      return;
+    }
+
+    try {
+      await deleteAsset(propertyId, spaceId, assetId);
+
+      if (editingAsset?.assetId === assetId) {
+        closeAssetForm();
+      }
+
+      setExpandedPropertyId(propertyId);
+      setMessage('Asset eliminado correctamente.');
+      await fetchProperties({ limit: 100 });
+    } catch {
+      setMessage('No se ha podido eliminar el asset.');
+    }
+  }
+
   return (
     <main className="mx-auto max-w-7xl px-5 py-10">
       <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-700">Property Manager</p>
@@ -752,34 +894,166 @@ function PropertiesPage(): JSX.Element {
                       </div>
                     ) : (
                       property.spaces.map((space) => (
-                        <div key={space.id} className="flex flex-col gap-3 rounded-2xl bg-white p-4 ring-1 ring-slate-200 md:flex-row md:items-center md:justify-between">
-                          <div>
-                            <div className="mb-2 flex flex-wrap gap-2">
-                              <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">Orden {space.order}</span>
-                              <span className={space.status === 'HIDDEN' ? 'rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700' : 'rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700'}>
-                                {space.status === 'HIDDEN' ? 'Oculta' : 'Activa'}
-                              </span>
-                              <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-black text-violet-700">
-                                {space.assets.length} assets
-                              </span>
+                        <div key={space.id} className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+                          <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                            <div>
+                              <div className="mb-2 flex flex-wrap gap-2">
+                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">Orden {space.order}</span>
+                                <span className={space.status === 'HIDDEN' ? 'rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700' : 'rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700'}>
+                                  {space.status === 'HIDDEN' ? 'Oculta' : 'Activa'}
+                                </span>
+                                <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-black text-violet-700">
+                                  {space.assets.length} assets
+                                </span>
+                              </div>
+                              <p className="text-base font-black text-slate-950">{space.name}</p>
                             </div>
-                            <p className="text-base font-black text-slate-950">{space.name}</p>
+
+                            <div className="flex flex-wrap gap-2">
+                              <button type="button" onClick={() => handleOpenAssetForm(property.id, space.id)} className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-black text-violet-700 hover:bg-violet-100">
+                                Nuevo asset
+                              </button>
+                              <button type="button" onClick={() => handleEditSpace(property.id, space)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
+                                Editar
+                              </button>
+                              <button type="button" onClick={() => void handleToggleSpaceStatus(property.id, space)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
+                                {space.status === 'HIDDEN' ? 'Activar' : 'Ocultar'}
+                              </button>
+                              <button type="button" onClick={() => void handleDeleteSpace(property.id, space.id)} className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-700 hover:bg-red-100">
+                                Eliminar
+                              </button>
+                            </div>
                           </div>
 
-                          <div className="flex flex-wrap gap-2">
-                            <button type="button" onClick={() => handleEditSpace(property.id, space)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
-                              Editar
-                            </button>
-                            <button type="button" onClick={() => void handleToggleSpaceStatus(property.id, space)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
-                              {space.status === 'HIDDEN' ? 'Activar' : 'Ocultar'}
-                            </button>
-                            <button type="button" onClick={() => void handleDeleteSpace(property.id, space.id)} className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-700 hover:bg-red-100">
-                              Eliminar
-                            </button>
+                          {activeAssetFormTarget?.propertyId === property.id && activeAssetFormTarget?.spaceId === space.id ? (
+                            <form onSubmit={(event) => void handleSubmitAsset(event, property.id, space.id)} className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-violet-100 bg-violet-50/70 p-4 md:grid-cols-2">
+                              <div className="md:col-span-2">
+                                <p className="text-sm font-black text-slate-950">
+                                  {editingAsset?.propertyId === property.id && editingAsset?.spaceId === space.id ? 'Editar asset' : 'Nuevo asset'}
+                                </p>
+                                <p className="mt-1 text-xs font-semibold text-slate-500">
+                                  Conecta una URL real de panorama 360, Gaussian Splat o mesh 3D.
+                                </p>
+                              </div>
+
+                              <label className="block">
+                                <span className="mb-2 block text-sm font-black text-slate-700">Tipo asset</span>
+                                <select
+                                  value={assetForm.type}
+                                  onChange={(event) => handleAssetTypeChange(event.target.value as CreateAssetPayload['type'])}
+                                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+                                >
+                                  <option value="panorama_360">Panorama 360</option>
+                                  <option value="gaussian_splat">Gaussian Splat</option>
+                                  <option value="mesh">Mesh 3D</option>
+                                </select>
+                              </label>
+
+                              <label className="block">
+                                <span className="mb-2 block text-sm font-black text-slate-700">Formato</span>
+                                <select
+                                  value={assetForm.format}
+                                  onChange={(event) => setAssetForm((current) => ({ ...current, format: event.target.value as CreateAssetPayload['format'] }))}
+                                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+                                >
+                                  <option value="jpg">JPG</option>
+                                  <option value="jpeg">JPEG</option>
+                                  <option value="png">PNG</option>
+                                  <option value="webp">WEBP</option>
+                                  <option value="splat">SPLAT</option>
+                                  <option value="ply">PLY</option>
+                                  <option value="glb">GLB</option>
+                                </select>
+                              </label>
+
+                              <label className="block md:col-span-2">
+                                <span className="mb-2 block text-sm font-black text-slate-700">URL del asset</span>
+                                <input
+                                  type="url"
+                                  required
+                                  value={assetForm.url ?? ''}
+                                  onChange={(event) => setAssetForm((current) => ({ ...current, url: event.target.value }))}
+                                  placeholder="https://..."
+                                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+                                />
+                              </label>
+
+                              <label className="block">
+                                <span className="mb-2 block text-sm font-black text-slate-700">Thumbnail opcional</span>
+                                <input
+                                  type="url"
+                                  value={assetForm.thumbnail ?? ''}
+                                  onChange={(event) => setAssetForm((current) => ({ ...current, thumbnail: event.target.value }))}
+                                  placeholder="https://..."
+                                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+                                />
+                              </label>
+
+                              <label className="block">
+                                <span className="mb-2 block text-sm font-black text-slate-700">Peso MB</span>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={String(assetForm.size ?? 0)}
+                                  onChange={(event) => setAssetForm((current) => ({ ...current, size: Number(event.target.value) }))}
+                                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+                                />
+                              </label>
+
+                              <div className="flex flex-wrap gap-2 md:col-span-2">
+                                <button disabled={isLoading} type="submit" className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-60">
+                                  {editingAsset?.propertyId === property.id && editingAsset?.spaceId === space.id ? 'Guardar asset' : 'Crear asset'}
+                                </button>
+                                <button type="button" onClick={closeAssetForm} className="rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
+                                  Cancelar
+                                </button>
+                              </div>
+                            </form>
+                          ) : null}
+
+                          <div className="mt-4 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
+                            <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                              <div>
+                                <p className="text-sm font-black text-slate-950">Assets de la estancia</p>
+                                <p className="text-xs font-semibold text-slate-500">Panorama 360, Gaussian Splat o mesh 3D asociados al espacio.</p>
+                              </div>
+                            </div>
+
+                            <div className="grid grid-cols-1 gap-2">
+                              {space.assets.length === 0 ? (
+                                <div className="rounded-xl bg-white p-3 text-sm font-bold text-slate-500 ring-1 ring-slate-200">
+                                  Esta estancia no tiene assets.
+                                </div>
+                              ) : (
+                                space.assets.map((asset) => (
+                                  <div key={asset.id} className="flex flex-col gap-3 rounded-xl bg-white p-3 ring-1 ring-slate-200 md:flex-row md:items-center md:justify-between">
+                                    <div>
+                                      <div className="mb-2 flex flex-wrap gap-2">
+                                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{asset.type}</span>
+                                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{asset.format}</span>
+                                        <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{asset.size} MB</span>
+                                        {isFallbackAssetId(asset.id) ? (
+                                          <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700">Demo temporal</span>
+                                        ) : null}
+                                      </div>
+                                      <p className="max-w-xl truncate text-sm font-bold text-slate-700">{asset.url || 'Sin URL'}</p>
+                                    </div>
+
+                                    <div className="flex flex-wrap gap-2">
+                                      <button type="button" onClick={() => handleEditAsset(property.id, space.id, asset)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
+                                        Editar asset
+                                      </button>
+                                      <button type="button" onClick={() => void handleDeleteAsset(property.id, space.id, asset.id)} className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-700 hover:bg-red-100">
+                                        Eliminar asset
+                                      </button>
+                                    </div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
                           </div>
                         </div>
-                      ))
-                    )}
+                      ))                    )}
                   </div>
                 </div>
               ) : null}
