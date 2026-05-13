@@ -143,7 +143,7 @@ export async function createProperty(request: Request, response: Response): Prom
   }
 
   const input = propertySchema.parse(request.body);
-  const data = await propertiesService.createProperty(request.auth!.tenantId, input as any);
+  const data = await propertiesService.createProperty(request.auth!.tenantId, input);
 
   response.status(201).json({
     success: true,
@@ -167,7 +167,7 @@ export async function updateProperty(request: Request, response: Response): Prom
   }
 
   const input = propertySchema.parse(request.body);
-  const data = await propertiesService.updateProperty(request.auth!.tenantId, request.params.id, input as any);
+  const data = await propertiesService.updateProperty(request.auth!.tenantId, request.params.id, input);
 
   response.status(200).json({
     success: true,

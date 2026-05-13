@@ -1370,7 +1370,7 @@ function PropertiesPage(): JSX.Element {
               type="text"
               value={form.panoramaUrl ?? ''}
               onChange={(event) => setForm((current) => ({ ...current, panoramaUrl: event.target.value }))}
-              placeholder="http://localhost:5173/demo/panorama-living-room.jpg"
+              placeholder="/demo/panorama-living-room.jpg"
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
             />
           </label>

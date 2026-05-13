@@ -43,3 +43,14 @@ export const unlockRateLimit = rateLimit({
     error: 'Demasiados intentos de contraseña. Inténtalo de nuevo en 15 minutos.'
   }
 });
+
+export const viewRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 30,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Demasiadas peticiones de vista.'
+  }
+});

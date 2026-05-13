@@ -21,7 +21,7 @@ import {
 import { exportPropertyTourController } from '../controllers/tour.controller.js';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { enforcePropertyLimit } from '../middleware/planLimits.js';
-import { unlockRateLimit } from '../middleware/rateLimit.js';
+import { unlockRateLimit, viewRateLimit } from '../middleware/rateLimit.js';
 import { env } from '../config/env.js';
 import { prisma } from '../index.js';
 
@@ -63,6 +63,6 @@ propertiesRoutes.delete('/:propertyId/spaces/:spaceId/assets/:assetId', requireA
 
 propertiesRoutes.get('/:id', optionalAuth, getPropertyById);
 propertiesRoutes.post('/:id/unlock', unlockRateLimit, unlockProperty);
-propertiesRoutes.post('/:id/view', incrementPropertyViews);
+propertiesRoutes.post('/:id/view', viewRateLimit, incrementPropertyViews);
 propertiesRoutes.put('/:id', requireAuth, updateProperty);
 propertiesRoutes.delete('/:id', requireAuth, deleteProperty);
