@@ -17,7 +17,7 @@ function getAuthenticatedContext(request: Request): { userId: string; tenantId: 
   const tenantId = request.auth?.tenantId;
 
   if (!userId || !tenantId) {
-    throw new AppError(401, 'AutenticaciÃ³n requerida.');
+    throw new AppError(401, 'Autenticación requerida.');
   }
 
   return { userId, tenantId };
@@ -51,7 +51,7 @@ export async function createCheckoutSessionController(
     const parsedBody = createCheckoutSchema.safeParse(request.body);
 
     if (!parsedBody.success) {
-      throw new AppError(400, 'Plan de suscripciÃ³n invÃ¡lido.');
+      throw new AppError(400, 'Plan de suscripción inválido.');
     }
 
     const checkout = await createCheckoutSession({

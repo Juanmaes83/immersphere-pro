@@ -11,7 +11,7 @@ function getTenantId(request: Request): string {
   const tenantId = request.auth?.tenantId;
 
   if (!tenantId) {
-    throw new AppError(401, 'AutenticaciÃ³n requerida.');
+    throw new AppError(401, 'Autenticación requerida.');
   }
 
   return tenantId;

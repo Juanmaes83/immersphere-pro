@@ -181,7 +181,7 @@ export async function updateTenantPlan(tenantId: string, input: TenantPlanUpdate
   });
 
   if (!tenant) {
-    throw new Error('Tenant no encontrado despuÃ©s de actualizar el plan.');
+    throw new Error('Tenant no encontrado después de actualizar el plan.');
   }
 
   return serializeTenantSettings(tenant);

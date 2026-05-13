@@ -4,18 +4,18 @@ import * as authService from '../services/auth.service.js';
 
 const registerSchema = z.object({
   tenantName: z.string().trim().min(2, 'El nombre del tenant debe tener al menos 2 caracteres.'),
-  email: z.string().trim().email('El email no tiene un formato vÃ¡lido.'),
-  password: z.string().min(8, 'La contraseÃ±a debe tener al menos 8 caracteres.'),
+  email: z.string().trim().email('El email no tiene un formato válido.'),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.'),
   name: z.string().trim().min(2, 'El nombre debe tener al menos 2 caracteres.')
 });
 
 const loginSchema = z.object({
-  email: z.string().trim().email('El email no tiene un formato vÃ¡lido.'),
-  password: z.string().min(8, 'La contraseÃ±a debe tener al menos 8 caracteres.')
+  email: z.string().trim().email('El email no tiene un formato válido.'),
+  password: z.string().min(8, 'La contraseña debe tener al menos 8 caracteres.')
 });
 
 const refreshSchema = z.object({
-  refreshToken: z.string().min(32, 'Refresh token invÃ¡lido.')
+  refreshToken: z.string().min(32, 'Refresh token inválido.')
 });
 
 export async function register(request: Request, response: Response): Promise<void> {

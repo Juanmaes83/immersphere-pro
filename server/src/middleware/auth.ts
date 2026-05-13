@@ -46,7 +46,7 @@ export function requireAuth(request: Request, _response: Response, next: NextFun
     const payload = jwt.verify(accessToken, env.JWT_ACCESS_SECRET);
 
     if (!isAccessTokenPayload(payload)) {
-      next(new AppError(401, 'Token de acceso invÃ¡lido.'));
+      next(new AppError(401, 'Token de acceso inválido.'));
       return;
     }
 
@@ -58,7 +58,7 @@ export function requireAuth(request: Request, _response: Response, next: NextFun
 
     next();
   } catch {
-    next(new AppError(401, 'Token de acceso expirado o invÃ¡lido.'));
+    next(new AppError(401, 'Token de acceso expirado o inválido.'));
   }
 }
 
