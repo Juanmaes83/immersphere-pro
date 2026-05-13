@@ -96,6 +96,7 @@ export async function getPropertyAnalyticsSummary(propertyId: string) {
   const hotspotClicks = typeCounts['hotspot_click'] ?? 0;
   const spaceChanges = typeCounts['space_change'] ?? 0;
   const leadCtas = typeCounts['lead_cta'] ?? 0;
+  const viewerOpens = typeCounts['viewer_open'] ?? 0;
 
   const eventsByType: CountByKey[] = Object.entries(typeCounts)
     .map(([key, count]) => ({ key, count }))
@@ -152,6 +153,7 @@ export async function getPropertyAnalyticsSummary(propertyId: string) {
 
   return {
     totalEvents,
+    viewerOpens,
     hotspotClicks,
     spaceChanges,
     leadCtas,
