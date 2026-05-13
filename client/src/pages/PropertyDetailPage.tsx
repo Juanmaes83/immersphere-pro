@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import UniversalViewer from '@/components/viewer/UniversalViewer';
 import { api, unwrapApiResponse } from '@/services/api';
+import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type ImmersiveProperty } from '@/store/propertyStore';
 import type { Space, ViewerEvent } from '@/types/viewer';
 
@@ -266,9 +267,84 @@ function AnalyticsDashboard({ summary, primaryColor, spaces }: {
   );
 }
 
+interface LeadRecord {
+  id: string;
+  email: string;
+  phone: string;
+  notes: string;
+  source: string;
+  createdAt: string;
+}
+
+function PropertyLeadsList({ propertyId, leadCount }: { propertyId: string; leadCount: number }): JSX.Element {
+  const [leads, setLeads] = useState<LeadRecord[]>([]);
+  const [open, setOpen] = useState(false);
+  const [loaded, setLoaded] = useState(false);
+
+  function handleToggle(): void {
+    setOpen((v) => !v);
+    if (!loaded) {
+      unwrapApiResponse<LeadRecord[]>(api.get(`/leads/properties/${propertyId}`))
+        .then((data) => { setLeads(data); setLoaded(true); })
+        .catch(() => { setLoaded(true); });
+    }
+  }
+
+  return (
+    <section className="mt-6 overflow-hidden rounded-[1.6rem] bg-white ring-1 ring-slate-200">
+      <button
+        type="button"
+        onClick={handleToggle}
+        className="flex w-full items-center justify-between px-6 py-4 text-left"
+      >
+        <div className="flex items-center gap-3">
+          <span className="text-sm font-black uppercase tracking-[0.16em] text-slate-700">
+            Leads capturados
+          </span>
+          <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-black text-emerald-700">
+            {loaded ? leads.length : leadCount}
+          </span>
+        </div>
+        <span className="text-slate-400 text-sm">{open ? '▲' : '▼'}</span>
+      </button>
+
+      {open ? (
+        <div className="border-t border-slate-100 px-6 pb-5">
+          {!loaded ? (
+            <p className="pt-4 text-sm text-slate-400">Cargando leads...</p>
+          ) : leads.length === 0 ? (
+            <p className="pt-4 text-sm text-slate-400">Sin leads todavía. El formulario se activa desde hotspots CTA en el visor.</p>
+          ) : (
+            <div className="mt-4 space-y-2">
+              {leads.map((lead) => (
+                <div key={lead.id} className="flex flex-wrap items-start justify-between gap-3 rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200">
+                  <div className="min-w-0">
+                    <p className="font-black text-slate-900">{lead.email}</p>
+                    {lead.phone ? <p className="text-sm text-slate-500">{lead.phone}</p> : null}
+                    {lead.notes ? <p className="mt-1 text-sm text-slate-500 italic">"{lead.notes}"</p> : null}
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-xs font-bold text-slate-600">
+                      {lead.source}
+                    </span>
+                    <p className="mt-1 text-xs text-slate-400">
+                      {new Date(lead.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short', year: 'numeric' })}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 export default function PropertyDetailPage({ propertyId }: PropertyDetailPageProps): JSX.Element {
   const navigate = useNavigate();
   const { selectedProperty, fetchPropertyById, isLoading, error, clearSelectedProperty } = usePropertyStore();
+  const isAuthenticated = useAuthStore((s) => s.isAuthenticated);
   const primaryColor = '#7C3AED';
   const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummary | null>(null);
 
@@ -370,6 +446,13 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
               />
 
               <AnalyticsDashboard summary={analyticsSummary} primaryColor={primaryColor} spaces={property.spaces} />
+
+              {isAuthenticated ? (
+                <PropertyLeadsList
+                  propertyId={property.id}
+                  leadCount={property.leads ?? 0}
+                />
+              ) : null}
             </div>
 
             <aside className="rounded-[1.6rem] bg-slate-50 p-6 ring-1 ring-slate-200">
