@@ -61,11 +61,12 @@ export async function uploadAsset(request: UploadRequest, response: Response): P
         tenantId
       }
     });
-  } catch {
+  } catch (err) {
     await safeDeleteTempFile(file.path);
+    const message = err instanceof Error ? err.message : 'No se ha podido subir el archivo.';
     response.status(500).json({
       success: false,
-      error: 'No se ha podido subir el archivo.'
+      error: message
     });
   }
 }

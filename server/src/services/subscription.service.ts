@@ -1,6 +1,7 @@
 import { prisma } from '../index.js';
 import Stripe from 'stripe';
 import { env } from '../config/env.js';
+import { AppError } from '../middleware/errorHandler.js';
 type Plan = 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
 type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'EXPIRED';
 
@@ -19,7 +20,7 @@ let stripeClient: Stripe | null = null;
 
 function getStripe(): Stripe {
   if (!env.STRIPE_SECRET_KEY) {
-    throw new Error('STRIPE_SECRET_KEY no está configurada.');
+    throw new AppError(503, 'Stripe no configurado: falta STRIPE_SECRET_KEY en las variables de entorno.');
   }
 
   if (!stripeClient) {
@@ -248,7 +249,7 @@ export async function createCheckoutSession(input: CheckoutSessionInput) {
   const priceId = getPriceIdForPlan(plan);
 
   if (!priceId) {
-    throw new Error(`No existe Price ID configurado para el plan ${plan}.`);
+    throw new AppError(503, `Stripe no configurado: falta STRIPE_PRICE_${plan} en las variables de entorno.`);
   }
 
   const stripe = getStripe();
@@ -416,7 +417,7 @@ async function handleCustomerSubscriptionDeleted(subscription: Stripe.Subscripti
 
 export async function handleStripeWebhook(rawBody: Buffer, signature: string) {
   if (!env.STRIPE_WEBHOOK_SECRET) {
-    throw new Error('STRIPE_WEBHOOK_SECRET no está configurada.');
+    throw new AppError(503, 'Stripe no configurado: falta STRIPE_WEBHOOK_SECRET en las variables de entorno.');
   }
 
   const stripe = getStripe();

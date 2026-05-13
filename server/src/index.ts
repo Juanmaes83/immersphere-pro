@@ -63,6 +63,28 @@ app.get('/health', (_request, response) => {
   });
 });
 
+app.get('/health/services', (_request, response) => {
+  const stripeKey = env.STRIPE_SECRET_KEY;
+  const stripeConfigured = Boolean(stripeKey && stripeKey.startsWith('sk_'));
+  response.status(200).json({
+    stripe: {
+      configured: stripeConfigured,
+      keyPrefix: stripeKey ? stripeKey.slice(0, 7) + '...' : '(vacío)',
+      webhookSecret: Boolean(env.STRIPE_WEBHOOK_SECRET),
+      prices: {
+        professional: Boolean(env.STRIPE_PRICE_PROFESSIONAL),
+        enterprise: Boolean(env.STRIPE_PRICE_ENTERPRISE)
+      }
+    },
+    cloudinary: {
+      configured: Boolean(env.CLOUDINARY_CLOUD_NAME && env.CLOUDINARY_API_KEY && env.CLOUDINARY_API_SECRET),
+      cloudName: env.CLOUDINARY_CLOUD_NAME || '(vacío)',
+      apiKey: env.CLOUDINARY_API_KEY ? env.CLOUDINARY_API_KEY.slice(0, 6) + '...' : '(vacío)',
+      apiSecret: env.CLOUDINARY_API_SECRET ? '***' + env.CLOUDINARY_API_SECRET.slice(-4) : '(vacío)'
+    }
+  });
+});
+
 app.use('/api/auth', authRoutes);
 app.use('/api/properties', propertiesRoutes);
 app.use('/api/uploads', uploadsRoutes);
