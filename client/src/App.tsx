@@ -1646,6 +1646,8 @@ function SettingsPage(): JSX.Element {
   const [portalLoading, setPortalLoading] = useState(false);
   const [logoUploading, setLogoUploading] = useState(false);
   const [settingsMsg, setSettingsMsg] = useState<string | null>(null);
+  const [webhookInput, setWebhookInput] = useState(user?.tenant.webhookUrl ?? '');
+  const [webhookSaving, setWebhookSaving] = useState(false);
 
   useEffect(() => {
     void loadBillingState();
@@ -1696,6 +1698,24 @@ function SettingsPage(): JSX.Element {
     } finally {
       setLogoUploading(false);
       event.target.value = '';
+    }
+  }
+
+  async function handleSaveWebhook(): Promise<void> {
+    const url = webhookInput.trim();
+    if (url && !url.startsWith('https://')) {
+      setSettingsMsg('La URL del webhook debe empezar por https://');
+      return;
+    }
+    setWebhookSaving(true);
+    setSettingsMsg(null);
+    try {
+      await unwrapApiResponse(api.put('/tenants/settings', { webhookUrl: url }));
+      setSettingsMsg('Webhook guardado correctamente.');
+    } catch {
+      setSettingsMsg('Error al guardar el webhook.');
+    } finally {
+      setWebhookSaving(false);
     }
   }
 
@@ -1758,6 +1778,29 @@ function SettingsPage(): JSX.Element {
             </label>
             <p className="mt-1.5 text-xs text-slate-400">PNG, JPG, WEBP o SVG. Recomendado 400×400 px.</p>
           </div>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Webhook de leads</p>
+        <p className="mt-1 text-sm text-slate-500">Cada nuevo lead enviará un POST JSON a esta URL. Debe ser <code className="rounded bg-slate-100 px-1 text-xs">https://</code>.</p>
+        <div className="mt-4 flex gap-3">
+          <input
+            type="url"
+            value={webhookInput}
+            onChange={(e) => setWebhookInput(e.target.value)}
+            placeholder="https://tu-crm.com/webhook/leads"
+            className="brand-focus flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none"
+          />
+          <button
+            type="button"
+            disabled={webhookSaving}
+            onClick={() => { void handleSaveWebhook(); }}
+            className="rounded-2xl px-5 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50"
+            style={bgStyle}
+          >
+            {webhookSaving ? 'Guardando...' : 'Guardar'}
+          </button>
         </div>
       </div>
 

@@ -182,13 +182,20 @@ async function sendLeadEmail(lead: LeadRecord): Promise<void> {
 }
 
 async function fireLeadWebhook(lead: LeadRecord): Promise<void> {
-  const webhookUrl = env.LEAD_NOTIFICATION_WEBHOOK_URL;
-  if (!webhookUrl) return;
-
   const property = await prisma.property.findUnique({
     where: { id: lead.propertyId },
-    select: { title: true, tenantId: true }
+    select: {
+      title: true,
+      tenantId: true,
+      tenant: { select: { webhookUrl: true } }
+    }
   });
+
+  const webhookUrl =
+    (property?.tenant?.webhookUrl ?? '').trim() ||
+    (env.LEAD_NOTIFICATION_WEBHOOK_URL ?? '').trim();
+
+  if (!webhookUrl) return;
 
   await fetch(webhookUrl, {
     method: 'POST',
