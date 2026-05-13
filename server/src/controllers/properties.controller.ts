@@ -151,6 +151,16 @@ export async function createProperty(request: Request, response: Response): Prom
   });
 }
 
+export async function incrementPropertyViews(request: Request, response: Response): Promise<void> {
+  await propertiesService.incrementPropertyViews(request.params.id);
+  response.status(204).end();
+}
+
+export async function getPropertyStats(request: Request, response: Response): Promise<void> {
+  const data = await propertiesService.getTopProperties(6);
+  response.status(200).json({ success: true, data });
+}
+
 export async function updateProperty(request: Request, response: Response): Promise<void> {
   if (!request.auth) {
     throw new AppError(401, 'Usuario no autenticado.');

@@ -349,9 +349,16 @@ function GalleryPage(): JSX.Element {
   const navigate = useNavigate();
   const { properties, fetchProperties, isLoading, error } = usePropertyStore();
   const [query, setQuery] = useState('');
+  const [topIds, setTopIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     void fetchProperties({ status: 'PUBLISHED' });
+    api.get('/properties/stats')
+      .then((res) => {
+        const items = (res.data as { data: PropertyStatItem[] }).data ?? [];
+        setTopIds(new Set(items.filter((p) => p.views > 0).map((p) => p.id)));
+      })
+      .catch(() => {});
   }, [fetchProperties]);
 
   const filteredProperties = useMemo(() => {
@@ -386,9 +393,21 @@ function GalleryPage(): JSX.Element {
       {error ? <div className="mt-6 rounded-2xl bg-red-50 p-4 font-bold text-red-700">{error}</div> : null}
       {isLoading ? <p className="mt-8 font-bold text-slate-500 dark:text-slate-400">Cargando propiedades...</p> : null}
 
+      {topIds.size > 0 && !query ? (
+        <div className="mt-8">
+          <p className="mb-4 text-sm font-black uppercase tracking-[0.2em] text-amber-600">🔥 Más vistas</p>
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {filteredProperties.filter((p) => topIds.has(p.id)).slice(0, 3).map((property) => (
+              <PropertyCard key={property.id} property={property} onOpen={() => navigate(`/property/${property.id}`)} hotBadge />
+            ))}
+          </div>
+          <p className="mt-8 mb-4 text-sm font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Todas las propiedades</p>
+        </div>
+      ) : null}
+
       <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredProperties.map((property) => (
-          <PropertyCard key={property.id} property={property} onOpen={() => navigate(`/property/${property.id}`)} />
+          <PropertyCard key={property.id} property={property} onOpen={() => navigate(`/property/${property.id}`)} hotBadge={topIds.has(property.id)} />
         ))}
       </div>
     </main>
@@ -439,6 +458,17 @@ function PropertyCard({ property, onOpen, hotBadge }: { property: ImmersivePrope
       </div>
     </article>
   );
+}
+
+interface PropertyStatItem {
+  id: string;
+  title: string;
+  coverImage: string;
+  type: string;
+  price: number;
+  area: number;
+  rooms: number;
+  views: number;
 }
 
 interface PublicProperty {

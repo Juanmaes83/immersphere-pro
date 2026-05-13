@@ -493,6 +493,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
 
   useEffect(() => {
     void fetchPropertyById(propertyId);
+    fetch(`${API_BASE}/properties/${propertyId}/view`, { method: 'POST' }).catch(() => {});
 
     return () => {
       clearSelectedProperty();

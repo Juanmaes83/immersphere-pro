@@ -476,6 +476,31 @@ export async function updateProperty(tenantId: string, propertyId: string, input
   });
 }
 
+export async function incrementPropertyViews(propertyId: string) {
+  await prisma.property.updateMany({
+    where: { id: propertyId, status: PropertyStatus.PUBLISHED },
+    data: { views: { increment: 1 } }
+  });
+}
+
+export async function getTopProperties(limit = 6) {
+  return prisma.property.findMany({
+    where: { status: PropertyStatus.PUBLISHED },
+    select: {
+      id: true,
+      title: true,
+      coverImage: true,
+      type: true,
+      price: true,
+      area: true,
+      rooms: true,
+      views: true
+    },
+    orderBy: { views: 'desc' },
+    take: limit
+  });
+}
+
 export async function deleteProperty(tenantId: string, propertyId: string) {
   const existingProperty = await prisma.property.findFirst({
     where: { id: propertyId, tenantId }

@@ -4,6 +4,8 @@ import {
   listProperties,
   getPropertyById,
   unlockProperty,
+  incrementPropertyViews,
+  getPropertyStats,
   createProperty,
   updateProperty,
   deleteProperty,
@@ -42,6 +44,7 @@ propertiesRoutes.get('/:propertyId/embed', async (req: Request, res: Response) =
   res.status(200).json({ success: true, data: { embedUrl, iframeCode, propertyTitle: property.title } });
 });
 
+propertiesRoutes.get('/stats', getPropertyStats);
 propertiesRoutes.get('/', requireAuth, listProperties);
 propertiesRoutes.post('/', requireAuth, enforcePropertyLimit, createProperty);
 
@@ -59,5 +62,6 @@ propertiesRoutes.delete('/:propertyId/spaces/:spaceId/assets/:assetId', requireA
 
 propertiesRoutes.get('/:id', optionalAuth, getPropertyById);
 propertiesRoutes.post('/:id/unlock', unlockProperty);
+propertiesRoutes.post('/:id/view', incrementPropertyViews);
 propertiesRoutes.put('/:id', requireAuth, updateProperty);
 propertiesRoutes.delete('/:id', requireAuth, deleteProperty);
