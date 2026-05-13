@@ -214,8 +214,9 @@ export default function DollhouseViewer({
     renderer.domElement.addEventListener('pointerdown', onPointerDown);
 
     function onResize(): void {
-      const nw = container.clientWidth;
-      const nh = container.clientHeight;
+      if (!containerRef.current) return;
+      const nw = containerRef.current.clientWidth;
+      const nh = containerRef.current.clientHeight;
       camera.aspect = nw / nh;
       camera.updateProjectionMatrix();
       renderer.setSize(nw, nh);

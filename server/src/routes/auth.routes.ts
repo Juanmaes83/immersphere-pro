@@ -1,5 +1,6 @@
 import { Router, type NextFunction, type Request, type Response } from 'express';
 import * as authController from '../controllers/auth.controller.js';
+import { authRateLimit } from '../middleware/rateLimit.js';
 
 export const authRoutes = Router();
 
@@ -11,7 +12,7 @@ function asyncHandler(controller: AsyncController) {
   };
 }
 
-authRoutes.post('/register', asyncHandler(authController.register));
-authRoutes.post('/login', asyncHandler(authController.login));
+authRoutes.post('/register', authRateLimit, asyncHandler(authController.register));
+authRoutes.post('/login', authRateLimit, asyncHandler(authController.login));
 authRoutes.post('/refresh', asyncHandler(authController.refresh));
 
