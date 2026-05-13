@@ -19,12 +19,14 @@ interface CustomerPortalInput {
 let stripeClient: Stripe | null = null;
 
 function getStripe(): Stripe {
-  if (!env.STRIPE_SECRET_KEY) {
-    throw new AppError(503, 'Stripe no configurado: falta STRIPE_SECRET_KEY en las variables de entorno.');
+  const key = env.STRIPE_SECRET_KEY;
+  if (!key || !key.startsWith('sk_')) {
+    const hint = key ? `valor actual empieza por "${key.slice(0, 10)}..." (debe empezar por sk_test_ o sk_live_)` : 'STRIPE_SECRET_KEY está vacía';
+    throw new AppError(503, `Stripe no configurado: ${hint}.`);
   }
 
   if (!stripeClient) {
-    stripeClient = new Stripe(env.STRIPE_SECRET_KEY);
+    stripeClient = new Stripe(key);
   }
 
   return stripeClient;
