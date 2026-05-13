@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
-import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams, useMatch } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams, useMatch, useSearchParams } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
@@ -9,7 +9,8 @@ import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type CreateAssetPayload, type CreatePropertyPayload, type CreateSpacePayload, type ImmersiveProperty } from '@/store/propertyStore';
-import type { Hotspot } from '@/types/viewer';
+import type { Hotspot, Space } from '@/types/viewer';
+import PanoramaViewer from '@/components/viewer/PanoramaViewer';
 import PropertyDetailPage from '@/pages/PropertyDetailPage';
 import TenantAnalyticsDashboard from '@/pages/TenantAnalyticsDashboard';
 
@@ -350,6 +351,8 @@ function GalleryPage(): JSX.Element {
   const { properties, fetchProperties, isLoading, error } = usePropertyStore();
   const [query, setQuery] = useState('');
   const [topIds, setTopIds] = useState<Set<string>>(new Set());
+  const [compareMode, setCompareMode] = useState(false);
+  const [selectedForCompare, setSelectedForCompare] = useState<string[]>([]);
 
   useEffect(() => {
     void fetchProperties({ status: 'PUBLISHED' });
@@ -363,16 +366,22 @@ function GalleryPage(): JSX.Element {
 
   const filteredProperties = useMemo(() => {
     const normalizedQuery = query.trim().toLowerCase();
-
     if (!normalizedQuery) return properties;
-
     return properties.filter((property) => `${property.title} ${property.description}`.toLowerCase().includes(normalizedQuery));
   }, [properties, query]);
 
-  const { colorStyle } = useBrand();
+  function toggleCompareSelection(id: string): void {
+    setSelectedForCompare((prev) => {
+      if (prev.includes(id)) return prev.filter((i) => i !== id);
+      if (prev.length >= 3) return prev;
+      return [...prev, id];
+    });
+  }
+
+  const { colorStyle, bgStyle } = useBrand();
 
   return (
-    <main className="mx-auto max-w-7xl px-5 py-10">
+    <main className={`mx-auto max-w-7xl px-5 py-10 ${compareMode && selectedForCompare.length > 0 ? 'pb-28' : ''}`}>
       <Helmet>
         <title>Galería de propiedades · Immersphere Pro</title>
         <meta name="description" content="Explora propiedades con tours virtuales inmersivos en 360° y Gaussian Splats. Visita los espacios como si estuvieras allí." />
@@ -382,23 +391,50 @@ function GalleryPage(): JSX.Element {
           <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Galería pública</p>
           <h1 className="mt-3 text-5xl font-black tracking-tight">Propiedades publicadas</h1>
         </div>
-        <input
-          value={query}
-          onChange={(event) => setQuery(event.target.value)}
-          placeholder="Buscar propiedad"
-          className="brand-focus rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 md:w-80"
-        />
+        <div className="flex items-center gap-3">
+          <input
+            value={query}
+            onChange={(event) => setQuery(event.target.value)}
+            placeholder="Buscar propiedad"
+            className="brand-focus rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 md:w-72"
+          />
+          <button
+            type="button"
+            onClick={() => { setCompareMode((prev) => !prev); setSelectedForCompare([]); }}
+            className={`rounded-2xl px-4 py-3 text-sm font-black transition ${
+              compareMode
+                ? 'bg-violet-600 text-white'
+                : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white'
+            }`}
+          >
+            {compareMode ? '✕ Cancelar' : '⊞ Comparar'}
+          </button>
+        </div>
       </div>
+
+      {compareMode && (
+        <p className="mt-4 text-sm font-semibold text-slate-500 dark:text-slate-400">
+          Selecciona 2 o 3 propiedades para comparar. {selectedForCompare.length}/3 seleccionadas.
+        </p>
+      )}
 
       {error ? <div className="mt-6 rounded-2xl bg-red-50 p-4 font-bold text-red-700">{error}</div> : null}
       {isLoading ? <p className="mt-8 font-bold text-slate-500 dark:text-slate-400">Cargando propiedades...</p> : null}
 
-      {topIds.size > 0 && !query ? (
+      {topIds.size > 0 && !query && !compareMode ? (
         <div className="mt-8">
           <p className="mb-4 text-sm font-black uppercase tracking-[0.2em] text-amber-600">🔥 Más vistas</p>
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {filteredProperties.filter((p) => topIds.has(p.id)).slice(0, 3).map((property) => (
-              <PropertyCard key={property.id} property={property} onOpen={() => navigate(`/property/${property.id}`)} hotBadge />
+              <PropertyCard
+                key={property.id}
+                property={property}
+                onOpen={() => navigate(`/property/${property.id}`)}
+                hotBadge
+                compareMode={compareMode}
+                isSelectedForCompare={selectedForCompare.includes(property.id)}
+                onToggleCompare={toggleCompareSelection}
+              />
             ))}
           </div>
           <p className="mt-8 mb-4 text-sm font-black uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">Todas las propiedades</p>
@@ -407,14 +443,56 @@ function GalleryPage(): JSX.Element {
 
       <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredProperties.map((property) => (
-          <PropertyCard key={property.id} property={property} onOpen={() => navigate(`/property/${property.id}`)} hotBadge={topIds.has(property.id)} />
+          <PropertyCard
+            key={property.id}
+            property={property}
+            onOpen={() => navigate(`/property/${property.id}`)}
+            hotBadge={!compareMode && topIds.has(property.id)}
+            compareMode={compareMode}
+            isSelectedForCompare={selectedForCompare.includes(property.id)}
+            onToggleCompare={toggleCompareSelection}
+          />
         ))}
       </div>
+
+      {/* Compare bottom bar */}
+      {compareMode && selectedForCompare.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 py-4 shadow-2xl backdrop-blur dark:border-slate-700 dark:bg-slate-900/95">
+          <div className="mx-auto flex max-w-7xl items-center justify-between px-5">
+            <p className="font-black dark:text-white">
+              {selectedForCompare.length} propiedad{selectedForCompare.length !== 1 ? 'es' : ''} seleccionada{selectedForCompare.length !== 1 ? 's' : ''}
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate(`/compare?ids=${selectedForCompare.join(',')}`)}
+              disabled={selectedForCompare.length < 2}
+              className="rounded-full px-6 py-2.5 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-40"
+              style={bgStyle}
+            >
+              Ver comparación →
+            </button>
+          </div>
+        </div>
+      )}
     </main>
   );
 }
 
-function PropertyCard({ property, onOpen, hotBadge }: { property: ImmersiveProperty; onOpen: () => void; hotBadge?: boolean }): JSX.Element {
+function PropertyCard({
+  property,
+  onOpen,
+  hotBadge,
+  compareMode,
+  isSelectedForCompare,
+  onToggleCompare
+}: {
+  property: ImmersiveProperty;
+  onOpen: () => void;
+  hotBadge?: boolean;
+  compareMode?: boolean;
+  isSelectedForCompare?: boolean;
+  onToggleCompare?: (id: string) => void;
+}): JSX.Element {
   const { bgStyle, colorStyle } = useBrand();
   const thumb = property.thumbnailUrl;
   return (
@@ -432,7 +510,19 @@ function PropertyCard({ property, onOpen, hotBadge }: { property: ImmersivePrope
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
-          {hotBadge ? (
+          {compareMode ? (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onToggleCompare?.(property.id); }}
+              className={`absolute left-4 top-4 z-10 flex h-7 w-7 items-center justify-center rounded-full border-2 backdrop-blur transition ${
+                isSelectedForCompare
+                  ? 'border-violet-400 bg-violet-600 text-white'
+                  : 'border-white/70 bg-black/40 text-white/50 hover:border-white hover:bg-black/60'
+              }`}
+            >
+              {isSelectedForCompare ? '✓' : ''}
+            </button>
+          ) : hotBadge ? (
             <span className="absolute left-4 top-4 rounded-full bg-amber-400 px-3 py-1 text-xs font-black text-slate-950">
               🔥 Más vistas
             </span>
@@ -2138,6 +2228,283 @@ function BillingCancelledPage(): JSX.Element {
   );
 }
 
+function getCompareThumbnail(raw: Record<string, unknown>): string {
+  const cover = raw.coverImage as string | undefined;
+  if (cover && !cover.startsWith('data:') && !cover.startsWith('demo://')) return cover;
+  const spaces = (raw.spaces as Array<{ assets: Array<{ thumbnail?: string; url?: string }> }> | undefined) ?? [];
+  for (const space of spaces) {
+    for (const asset of space.assets ?? []) {
+      for (const u of [asset.thumbnail, asset.url]) {
+        if (u && !u.startsWith('data:') && !u.startsWith('demo://')) return u;
+      }
+    }
+  }
+  return '';
+}
+
+interface CompareData {
+  id: string;
+  title: string;
+  description: string;
+  price: number;
+  area: number;
+  rooms: number;
+  bathrooms: number;
+  address: string;
+  thumbnailUrl: string;
+  isPasswordProtected?: boolean;
+  spaces: Space[];
+  views?: number;
+}
+
+function toCompareData(raw: Record<string, unknown>): CompareData {
+  if (raw.isPasswordProtected) {
+    return {
+      id: String(raw.id ?? ''),
+      title: String(raw.title ?? 'Propiedad protegida'),
+      description: '',
+      price: 0,
+      area: 0,
+      rooms: 0,
+      bathrooms: 0,
+      address: '',
+      thumbnailUrl: '',
+      isPasswordProtected: true,
+      spaces: []
+    };
+  }
+  return {
+    id: String(raw.id ?? ''),
+    title: String(raw.title ?? ''),
+    description: String(raw.description ?? ''),
+    price: Number(raw.price ?? 0),
+    area: Number(raw.area ?? 0),
+    rooms: Number(raw.rooms ?? 0),
+    bathrooms: Number(raw.bathrooms ?? 0),
+    address: String(raw.address ?? ''),
+    thumbnailUrl: getCompareThumbnail(raw),
+    isPasswordProtected: false,
+    spaces: (raw.spaces ?? []) as Space[],
+    views: raw.views !== undefined ? Number(raw.views) : undefined
+  };
+}
+
+function CompareColumn({ propertyId }: { propertyId: string }): JSX.Element {
+  const navigate = useNavigate();
+  const { bgStyle } = useBrand();
+  const [data, setData] = useState<CompareData | null>(null);
+  const [fetchError, setFetchError] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [viewerVisible, setViewerVisible] = useState(false);
+  const [passwordInput, setPasswordInput] = useState('');
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [unlocking, setUnlocking] = useState(false);
+
+  useEffect(() => {
+    api.get(`/properties/${propertyId}`)
+      .then((res) => {
+        const raw = (res.data as { data: Record<string, unknown> }).data;
+        setData(toCompareData(raw));
+      })
+      .catch(() => setFetchError(true))
+      .finally(() => setLoading(false));
+  }, [propertyId]);
+
+  async function handleUnlock(e: React.FormEvent): Promise<void> {
+    e.preventDefault();
+    setUnlocking(true);
+    setPasswordError(null);
+    try {
+      const res = await api.post(`/properties/${propertyId}/unlock`, { password: passwordInput });
+      const raw = (res.data as { data: Record<string, unknown> }).data;
+      setData(toCompareData(raw));
+    } catch {
+      setPasswordError('Contraseña incorrecta.');
+    } finally {
+      setUnlocking(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="animate-pulse rounded-[1.7rem] bg-slate-100 dark:bg-slate-800" style={{ minHeight: '420px' }} />
+    );
+  }
+
+  if (fetchError || !data) {
+    return (
+      <div className="flex min-h-[420px] items-center justify-center rounded-[1.7rem] bg-slate-100 p-6 text-center dark:bg-slate-800">
+        <p className="text-sm font-semibold text-slate-400">Propiedad no encontrada.</p>
+      </div>
+    );
+  }
+
+  if (data.isPasswordProtected) {
+    return (
+      <div className="overflow-hidden rounded-[1.7rem] bg-white ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+        <div className="flex aspect-[4/3] items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600">
+          <span className="text-5xl">🔒</span>
+        </div>
+        <div className="p-5">
+          <h3 className="text-xl font-black dark:text-white">{data.title}</h3>
+          <p className="mt-1 text-sm text-slate-500">Protegida con contraseña</p>
+          <form onSubmit={(e) => void handleUnlock(e)} className="mt-4 flex flex-col gap-3">
+            <input
+              type="password"
+              value={passwordInput}
+              onChange={(e) => setPasswordInput(e.target.value)}
+              placeholder="Contraseña"
+              className="rounded-2xl border border-slate-200 px-4 py-2.5 text-sm outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+            />
+            {passwordError && <p className="text-xs font-semibold text-red-500">{passwordError}</p>}
+            <button
+              type="submit"
+              disabled={unlocking || !passwordInput}
+              className="rounded-2xl px-4 py-2.5 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-40"
+              style={bgStyle}
+            >
+              {unlocking ? 'Verificando…' : 'Acceder'}
+            </button>
+          </form>
+        </div>
+      </div>
+    );
+  }
+
+  const firstPanoramaSpace = data.spaces.find((s) => s.assets.some((a) => a.type === 'panorama_360'));
+  const firstPanoramaAsset = firstPanoramaSpace?.assets.find((a) => a.type === 'panorama_360');
+  const hasSplat = data.spaces.some((s) => s.assets.some((a) => a.type === 'gaussian_splat'));
+
+  return (
+    <div className="flex flex-col overflow-hidden rounded-[1.7rem] bg-white ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+      {/* Thumbnail */}
+      <div className="relative aspect-[4/3] bg-gradient-to-br from-cyan-400/35 via-violet-500/20 to-slate-950">
+        {data.thumbnailUrl ? (
+          <img src={data.thumbnailUrl} alt={data.title} className="h-full w-full object-cover" />
+        ) : (
+          <div className="absolute inset-0 flex items-center justify-center">
+            <span className="text-3xl text-white/30">✦</span>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" />
+        <div className="absolute bottom-4 left-4 right-4 text-white">
+          <h3 className="text-xl font-black leading-tight">{data.title}</h3>
+          <p className="mt-0.5 text-sm text-white/75">{data.area} m² · {data.rooms} hab.</p>
+        </div>
+      </div>
+
+      {/* Ficha */}
+      <div className="flex flex-1 flex-col gap-3 p-5">
+        <p className="text-xl font-black dark:text-white">{formatCurrency(data.price)}</p>
+        {data.description && (
+          <p className="line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{data.description}</p>
+        )}
+        {data.address && (
+          <p className="text-xs text-slate-400">📍 {data.address}</p>
+        )}
+        <div className="flex flex-wrap gap-2 text-xs">
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 font-bold dark:bg-slate-700 dark:text-white">{data.bathrooms} baños</span>
+          <span className="rounded-full bg-slate-100 px-2.5 py-1 font-bold dark:bg-slate-700 dark:text-white">{data.spaces.length} estancias</span>
+          {data.views !== undefined && data.views > 0 && (
+            <span className="rounded-full bg-slate-100 px-2.5 py-1 font-bold dark:bg-slate-700 dark:text-white">👁 {data.views}</span>
+          )}
+        </div>
+
+        {/* Viewer actions */}
+        {hasSplat && (
+          <button
+            type="button"
+            onClick={() => navigate(`/property/${propertyId}`)}
+            className="w-full rounded-2xl border border-slate-200 px-4 py-2.5 text-sm font-black transition hover:bg-slate-50 dark:border-slate-600 dark:text-white dark:hover:bg-slate-700"
+          >
+            Abrir en visor completo →
+          </button>
+        )}
+        {firstPanoramaAsset && !viewerVisible && (
+          <button
+            type="button"
+            onClick={() => setViewerVisible(true)}
+            className="w-full rounded-2xl px-4 py-2.5 text-sm font-black text-white transition hover:opacity-90"
+            style={bgStyle}
+          >
+            ▶ Cargar visor 360°
+          </button>
+        )}
+        {viewerVisible && firstPanoramaAsset && (
+          <button
+            type="button"
+            onClick={() => setViewerVisible(false)}
+            className="w-full rounded-2xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-500 hover:bg-slate-50 dark:border-slate-600 dark:text-slate-400 dark:hover:bg-slate-700"
+          >
+            Cerrar visor
+          </button>
+        )}
+      </div>
+
+      {/* Lazy panorama viewer */}
+      {viewerVisible && firstPanoramaSpace && firstPanoramaAsset && (
+        <div className="border-t border-slate-100 dark:border-slate-700">
+          <PanoramaViewer
+            propertyId={propertyId}
+            spaceId={firstPanoramaSpace.id}
+            asset={firstPanoramaAsset}
+            onHotspotClick={() => {}}
+            onAnalyticsEvent={() => {}}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+function ComparePage(): JSX.Element {
+  const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+  const { bgStyle } = useBrand();
+  const ids = (searchParams.get('ids') ?? '').split(',').filter(Boolean).slice(0, 3);
+
+  if (ids.length === 0) {
+    return (
+      <main className="mx-auto max-w-4xl px-5 py-20 text-center">
+        <h1 className="text-4xl font-black dark:text-white">Sin propiedades seleccionadas</h1>
+        <p className="mt-4 text-slate-500">Selecciona 2 o 3 propiedades desde la galería para comparar.</p>
+        <button
+          type="button"
+          onClick={() => navigate('/gallery')}
+          className="mt-8 rounded-full px-6 py-3 text-sm font-black text-white transition hover:opacity-90"
+          style={bgStyle}
+        >
+          Ir a la galería
+        </button>
+      </main>
+    );
+  }
+
+  return (
+    <main className="mx-auto max-w-7xl px-5 py-10">
+      <div className="mb-8 flex items-center gap-4">
+        <button
+          type="button"
+          onClick={() => navigate('/gallery')}
+          className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50 dark:border-slate-700 dark:text-white dark:hover:bg-slate-800"
+        >
+          ← Galería
+        </button>
+        <h1 className="text-3xl font-black dark:text-white">Comparar propiedades</h1>
+      </div>
+      <div
+        className={`grid grid-cols-1 gap-6 ${
+          ids.length === 2 ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3'
+        }`}
+      >
+        {ids.map((id) => (
+          <CompareColumn key={id} propertyId={id} />
+        ))}
+      </div>
+    </main>
+  );
+}
+
 function formatCurrency(value: number): string {
   if (!value) return 'Consultar';
 
@@ -2344,6 +2711,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
+        <Route path="/compare" element={<ComparePage />} />
         <Route path="/property/:id" element={<PropertyRoutePage />} />
         <Route path="/embed/:id" element={<EmbedRoutePage />} />
         <Route path="/agency/:slug" element={<AgencyPage />} />
