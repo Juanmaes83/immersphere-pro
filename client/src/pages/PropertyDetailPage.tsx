@@ -1,8 +1,24 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import UniversalViewer from '@/components/viewer/UniversalViewer';
+import { api, unwrapApiResponse } from '@/services/api';
 import { usePropertyStore, type ImmersiveProperty } from '@/store/propertyStore';
 import type { ViewerEvent } from '@/types/viewer';
+
+interface AnalyticsSummary {
+  totalEvents: number;
+  hotspotClicks: number;
+  spaceChanges: number;
+  leadCtas: number;
+  lastEvents: Array<{
+    id: string;
+    type: string;
+    label: string | null;
+    spaceId: string | null;
+    sessionId: string | null;
+    createdAt: string;
+  }>;
+}
 
 interface PropertyDetailPageProps {
   propertyId: string;
@@ -61,6 +77,7 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
   const navigate = useNavigate();
   const { selectedProperty, fetchPropertyById, isLoading, error, clearSelectedProperty } = usePropertyStore();
   const primaryColor = '#7C3AED';
+  const [analyticsSummary, setAnalyticsSummary] = useState<AnalyticsSummary | null>(null);
 
   useEffect(() => {
     void fetchPropertyById(propertyId);
@@ -70,12 +87,25 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
     };
   }, [clearSelectedProperty, fetchPropertyById, propertyId]);
 
+  useEffect(() => {
+    unwrapApiResponse<AnalyticsSummary>(api.get(`/analytics/properties/${propertyId}/summary`))
+      .then((data) => { setAnalyticsSummary(data); })
+      .catch(() => {});
+  }, [propertyId]);
+
   function handleAnalyticsEvent(event: ViewerEvent): void {
     window.dispatchEvent(
       new CustomEvent('immersphere:viewer-event', {
         detail: event
       })
     );
+    if (event.type === 'space_change' || event.type === 'hotspot_click' || event.type === 'cta_lead') {
+      setTimeout(() => {
+        unwrapApiResponse<AnalyticsSummary>(api.get(`/analytics/properties/${propertyId}/summary`))
+          .then((data) => { setAnalyticsSummary(data); })
+          .catch(() => {});
+      }, 800);
+    }
   }
 
   if (isLoading) {
@@ -145,6 +175,50 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
                 className="mt-8"
                 onAnalyticsEvent={handleAnalyticsEvent}
               />
+
+              {analyticsSummary ? (
+                <section className="mt-6 rounded-[1.6rem] bg-slate-950 p-6 text-white">
+                  <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
+                    Analytics del visor
+                  </p>
+                  <div className="mt-5 grid grid-cols-2 gap-4 md:grid-cols-4">
+                    <div className="rounded-2xl bg-white/10 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">Eventos</p>
+                      <p className="mt-2 text-3xl font-black">{analyticsSummary.totalEvents}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/10 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">Cambios espacio</p>
+                      <p className="mt-2 text-3xl font-black">{analyticsSummary.spaceChanges}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/10 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">Hotspots</p>
+                      <p className="mt-2 text-3xl font-black">{analyticsSummary.hotspotClicks}</p>
+                    </div>
+                    <div className="rounded-2xl bg-white/10 p-4">
+                      <p className="text-xs font-bold uppercase tracking-[0.14em] text-white/50">Lead CTAs</p>
+                      <p className="mt-2 text-3xl font-black">{analyticsSummary.leadCtas}</p>
+                    </div>
+                  </div>
+                  {analyticsSummary.lastEvents.length > 0 ? (
+                    <div className="mt-5">
+                      <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-white/40">
+                        Últimos eventos
+                      </p>
+                      <div className="space-y-2">
+                        {analyticsSummary.lastEvents.slice(0, 5).map((ev) => (
+                          <div key={ev.id} className="flex items-center justify-between rounded-xl bg-white/[0.06] px-4 py-2 text-sm">
+                            <span className="font-black text-cyan-300">{ev.type}</span>
+                            {ev.label ? <span className="text-white/60">{ev.label}</span> : null}
+                            <span className="text-white/35 text-xs">
+                              {new Date(ev.createdAt).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null}
+                </section>
+              ) : null}
             </div>
 
             <aside className="rounded-[1.6rem] bg-slate-50 p-6 ring-1 ring-slate-200">

@@ -1,6 +1,7 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import GaussianSplatViewer from '@/components/viewer/GaussianSplatViewer';
 import PanoramaViewer from '@/components/viewer/PanoramaViewer';
+import { AUTH_STORAGE_KEYS } from '@/services/api';
 import type {
   Hotspot,
   Space,
@@ -9,6 +10,24 @@ import type {
   ViewerAssetType,
   ViewerEvent
 } from '@/types/viewer';
+
+const API_BASE = (
+  import.meta.env.VITE_API_BASE_URL ??
+  import.meta.env.VITE_API_URL ??
+  'http://localhost:4000/api'
+).replace(/\/$/, '');
+
+function trackToBackend(payload: Record<string, unknown>): void {
+  const token = window.localStorage.getItem(AUTH_STORAGE_KEYS.accessToken);
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  if (token) headers['Authorization'] = `Bearer ${token}`;
+
+  fetch(`${API_BASE}/analytics/events`, {
+    method: 'POST',
+    headers,
+    body: JSON.stringify(payload)
+  }).catch(() => {});
+}
 
 function createViewerEvent(
   type: ViewerEvent['type'],
@@ -63,9 +82,21 @@ export default function UniversalViewer({
   const firstSpaceId = sortedSpaces[0]?.id ?? '';
   const [activeSpaceId, setActiveSpaceId] = useState(initialSpaceId ?? firstSpaceId);
   const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null);
+  const sessionId = useRef(`s-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
   const activeSpace = sortedSpaces.find((space) => space.id === activeSpaceId) ?? sortedSpaces[0];
   const activeAsset = selectPrimaryAsset(activeSpace);
+
+  useEffect(() => {
+    if (!activeSpace) return;
+    trackToBackend({
+      propertyId,
+      spaceId: activeSpace.id,
+      type: 'viewer_open',
+      sessionId: sessionId.current
+    });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function handleSpaceChange(spaceId: string): void {
     const nextSpace = sortedSpaces.find((space) => space.id === spaceId);
@@ -74,19 +105,38 @@ export default function UniversalViewer({
     setActiveSpaceId(spaceId);
     setActiveHotspot(null);
 
-    onAnalyticsEvent(
-      createViewerEvent('space_change', {
-        spaceId,
-        data: {
-          propertyId,
-          spaceName: nextSpace.name
-        }
-      })
-    );
+    const event = createViewerEvent('space_change', {
+      spaceId,
+      data: { propertyId, spaceName: nextSpace.name }
+    });
+    onAnalyticsEvent(event);
+    trackToBackend({
+      propertyId,
+      spaceId,
+      type: 'space_change',
+      label: nextSpace.name,
+      sessionId: sessionId.current
+    });
   }
 
   function handleHotspotClick(hotspot: Hotspot): void {
     setActiveHotspot(hotspot);
+
+    const event = createViewerEvent('hotspot_click', {
+      spaceId: activeSpace?.id,
+      assetId: activeAsset?.id,
+      hotspotId: hotspot.id,
+      data: { propertyId, hotspotLabel: hotspot.label }
+    });
+    onAnalyticsEvent(event);
+    trackToBackend({
+      propertyId,
+      spaceId: activeSpace?.id,
+      assetId: activeAsset?.id,
+      type: 'hotspot_click',
+      label: hotspot.label,
+      sessionId: sessionId.current
+    });
 
     if (hotspot.type === 'navigation' && hotspot.targetSpaceId) {
       handleSpaceChange(hotspot.targetSpaceId);
@@ -96,17 +146,21 @@ export default function UniversalViewer({
   function handleLeadCta(): void {
     if (!activeHotspot || !activeSpace || !activeAsset) return;
 
-    onAnalyticsEvent(
-      createViewerEvent('cta_lead', {
-        spaceId: activeSpace.id,
-        assetId: activeAsset.id,
-        hotspotId: activeHotspot.id,
-        data: {
-          propertyId,
-          hotspotLabel: activeHotspot.label
-        }
-      })
-    );
+    const event = createViewerEvent('cta_lead', {
+      spaceId: activeSpace.id,
+      assetId: activeAsset.id,
+      hotspotId: activeHotspot.id,
+      data: { propertyId, hotspotLabel: activeHotspot.label }
+    });
+    onAnalyticsEvent(event);
+    trackToBackend({
+      propertyId,
+      spaceId: activeSpace.id,
+      assetId: activeAsset.id,
+      type: 'lead_cta',
+      label: activeHotspot.label,
+      sessionId: sessionId.current
+    });
   }
 
   if (!activeSpace || !activeAsset) {
