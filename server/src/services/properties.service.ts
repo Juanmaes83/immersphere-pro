@@ -443,3 +443,117 @@ export async function deleteProperty(tenantId: string, propertyId: string) {
 
 
 
+
+
+function buildHotspotsCreate(hotspots: HotspotInput[] | undefined) {
+  return (hotspots ?? []).map((hotspot) => ({
+    label: hotspot.label,
+    type: hotspot.type,
+    position: JSON.stringify(hotspot.position ?? { x: 50, y: 50 }),
+    body: hotspot.body ?? '',
+    metric: hotspot.metric ?? ''
+  }));
+}
+
+async function assertTenantAsset(tenantId: string, propertyId: string, spaceId: string, assetId: string) {
+  await assertTenantSpace(tenantId, propertyId, spaceId);
+
+  const asset = await prisma.asset.findFirst({
+    where: {
+      id: assetId,
+      spaceId
+    },
+    include: {
+      hotspots: true
+    }
+  });
+
+  if (!asset) {
+    throw new Error('Asset no encontrado.');
+  }
+
+  return asset;
+}
+
+export async function listAssets(tenantId: string, propertyId: string, spaceId: string) {
+  await assertTenantSpace(tenantId, propertyId, spaceId);
+
+  return prisma.asset.findMany({
+    where: { spaceId },
+    include: {
+      hotspots: true
+    },
+    orderBy: {
+      createdAt: 'asc'
+    }
+  });
+}
+
+export async function createAsset(tenantId: string, propertyId: string, spaceId: string, input: AssetInput) {
+  await assertTenantSpace(tenantId, propertyId, spaceId);
+
+  return prisma.asset.create({
+    data: {
+      spaceId,
+      type: input.type,
+      url: input.url,
+      thumbnail: input.thumbnail ?? '',
+      format: input.format,
+      size: input.size ?? 0,
+      hotspots: {
+        create: buildHotspotsCreate(input.hotspots)
+      }
+    },
+    include: {
+      hotspots: true
+    }
+  });
+}
+
+export async function updateAsset(
+  tenantId: string,
+  propertyId: string,
+  spaceId: string,
+  assetId: string,
+  input: Partial<AssetInput>
+) {
+  await assertTenantAsset(tenantId, propertyId, spaceId, assetId);
+
+  return prisma.$transaction(async (transaction) => {
+    const data: any = {};
+
+    if (input.type !== undefined) data.type = input.type;
+    if (input.url !== undefined) data.url = input.url;
+    if (input.thumbnail !== undefined) data.thumbnail = input.thumbnail ?? '';
+    if (input.format !== undefined) data.format = input.format;
+    if (input.size !== undefined) data.size = input.size ?? 0;
+
+    if (input.hotspots !== undefined) {
+      await transaction.hotspot.deleteMany({ where: { assetId } });
+      data.hotspots = {
+        create: buildHotspotsCreate(input.hotspots)
+      };
+    }
+
+    return transaction.asset.update({
+      where: { id: assetId },
+      data,
+      include: {
+        hotspots: true
+      }
+    });
+  });
+}
+
+export async function deleteAsset(tenantId: string, propertyId: string, spaceId: string, assetId: string) {
+  await assertTenantAsset(tenantId, propertyId, spaceId, assetId);
+
+  await prisma.asset.delete({
+    where: { id: assetId }
+  });
+
+  return {
+    id: assetId,
+    deleted: true
+  };
+}

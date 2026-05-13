@@ -40,6 +40,8 @@ const assetSchema = z.object({
   hotspots: z.array(hotspotSchema).optional()
 });
 
+const assetUpdateSchema = assetSchema.partial();
+
 const spaceSchema = z.object({
   name: z.string().trim().min(1, 'La estancia necesita nombre.'),
   order: z.number().int().positive().optional(),
@@ -107,7 +109,7 @@ export async function listProperties(request: Request, response: Response): Prom
     throw new AppError(401, 'Usuario no autenticado.');
   }
 
-  const tenantId = request.auth.tenantId;
+  const tenantId = request.auth!.tenantId;
   const data = await propertiesService.listProperties(filters, tenantId);
 
   response.status(200).json({
@@ -121,7 +123,7 @@ export async function getPropertyById(request: Request, response: Response): Pro
     throw new AppError(401, 'Usuario no autenticado.');
   }
 
-  const data = await propertiesService.getPropertyById(request.params.id, request.auth.tenantId);
+  const data = await propertiesService.getPropertyById(request.params.id, request.auth!.tenantId);
 
   response.status(200).json({
     success: true,
@@ -135,7 +137,7 @@ export async function createProperty(request: Request, response: Response): Prom
   }
 
   const input = propertySchema.parse(request.body);
-  const data = await propertiesService.createProperty(request.auth.tenantId, input as any);
+  const data = await propertiesService.createProperty(request.auth!.tenantId, input as any);
 
   response.status(201).json({
     success: true,
@@ -149,7 +151,7 @@ export async function updateProperty(request: Request, response: Response): Prom
   }
 
   const input = propertySchema.parse(request.body);
-  const data = await propertiesService.updateProperty(request.auth.tenantId, request.params.id, input as any);
+  const data = await propertiesService.updateProperty(request.auth!.tenantId, request.params.id, input as any);
 
   response.status(200).json({
     success: true,
@@ -162,7 +164,7 @@ export async function listPropertySpaces(request: Request, response: Response): 
     throw new AppError(401, 'Usuario no autenticado.');
   }
 
-  const data = await propertiesService.listSpaces(request.auth.tenantId, request.params.propertyId);
+  const data = await propertiesService.listSpaces(request.auth!.tenantId, request.params.propertyId);
 
   response.status(200).json({
     success: true,
@@ -176,7 +178,7 @@ export async function createPropertySpace(request: Request, response: Response):
   }
 
   const input = spaceSchema.parse(request.body);
-  const data = await propertiesService.createSpace(request.auth.tenantId, request.params.propertyId, input as any);
+  const data = await propertiesService.createSpace(request.auth!.tenantId, request.params.propertyId, input as any);
 
   response.status(201).json({
     success: true,
@@ -190,7 +192,7 @@ export async function updatePropertySpace(request: Request, response: Response):
   }
 
   const input = spaceUpdateSchema.parse(request.body);
-  const data = await propertiesService.updateSpace(request.auth.tenantId, request.params.propertyId, request.params.spaceId, input as any);
+  const data = await propertiesService.updateSpace(request.auth!.tenantId, request.params.propertyId, request.params.spaceId, input as any);
 
   response.status(200).json({
     success: true,
@@ -203,7 +205,7 @@ export async function deletePropertySpace(request: Request, response: Response):
     throw new AppError(401, 'Usuario no autenticado.');
   }
 
-  const data = await propertiesService.deleteSpace(request.auth.tenantId, request.params.propertyId, request.params.spaceId);
+  const data = await propertiesService.deleteSpace(request.auth!.tenantId, request.params.propertyId, request.params.spaceId);
 
   response.status(200).json({
     success: true,
@@ -216,7 +218,7 @@ export async function deleteProperty(request: Request, response: Response): Prom
     throw new AppError(401, 'Usuario no autenticado.');
   }
 
-  const data = await propertiesService.deleteProperty(request.auth.tenantId, request.params.id);
+  const data = await propertiesService.deleteProperty(request.auth!.tenantId, request.params.id);
 
   response.status(200).json({
     success: true,
@@ -225,3 +227,50 @@ export async function deleteProperty(request: Request, response: Response): Prom
 }
 
 
+
+
+export async function listSpaceAssets(request: Request, response: Response): Promise<void> {
+  const data = await propertiesService.listAssets(
+    request.auth!.tenantId,
+    request.params.propertyId,
+    request.params.spaceId
+  );
+
+  response.json({ success: true, data });
+}
+
+export async function createSpaceAsset(request: Request, response: Response): Promise<void> {
+  const input = assetSchema.parse(request.body);
+  const data = await propertiesService.createAsset(
+    request.auth!.tenantId,
+    request.params.propertyId,
+    request.params.spaceId,
+    input as any
+  );
+
+  response.status(201).json({ success: true, data });
+}
+
+export async function updateSpaceAsset(request: Request, response: Response): Promise<void> {
+  const input = assetUpdateSchema.parse(request.body);
+  const data = await propertiesService.updateAsset(
+    request.auth!.tenantId,
+    request.params.propertyId,
+    request.params.spaceId,
+    request.params.assetId,
+    input as any
+  );
+
+  response.json({ success: true, data });
+}
+
+export async function deleteSpaceAsset(request: Request, response: Response): Promise<void> {
+  const data = await propertiesService.deleteAsset(
+    request.auth!.tenantId,
+    request.params.propertyId,
+    request.params.spaceId,
+    request.params.assetId
+  );
+
+  response.json({ success: true, data });
+}

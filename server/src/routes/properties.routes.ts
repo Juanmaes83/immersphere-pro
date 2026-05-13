@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import {
+  Router } from 'express';
 import {
   listProperties,
   getPropertyById,
@@ -8,7 +9,11 @@ import {
   listPropertySpaces,
   createPropertySpace,
   updatePropertySpace,
-  deletePropertySpace
+  deletePropertySpace,
+  listSpaceAssets,
+  createSpaceAsset,
+  updateSpaceAsset,
+  deleteSpaceAsset
 } from '../controllers/properties.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 import { enforcePropertyLimit } from '../middleware/planLimits.js';
@@ -22,6 +27,11 @@ propertiesRoutes.get('/:propertyId/spaces', requireAuth, listPropertySpaces);
 propertiesRoutes.post('/:propertyId/spaces', requireAuth, createPropertySpace);
 propertiesRoutes.put('/:propertyId/spaces/:spaceId', requireAuth, updatePropertySpace);
 propertiesRoutes.delete('/:propertyId/spaces/:spaceId', requireAuth, deletePropertySpace);
+
+propertiesRoutes.get('/:propertyId/spaces/:spaceId/assets', requireAuth, listSpaceAssets);
+propertiesRoutes.post('/:propertyId/spaces/:spaceId/assets', requireAuth, createSpaceAsset);
+propertiesRoutes.put('/:propertyId/spaces/:spaceId/assets/:assetId', requireAuth, updateSpaceAsset);
+propertiesRoutes.delete('/:propertyId/spaces/:spaceId/assets/:assetId', requireAuth, deleteSpaceAsset);
 
 propertiesRoutes.get('/:id', requireAuth, getPropertyById);
 propertiesRoutes.put('/:id', requireAuth, updateProperty);
