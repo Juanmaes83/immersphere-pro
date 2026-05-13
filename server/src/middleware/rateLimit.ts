@@ -1,0 +1,23 @@
+import rateLimit from 'express-rate-limit';
+
+export const leadRateLimit = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  limit: 5,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Demasiadas solicitudes. Inténtalo de nuevo en 15 minutos.'
+  }
+});
+
+export const analyticsRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 60,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Demasiadas solicitudes de analytics. Inténtalo más tarde.'
+  }
+});
