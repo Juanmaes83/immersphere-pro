@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import DollhouseViewer from '@/components/viewer/DollhouseViewer';
 import GaussianSplatViewer from '@/components/viewer/GaussianSplatViewer';
 import LeadCaptureModal from '@/components/viewer/LeadCaptureModal';
 import PanoramaViewer from '@/components/viewer/PanoramaViewer';
@@ -101,6 +102,7 @@ export default function UniversalViewer({
   const [isTourActive, setIsTourActive] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMeasuring, setIsMeasuring] = useState(false);
+  const [showDollhouse, setShowDollhouse] = useState(false);
   const tourIndexRef = useRef(0);
   const tourStops = useMemo(() => buildTourStops(spaces), [spaces]);
   const viewerRef = useRef<HTMLElement>(null);
@@ -169,6 +171,7 @@ export default function UniversalViewer({
 
     setIsTourActive(false);
     setIsMeasuring(false);
+    setShowDollhouse(false);
     setActiveSpaceId(spaceId);
     setActiveHotspot(null);
 
@@ -312,6 +315,7 @@ export default function UniversalViewer({
             onClick={() => {
               setIsTourActive(false);
               setIsMeasuring((prev) => !prev);
+              setShowDollhouse(false);
             }}
             className={`rounded-full px-4 py-2 text-sm font-black transition ${
               isMeasuring
@@ -320,6 +324,21 @@ export default function UniversalViewer({
             }`}
           >
             {isMeasuring ? '📏 Midiendo' : '📏 Medir'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setIsTourActive(false);
+              setIsMeasuring(false);
+              setShowDollhouse((prev) => !prev);
+            }}
+            className={`rounded-full px-4 py-2 text-sm font-black transition ${
+              showDollhouse
+                ? 'bg-fuchsia-500 text-white hover:bg-fuchsia-400'
+                : 'bg-white/10 text-white/70 hover:bg-white/15'
+            }`}
+          >
+            {showDollhouse ? '🏠 Salir Dollhouse' : '🏠 Dollhouse'}
           </button>
           {document.fullscreenEnabled ? (
             <button
@@ -336,7 +355,16 @@ export default function UniversalViewer({
 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px]">
         <div className="p-5">
-          {activeAsset.type === 'panorama_360' ? (
+          {showDollhouse ? (
+            <DollhouseViewer
+              spaces={sortedSpaces}
+              primaryColor={primaryColor}
+              activeSpaceId={activeSpace.id}
+              onSpaceClick={(spaceId) => {
+                handleSpaceChange(spaceId);
+              }}
+            />
+          ) : activeAsset.type === 'panorama_360' ? (
             <PanoramaViewer
               propertyId={propertyId}
               spaceId={activeSpace.id}
