@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams, useMatch, useSearchParams } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
@@ -10,9 +10,9 @@ import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type CreateAssetPayload, type CreatePropertyPayload, type CreateSpacePayload, type ImmersiveProperty } from '@/store/propertyStore';
 import type { Hotspot, Space } from '@/types/viewer';
-import PanoramaViewer from '@/components/viewer/PanoramaViewer';
-import PropertyDetailPage from '@/pages/PropertyDetailPage';
-import TenantAnalyticsDashboard from '@/pages/TenantAnalyticsDashboard';
+const PanoramaViewer = lazy(() => import('@/components/viewer/PanoramaViewer'));
+const PropertyDetailPage = lazy(() => import('@/pages/PropertyDetailPage'));
+const TenantAnalyticsDashboard = lazy(() => import('@/pages/TenantAnalyticsDashboard'));
 
 interface SubscriptionResponse {
   tenantId: string;
@@ -332,7 +332,9 @@ function DashboardPage(): JSX.Element {
         <Kpi label="Restantes" value={usage?.remaining ?? '∞'} />
       </div>
 
-      <TenantAnalyticsDashboard />
+      <Suspense fallback={<div className="mt-8 h-64 animate-pulse rounded-[1.6rem] bg-slate-100 dark:bg-slate-800" />}>
+        <TenantAnalyticsDashboard />
+      </Suspense>
     </main>
   );
 }
@@ -687,7 +689,11 @@ function PropertyRoutePage(): JSX.Element {
     return <Navigate to="/gallery" replace />;
   }
 
-  return <PropertyDetailPage propertyId={id} />;
+  return (
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" /></div>}>
+      <PropertyDetailPage propertyId={id} />
+    </Suspense>
+  );
 }
 
 function EmbedRoutePage(): JSX.Element {
@@ -698,9 +704,11 @@ function EmbedRoutePage(): JSX.Element {
   }
 
   return (
-    <div className="bg-[#F8FAFC] text-slate-950">
-      <PropertyDetailPage propertyId={id} embed />
-    </div>
+    <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" /></div>}>
+      <div className="bg-[#F8FAFC] text-slate-950">
+        <PropertyDetailPage propertyId={id} embed />
+      </div>
+    </Suspense>
   );
 }
 
@@ -2443,15 +2451,17 @@ function CompareColumn({ propertyId }: { propertyId: string }): JSX.Element {
 
       {/* Lazy panorama viewer */}
       {viewerVisible && firstPanoramaSpace && firstPanoramaAsset && (
-        <div className="border-t border-slate-100 dark:border-slate-700">
-          <PanoramaViewer
-            propertyId={propertyId}
-            spaceId={firstPanoramaSpace.id}
-            asset={firstPanoramaAsset}
-            onHotspotClick={() => {}}
-            onAnalyticsEvent={() => {}}
-          />
-        </div>
+        <Suspense fallback={<div className="h-[520px] animate-pulse bg-slate-100 dark:bg-slate-800" />}>
+          <div className="border-t border-slate-100 dark:border-slate-700">
+            <PanoramaViewer
+              propertyId={propertyId}
+              spaceId={firstPanoramaSpace.id}
+              asset={firstPanoramaAsset}
+              onHotspotClick={() => {}}
+              onAnalyticsEvent={() => {}}
+            />
+          </div>
+        </Suspense>
       )}
     </div>
   );
