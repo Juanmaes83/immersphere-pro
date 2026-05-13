@@ -7,6 +7,7 @@ import ProtectedRoute from '@/components/layout/ProtectedRoute';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type CreateAssetPayload, type CreatePropertyPayload, type CreateSpacePayload, type ImmersiveProperty } from '@/store/propertyStore';
+import type { Hotspot } from '@/types/viewer';
 import PropertyDetailPage from '@/pages/PropertyDetailPage';
 import TenantAnalyticsDashboard from '@/pages/TenantAnalyticsDashboard';
 
@@ -39,6 +40,15 @@ interface StorageUsageResponse {
   remainingMb: number | null;
   percentageUsed: number;
   isUnlimited: boolean;
+}
+
+interface LeadRecord {
+  id: string;
+  email: string;
+  phone: string;
+  notes: string;
+  source: string;
+  createdAt: string;
 }
 
 interface UploadAssetResponse {
@@ -370,6 +380,14 @@ function PropertiesPage(): JSX.Element {
   const [selectedAssetFileName, setSelectedAssetFileName] = useState<string | null>(null);
   const [isUploadingAsset, setIsUploadingAsset] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+  const [leadsPropertyId, setLeadsPropertyId] = useState<string | null>(null);
+  const [leads, setLeads] = useState<LeadRecord[]>([]);
+  const [leadsLoading, setLeadsLoading] = useState(false);
+  const [leadsError, setLeadsError] = useState<string | null>(null);
+  const [showHotspotForm, setShowHotspotForm] = useState(false);
+  const [hotspotDraft, setHotspotDraft] = useState<{ label: string; type: Hotspot['type']; x: number; y: number; body: string; metric: string }>({
+    label: '', type: 'info', x: 50, y: 50, body: '', metric: ''
+  });
 
   useEffect(() => {
     void fetchProperties({ limit: 100 });
@@ -426,6 +444,8 @@ function PropertiesPage(): JSX.Element {
     setAssetForm(getDefaultAssetForm());
     setEditingAsset(null);
     setSelectedAssetFileName(null);
+    setShowHotspotForm(false);
+    setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '' });
   }
 
   function closeAssetForm(): void {
@@ -521,6 +541,62 @@ function PropertiesPage(): JSX.Element {
       setIsUploadingAsset(false);
       event.target.value = '';
     }
+  }
+
+  async function handleViewLeads(propertyId: string): Promise<void> {
+    if (leadsPropertyId === propertyId) {
+      setLeadsPropertyId(null);
+      setLeads([]);
+      return;
+    }
+    setLeadsPropertyId(propertyId);
+    setLeadsLoading(true);
+    setLeadsError(null);
+    try {
+      const data = await unwrapApiResponse<LeadRecord[]>(api.get(`/leads/properties/${propertyId}`));
+      setLeads(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setLeadsError(getApiErrorMessage(err));
+    } finally {
+      setLeadsLoading(false);
+    }
+  }
+
+  async function handleExportLeadsCsv(propertyId: string, title: string): Promise<void> {
+    try {
+      const response = await api.get(`/leads/properties/${propertyId}/export.csv`, { responseType: 'text' });
+      const blob = new Blob([response.data as string], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `leads-${title.replace(/\s+/g, '-').toLowerCase()}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      setMessage('No se pudo exportar los leads.');
+    }
+  }
+
+  function handleAddHotspot(): void {
+    if (!hotspotDraft.label.trim()) return;
+    const newHotspot: Hotspot = {
+      id: `draft-${Date.now()}`,
+      label: hotspotDraft.label.trim(),
+      type: hotspotDraft.type,
+      position: { x: hotspotDraft.x, y: hotspotDraft.y },
+      body: hotspotDraft.body.trim(),
+      metric: hotspotDraft.metric.trim()
+    };
+    setAssetForm((current) => ({ ...current, hotspots: [...(current.hotspots ?? []), newHotspot] }));
+    setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '' });
+    setShowHotspotForm(false);
+  }
+
+  function handleRemoveHotspot(index: number): void {
+    setAssetForm((current) => ({
+      ...current,
+      hotspots: (current.hotspots ?? []).filter((_, i) => i !== index)
+    }));
   }
 
   function buildPayload(): CreatePropertyPayload {
@@ -937,6 +1013,18 @@ function PropertiesPage(): JSX.Element {
                     Estancias ({property.spaces.length})
                   </button>
 
+                  <button
+                    type="button"
+                    onClick={() => void handleViewLeads(property.id)}
+                    className={`rounded-full px-4 py-2 text-sm font-black ${
+                      leadsPropertyId === property.id
+                        ? 'bg-cyan-700 text-white'
+                        : 'border border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100'
+                    }`}
+                  >
+                    Leads ({property.leads})
+                  </button>
+
                   <button type="button" onClick={() => handleEditProperty(property)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
                     Editar
                   </button>
@@ -1128,6 +1216,125 @@ function PropertiesPage(): JSX.Element {
                                 />
                               </label>
 
+                              <div className="md:col-span-2">
+                                <div className="mb-3 flex items-center justify-between">
+                                  <p className="text-sm font-black text-slate-950">
+                                    Hotspots ({(assetForm.hotspots ?? []).length})
+                                  </p>
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowHotspotForm((v) => !v)}
+                                    className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-violet-700"
+                                  >
+                                    {showHotspotForm ? 'Cancelar' : '+ Añadir hotspot'}
+                                  </button>
+                                </div>
+
+                                {(assetForm.hotspots ?? []).length > 0 ? (
+                                  <div className="mb-3 space-y-2">
+                                    {(assetForm.hotspots ?? []).map((hotspot, index) => (
+                                      <div key={hotspot.id} className="flex items-center justify-between rounded-xl bg-white px-4 py-2 ring-1 ring-slate-200">
+                                        <div className="flex items-center gap-3">
+                                          <span className={`rounded-full px-2 py-0.5 text-xs font-black ${
+                                            hotspot.type === 'cta' ? 'bg-emerald-50 text-emerald-700' :
+                                            hotspot.type === 'navigation' ? 'bg-blue-50 text-blue-700' :
+                                            hotspot.type === 'measurement' ? 'bg-amber-50 text-amber-700' :
+                                            'bg-slate-100 text-slate-700'
+                                          }`}>{hotspot.type}</span>
+                                          <span className="text-sm font-bold text-slate-800">{hotspot.label}</span>
+                                          <span className="text-xs text-slate-400">({hotspot.position.x},{hotspot.position.y})</span>
+                                        </div>
+                                        <button
+                                          type="button"
+                                          onClick={() => handleRemoveHotspot(index)}
+                                          className="rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-700 hover:bg-red-100"
+                                        >
+                                          Eliminar
+                                        </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : null}
+
+                                {showHotspotForm ? (
+                                  <div className="rounded-2xl border border-slate-200 bg-white p-4">
+                                    <div className="grid grid-cols-2 gap-3">
+                                      <label className="col-span-2 block">
+                                        <span className="mb-1 block text-xs font-black text-slate-700">Etiqueta</span>
+                                        <input
+                                          type="text"
+                                          value={hotspotDraft.label}
+                                          onChange={(e) => setHotspotDraft((d) => ({ ...d, label: e.target.value }))}
+                                          placeholder="Ej: Salón principal"
+                                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
+                                        />
+                                      </label>
+                                      <label className="block">
+                                        <span className="mb-1 block text-xs font-black text-slate-700">Tipo</span>
+                                        <select
+                                          value={hotspotDraft.type}
+                                          onChange={(e) => setHotspotDraft((d) => ({ ...d, type: e.target.value as Hotspot['type'] }))}
+                                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
+                                        >
+                                          <option value="info">Info</option>
+                                          <option value="cta">CTA</option>
+                                          <option value="navigation">Navegación</option>
+                                          <option value="measurement">Medición</option>
+                                        </select>
+                                      </label>
+                                      <label className="block">
+                                        <span className="mb-1 block text-xs font-black text-slate-700">Descripción</span>
+                                        <input
+                                          type="text"
+                                          value={hotspotDraft.body}
+                                          onChange={(e) => setHotspotDraft((d) => ({ ...d, body: e.target.value }))}
+                                          placeholder="Texto informativo"
+                                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
+                                        />
+                                      </label>
+                                      <label className="block">
+                                        <span className="mb-1 block text-xs font-black text-slate-700">Métrica</span>
+                                        <input
+                                          type="text"
+                                          value={hotspotDraft.metric}
+                                          onChange={(e) => setHotspotDraft((d) => ({ ...d, metric: e.target.value }))}
+                                          placeholder="Ej: 25 m²"
+                                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
+                                        />
+                                      </label>
+                                      <label className="block">
+                                        <span className="mb-1 block text-xs font-black text-slate-700">Posición X (0–100)</span>
+                                        <input
+                                          type="number"
+                                          min="0" max="100"
+                                          value={hotspotDraft.x}
+                                          onChange={(e) => setHotspotDraft((d) => ({ ...d, x: Number(e.target.value) }))}
+                                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
+                                        />
+                                      </label>
+                                      <label className="block">
+                                        <span className="mb-1 block text-xs font-black text-slate-700">Posición Y (0–100)</span>
+                                        <input
+                                          type="number"
+                                          min="0" max="100"
+                                          value={hotspotDraft.y}
+                                          onChange={(e) => setHotspotDraft((d) => ({ ...d, y: Number(e.target.value) }))}
+                                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
+                                        />
+                                      </label>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={handleAddHotspot}
+                                      disabled={!hotspotDraft.label.trim()}
+                                      className="mt-3 rounded-xl bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-violet-700 disabled:opacity-50"
+                                    >
+                                      Añadir hotspot
+                                    </button>
+                                  </div>
+                                ) : null}
+                              </div>
+
                               <div className="flex flex-wrap gap-2 md:col-span-2">
                                 <button disabled={isLoading || isUploadingAsset} type="submit" className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-60">
                                   {isUploadingAsset
@@ -1207,6 +1414,67 @@ function PropertiesPage(): JSX.Element {
                         </div>
                       ))                    )}
                   </div>
+                </div>
+              ) : null}
+
+              {leadsPropertyId === property.id ? (
+                <div className="mt-5 rounded-[1.25rem] border border-cyan-100 bg-cyan-50/60 p-4">
+                  <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <h4 className="text-lg font-black text-slate-950">Leads captados</h4>
+                      <p className="text-sm font-semibold text-slate-500">Contactos recibidos desde el visor inmersivo.</p>
+                    </div>
+                    {leads.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() => void handleExportLeadsCsv(property.id, property.title)}
+                        className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"
+                      >
+                        Exportar CSV
+                      </button>
+                    ) : null}
+                  </div>
+
+                  {leadsLoading ? (
+                    <p className="text-sm font-bold text-slate-500">Cargando leads...</p>
+                  ) : leadsError ? (
+                    <div className="rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{leadsError}</div>
+                  ) : leads.length === 0 ? (
+                    <div className="rounded-2xl bg-white p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">
+                      Esta propiedad aún no tiene leads capturados.
+                    </div>
+                  ) : (
+                    <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-100">
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400">Email</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400">Teléfono</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400">Notas</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400">Fuente</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400">Fecha</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {leads.map((lead, index) => (
+                            <tr key={lead.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
+                              <td className="px-4 py-3 font-semibold text-slate-800">{lead.email}</td>
+                              <td className="px-4 py-3 text-slate-600">{lead.phone || '—'}</td>
+                              <td className="max-w-xs px-4 py-3 text-slate-600">
+                                <span className="line-clamp-1">{lead.notes || '—'}</span>
+                              </td>
+                              <td className="px-4 py-3">
+                                <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-black text-cyan-700">{lead.source}</span>
+                              </td>
+                              <td className="px-4 py-3 text-slate-500">
+                                {new Date(lead.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  )}
                 </div>
               ) : null}
             </article>
