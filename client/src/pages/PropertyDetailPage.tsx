@@ -551,10 +551,25 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   const ogImage = property.coverImage ?? '';
   const ogUrl = `${window.location.origin}/property/${property.id}`;
 
+  const jsonLd = {
+    '@context': 'https://schema.org',
+    '@type': 'RealEstateListing',
+    name: ogTitle,
+    description: ogDescription,
+    url: ogUrl,
+    ...(ogImage ? { image: ogImage } : {}),
+    ...(property.price ? { offers: { '@type': 'Offer', price: property.price, priceCurrency: 'EUR' } } : {}),
+    ...(property.area ? { floorSize: { '@type': 'QuantitativeValue', value: property.area, unitCode: 'MTK' } } : {}),
+    numberOfRooms: property.rooms,
+    numberOfBathroomsTotal: property.bathrooms,
+    additionalType: property.type
+  };
+
   return (
     <main className={embed ? 'bg-[#F8FAFC] text-slate-950' : 'min-h-[calc(100vh-73px)] bg-[#F8FAFC] text-slate-950'}>
       <Helmet>
         <title>{ogTitle} · Immersphere Pro</title>
+        <meta name="description" content={ogDescription} />
         <meta property="og:type" content="website" />
         <meta property="og:url" content={ogUrl} />
         <meta property="og:title" content={ogTitle} />
@@ -564,6 +579,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
         <meta name="twitter:title" content={ogTitle} />
         <meta name="twitter:description" content={ogDescription} />
         {ogImage ? <meta name="twitter:image" content={ogImage} /> : null}
+        <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
       </Helmet>
       <section className="mx-auto max-w-7xl px-5 py-10">
         {!embed ? (
