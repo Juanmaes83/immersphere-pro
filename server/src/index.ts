@@ -93,6 +93,20 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/tenants', tenantsRoutes);
 
+app.get('/sitemap.xml', async (_req, res) => {
+  const appUrl = env.APP_URL.replace(/\/$/, '');
+  const properties = await prisma.property.findMany({
+    where: { status: 'PUBLISHED' },
+    select: { id: true, updatedAt: true },
+    orderBy: { updatedAt: 'desc' }
+  });
+  const urls = properties.map((p) =>
+    `  <url><loc>${appUrl}/property/${p.id}</loc><lastmod>${p.updatedAt.toISOString().slice(0, 10)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`
+  );
+  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${appUrl}/</loc><changefreq>monthly</changefreq><priority>1.0</priority></url>\n  <url><loc>${appUrl}/gallery</loc><changefreq>daily</changefreq><priority>0.9</priority></url>\n${urls.join('\n')}\n</urlset>`;
+  res.header('Content-Type', 'application/xml').send(xml);
+});
+
 app.use(notFoundHandler);
 app.use(errorHandler);
 
