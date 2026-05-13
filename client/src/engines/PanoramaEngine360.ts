@@ -14,7 +14,6 @@ export class PanoramaEngine360 implements RendererLifecycle {
   private readonly onViewChange?: (state: PanoramaViewState) => void;
 
   private mesh: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial> | null = null;
-  private animationFrameId: number | null = null;
   private isDisposed = false;
   private isPointerDown = false;
   private pointerStartX = 0;
@@ -25,6 +24,7 @@ export class PanoramaEngine360 implements RendererLifecycle {
   private pitch: number;
   private fov: number;
   private gyroscopeActive = false;
+  private xrSession: XRSession | null = null;
 
   public constructor(config: PanoramaEngineConfig) {
     this.container = config.container;
@@ -52,6 +52,7 @@ export class PanoramaEngine360 implements RendererLifecycle {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
     this.renderer.setSize(width, height);
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
+    this.renderer.xr.enabled = true;
 
     this.container.innerHTML = '';
     this.container.appendChild(this.renderer.domElement);
@@ -156,12 +157,44 @@ export class PanoramaEngine360 implements RendererLifecycle {
     return this.gyroscopeActive;
   }
 
+  public getRenderer(): THREE.WebGLRenderer {
+    return this.renderer;
+  }
+
+  public async enterVR(onSessionEnd?: () => void): Promise<void> {
+    if (!navigator.xr || this.xrSession || this.isDisposed) return;
+
+    const session = await navigator.xr.requestSession('immersive-vr', {
+      optionalFeatures: ['local-floor', 'bounded-floor']
+    });
+
+    this.xrSession = session;
+    await this.renderer.xr.setSession(session);
+
+    session.addEventListener('end', () => {
+      this.xrSession = null;
+      onSessionEnd?.();
+    });
+  }
+
+  public async exitVR(): Promise<void> {
+    if (!this.xrSession) return;
+    await this.xrSession.end();
+    this.xrSession = null;
+  }
+
+  public isInVR(): boolean {
+    return this.xrSession !== null;
+  }
+
   public dispose(): void {
     this.isDisposed = true;
 
-    if (this.animationFrameId !== null) {
-      window.cancelAnimationFrame(this.animationFrameId);
-      this.animationFrameId = null;
+    this.renderer.setAnimationLoop(null);
+
+    if (this.xrSession) {
+      void this.xrSession.end().catch(() => {});
+      this.xrSession = null;
     }
 
     this.disableGyroscope();
@@ -238,14 +271,15 @@ export class PanoramaEngine360 implements RendererLifecycle {
   }
 
   private startRenderLoop(): void {
-    const tick = (): void => {
-      if (this.isDisposed) return;
-
+    // setAnimationLoop is required for WebXR — it replaces requestAnimationFrame
+    // and lets the browser's XR compositor drive the frame rate in immersive mode.
+    this.renderer.setAnimationLoop(() => {
+      if (this.isDisposed) {
+        this.renderer.setAnimationLoop(null);
+        return;
+      }
       this.render();
-      this.animationFrameId = window.requestAnimationFrame(tick);
-    };
-
-    tick();
+    });
   }
 
   private render(): void {

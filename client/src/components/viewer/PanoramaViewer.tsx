@@ -120,6 +120,8 @@ export default function PanoramaViewer({
   const [gyroActive, setGyroActive] = useState(false);
   const [gyroPermDenied, setGyroPermDenied] = useState(false);
   const supportsGyro = typeof DeviceOrientationEvent !== 'undefined' && navigator.maxTouchPoints > 0;
+  const [vrSupported, setVrSupported] = useState(false);
+  const [vrActive, setVrActive] = useState(false);
 
   useEffect(() => {
     analyticsRef.current = onAnalyticsEvent;
@@ -128,6 +130,13 @@ export default function PanoramaViewer({
   useEffect(() => {
     hotspotClickRef.current = onHotspotClick;
   }, [onHotspotClick]);
+
+  useEffect(() => {
+    if (!navigator.xr) return;
+    navigator.xr.isSessionSupported('immersive-vr')
+      .then((supported) => setVrSupported(supported))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -284,6 +293,23 @@ export default function PanoramaViewer({
     }
   }
 
+  async function handleVrToggle(): Promise<void> {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    if (vrActive) {
+      await engine.exitVR();
+      setVrActive(false);
+    } else {
+      try {
+        await engine.enterVR(() => setVrActive(false));
+        setVrActive(engine.isInVR());
+      } catch {
+        // User cancelled the browser VR prompt or device rejected
+      }
+    }
+  }
+
   function handleReset(): void {
     engineRef.current?.setYaw(0);
     engineRef.current?.setPitch(0);
@@ -347,6 +373,18 @@ export default function PanoramaViewer({
       ))}
 
       <div className="absolute bottom-5 right-5 z-30 flex gap-2 rounded-2xl border border-white/10 bg-black/45 p-2 text-white backdrop-blur">
+        {vrSupported ? (
+          <button
+            type="button"
+            onClick={() => { void handleVrToggle(); }}
+            title={vrActive ? 'Salir de modo VR' : 'Entrar en modo VR inmersivo'}
+            className={`h-10 rounded-xl px-3 text-xs font-black transition hover:bg-white/20 ${
+              vrActive ? 'bg-violet-500/80 text-white' : 'bg-white/10'
+            }`}
+          >
+            {vrActive ? '⬤ VR' : 'VR'}
+          </button>
+        ) : null}
         {supportsGyro ? (
           <button
             type="button"
