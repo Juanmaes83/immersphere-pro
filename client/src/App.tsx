@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { HelmetProvider } from 'react-helmet-async';
+import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams, useMatch } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
 import LoginForm from '@/components/auth/LoginForm';
@@ -175,6 +175,10 @@ function BrandNavLink({ to, children }: { to: string; children: React.ReactNode 
 function LandingPage(): JSX.Element {
   return (
     <main className="bg-[#050712] text-white">
+      <Helmet>
+        <title>Immersphere Pro · Tours inmersivos para inmobiliarias</title>
+        <meta name="description" content="Plataforma SaaS de tours virtuales 360° y Gaussian Splats para inmobiliarias, constructoras y decoradores. White label, analytics y leads integrados." />
+      </Helmet>
       <section className="mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl grid-cols-1 gap-12 px-5 py-20 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
         <div>
           <p className="text-sm font-black uppercase tracking-[0.25em] text-cyan-300">SaaS inmersivo B2B</p>
@@ -215,6 +219,10 @@ function LandingPage(): JSX.Element {
 function LoginPage(): JSX.Element {
   return (
     <main className="flex min-h-[calc(100vh-73px)] items-center justify-center px-5 py-12">
+      <Helmet>
+        <title>Entrar · Immersphere Pro</title>
+        <meta name="description" content="Accede a tu cuenta de Immersphere Pro para gestionar tus propiedades y tours virtuales." />
+      </Helmet>
       <LoginForm />
     </main>
   );
@@ -223,6 +231,10 @@ function LoginPage(): JSX.Element {
 function RegisterPage(): JSX.Element {
   return (
     <main className="flex min-h-[calc(100vh-73px)] items-center justify-center px-5 py-12">
+      <Helmet>
+        <title>Crear cuenta · Immersphere Pro</title>
+        <meta name="description" content="Crea tu tenant en Immersphere Pro y empieza a publicar tours virtuales inmersivos para tus propiedades." />
+      </Helmet>
       <RegisterForm />
     </main>
   );
@@ -257,6 +269,10 @@ function DashboardPage(): JSX.Element {
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-10">
+      <Helmet>
+        <title>Dashboard · {user?.tenant.name ?? 'Immersphere Pro'}</title>
+        <meta name="robots" content="noindex" />
+      </Helmet>
       <section className="rounded-[2rem] bg-slate-950 p-7 text-white md:p-9">
         <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Dashboard</p>
         <h1 className="mt-4 text-5xl font-black tracking-tight">{user?.tenant.name ?? 'Immersphere Pro'}</h1>
@@ -307,6 +323,10 @@ function GalleryPage(): JSX.Element {
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-10">
+      <Helmet>
+        <title>Galería de propiedades · Immersphere Pro</title>
+        <meta name="description" content="Explora propiedades con tours virtuales inmersivos en 360° y Gaussian Splats. Visita los espacios como si estuvieras allí." />
+      </Helmet>
       <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Galería pública</p>
@@ -1605,6 +1625,10 @@ function SettingsPage(): JSX.Element {
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-10">
+      <Helmet>
+        <title>Planes y facturación · Immersphere Pro</title>
+        <meta name="robots" content="noindex" />
+      </Helmet>
       <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
           <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Billing</p>
