@@ -1,6 +1,6 @@
 import type { NextFunction, Request, Response } from 'express';
 import { AppError } from '../middleware/errorHandler.js';
-import { createLead, exportPropertyLeadsCsv, getPropertyLeads } from '../services/leads.service.js';
+import { createLead, exportPropertyLeadsCsv, getPropertyLeads, getAllTenantLeads, exportAllTenantLeadsCsv } from '../services/leads.service.js';
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -50,6 +50,45 @@ export async function getPropertyLeadsController(
     const leads = await getPropertyLeads(propertyId, tenantId);
 
     response.status(200).json({ success: true, data: leads });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getAllLeadsController(
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const tenantId = request.auth?.tenantId;
+    if (!tenantId) throw new AppError(401, 'Autenticación requerida.');
+
+    const { propertyId, from, to } = request.query as Record<string, string | undefined>;
+    const leads = await getAllTenantLeads(tenantId, { propertyId, from, to });
+    response.status(200).json({ success: true, data: leads });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function exportAllLeadsCsvController(
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const tenantId = request.auth?.tenantId;
+    if (!tenantId) throw new AppError(401, 'Autenticación requerida.');
+
+    const { propertyId, from, to } = request.query as Record<string, string | undefined>;
+    const csv = await exportAllTenantLeadsCsv(tenantId, { propertyId, from, to });
+    const filename = `leads-all-${new Date().toISOString().slice(0, 10)}.csv`;
+    response
+      .status(200)
+      .setHeader('Content-Type', 'text/csv; charset=utf-8')
+      .setHeader('Content-Disposition', `attachment; filename="${filename}"`)
+      .send('﻿' + csv);
   } catch (error) {
     next(error);
   }

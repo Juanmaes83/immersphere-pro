@@ -110,6 +110,71 @@ export async function exportPropertyLeadsCsv(
   return [header, ...rows].join('\r\n');
 }
 
+export interface AllLeadsFilters {
+  propertyId?: string;
+  from?: string;
+  to?: string;
+}
+
+export interface LeadWithProperty extends LeadRecord {
+  propertyTitle: string;
+}
+
+export async function getAllTenantLeads(
+  tenantId: string,
+  filters: AllLeadsFilters = {}
+): Promise<LeadWithProperty[]> {
+  const where: Record<string, unknown> = {
+    property: { tenantId }
+  };
+
+  if (filters.propertyId) {
+    where.propertyId = filters.propertyId;
+  }
+
+  if (filters.from || filters.to) {
+    const range: Record<string, Date> = {};
+    if (filters.from) range.gte = new Date(filters.from);
+    if (filters.to) range.lte = new Date(filters.to);
+    where.createdAt = range;
+  }
+
+  const leads = await prisma.lead.findMany({
+    where: where as any,
+    orderBy: { createdAt: 'desc' },
+    take: 500,
+    include: {
+      property: { select: { title: true } }
+    }
+  });
+
+  return leads.map((l: any) => ({
+    id: l.id,
+    propertyId: l.propertyId,
+    propertyTitle: l.property?.title ?? '',
+    email: l.email,
+    phone: l.phone,
+    notes: l.notes,
+    source: l.source,
+    createdAt: l.createdAt
+  }));
+}
+
+export async function exportAllTenantLeadsCsv(
+  tenantId: string,
+  filters: AllLeadsFilters = {}
+): Promise<string> {
+  const leads = await getAllTenantLeads(tenantId, filters);
+
+  const header = ['id', 'propertyTitle', 'email', 'phone', 'notes', 'source', 'createdAt'].map(csvEscape).join(',');
+  const rows = leads.map((l) =>
+    [l.id, l.propertyTitle, l.email, l.phone, l.notes, l.source, new Date(l.createdAt).toISOString()]
+      .map(csvEscape)
+      .join(',')
+  );
+  return [header, ...rows].join('\r\n');
+}
+
 async function sendLeadEmail(lead: LeadRecord): Promise<void> {
   if (!env.RESEND_API_KEY) return;
 

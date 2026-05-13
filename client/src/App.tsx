@@ -2148,6 +2148,188 @@ function formatCurrency(value: number): string {
   }).format(value);
 }
 
+interface LeadWithProperty {
+  id: string;
+  propertyId: string;
+  propertyTitle: string;
+  email: string;
+  phone: string;
+  notes: string;
+  source: string;
+  createdAt: string;
+}
+
+function LeadsPage(): JSX.Element {
+  const { bgStyle } = useBrand();
+  const token = useAuthStore((s) => s.accessToken);
+  const [leads, setLeads] = useState<LeadWithProperty[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [filterProperty, setFilterProperty] = useState('');
+  const [filterFrom, setFilterFrom] = useState('');
+  const [filterTo, setFilterTo] = useState('');
+  const [filterSource, setFilterSource] = useState('');
+
+  const fetchLeads = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const params = new URLSearchParams();
+      if (filterProperty) params.set('propertyId', filterProperty);
+      if (filterFrom) params.set('from', filterFrom);
+      if (filterTo) params.set('to', filterTo);
+      const qs = params.toString();
+      const data = await unwrapApiResponse<LeadWithProperty[]>(
+        api.get(`/leads${qs ? `?${qs}` : ''}`)
+      );
+      setLeads(Array.isArray(data) ? data : []);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setLoading(false);
+    }
+  }, [filterProperty, filterFrom, filterTo]);
+
+  useEffect(() => { void fetchLeads(); }, [fetchLeads]);
+
+  async function handleExportCsv(): Promise<void> {
+    try {
+      const params = new URLSearchParams();
+      if (filterProperty) params.set('propertyId', filterProperty);
+      if (filterFrom) params.set('from', filterFrom);
+      if (filterTo) params.set('to', filterTo);
+      const qs = params.toString();
+      const response = await api.get(`/leads/export.csv${qs ? `?${qs}` : ''}`, { responseType: 'text' });
+      const blob = new Blob([response.data as string], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const anchor = document.createElement('a');
+      anchor.href = url;
+      anchor.download = `leads-${new Date().toISOString().slice(0, 10)}.csv`;
+      anchor.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silent — user can retry
+    }
+  }
+
+  const uniqueProperties = useMemo(() => {
+    const map = new Map<string, string>();
+    for (const l of leads) map.set(l.propertyId, l.propertyTitle || l.propertyId.slice(0, 8));
+    return [...map.entries()];
+  }, [leads]);
+
+  const filtered = useMemo(() => {
+    return leads.filter((l) => {
+      if (filterSource && l.source !== filterSource) return false;
+      return true;
+    });
+  }, [leads, filterSource]);
+
+  const uniqueSources = useMemo(() => [...new Set(leads.map((l) => l.source).filter(Boolean))], [leads]);
+
+  return (
+    <main className="mx-auto max-w-6xl px-5 py-10">
+      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
+        <h1 className="text-3xl font-black dark:text-white">Leads</h1>
+        <button
+          onClick={() => void handleExportCsv()}
+          className="rounded-full px-5 py-2.5 text-sm font-black text-white transition hover:opacity-90"
+          style={bgStyle}
+        >
+          Exportar CSV
+        </button>
+      </div>
+
+      {/* Filters */}
+      <div className="mb-6 flex flex-wrap gap-3">
+        <select
+          value={filterProperty}
+          onChange={(e) => setFilterProperty(e.target.value)}
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+        >
+          <option value="">Todas las propiedades</option>
+          {uniqueProperties.map(([id, title]) => (
+            <option key={id} value={id}>{title}</option>
+          ))}
+        </select>
+        <select
+          value={filterSource}
+          onChange={(e) => setFilterSource(e.target.value)}
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+        >
+          <option value="">Todos los orígenes</option>
+          {uniqueSources.map((s) => (
+            <option key={s} value={s}>{s}</option>
+          ))}
+        </select>
+        <input
+          type="date"
+          value={filterFrom}
+          onChange={(e) => setFilterFrom(e.target.value)}
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          placeholder="Desde"
+        />
+        <input
+          type="date"
+          value={filterTo}
+          onChange={(e) => setFilterTo(e.target.value)}
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+          placeholder="Hasta"
+        />
+        <button
+          onClick={() => void fetchLeads()}
+          className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-black outline-none transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+        >
+          Filtrar
+        </button>
+      </div>
+
+      {loading && <p className="text-slate-500">Cargando…</p>}
+      {error && <p className="text-red-500">{error}</p>}
+
+      {!loading && !error && (
+        <div className="overflow-x-auto rounded-[1.6rem] ring-1 ring-slate-200 dark:ring-slate-700">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-slate-50 dark:bg-slate-800">
+              <tr>
+                {['Propiedad', 'Email', 'Teléfono', 'Notas', 'Origen', 'Fecha'].map((h) => (
+                  <th key={h} className="px-4 py-3 font-black text-slate-600 dark:text-slate-300">{h}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+              {filtered.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">Sin leads todavía.</td>
+                </tr>
+              ) : filtered.map((l) => (
+                <tr key={l.id} className="bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800">
+                  <td className="px-4 py-3 font-semibold dark:text-white">{l.propertyTitle || l.propertyId.slice(0, 8)}</td>
+                  <td className="px-4 py-3 dark:text-slate-300">{l.email}</td>
+                  <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{l.phone || '—'}</td>
+                  <td className="max-w-[200px] truncate px-4 py-3 text-slate-500 dark:text-slate-400">{l.notes || '—'}</td>
+                  <td className="px-4 py-3">
+                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-black text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                      {l.source}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                    {new Date(l.createdAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      {!loading && filtered.length > 0 && (
+        <p className="mt-3 text-xs text-slate-400">{filtered.length} lead{filtered.length !== 1 ? 's' : ''} mostrados</p>
+      )}
+    </main>
+  );
+}
+
 function AppRoutes(): JSX.Element {
   const hydrateFromStorage = useAuthStore((state) => state.hydrateFromStorage);
 
@@ -2169,6 +2351,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/billing/cancelled" element={<BillingCancelledPage />} />
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/properties" element={<ProtectedRoute><PropertiesPage /></ProtectedRoute>} />
+        <Route path="/leads" element={<ProtectedRoute><LeadsPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
