@@ -31,6 +31,15 @@ interface TenantUsageResponse {
   canCreateMore: boolean;
 }
 
+interface StorageUsageResponse {
+  plan: string;
+  usedMb: number;
+  limitMb: number | null;
+  remainingMb: number | null;
+  percentageUsed: number;
+  isUnlimited: boolean;
+}
+
 interface UploadAssetResponse {
   provider: string;
   id: string;
@@ -1226,6 +1235,7 @@ function FormTextarea({ label, value, onChange }: { label: string; value: string
 function SettingsPage(): JSX.Element {
   const { user, hydrateFromStorage } = useAuthStore();
   const [usage, setUsage] = useState<TenantUsageResponse | null>(null);
+  const [storage, setStorage] = useState<StorageUsageResponse | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
@@ -1236,12 +1246,14 @@ function SettingsPage(): JSX.Element {
 
   async function loadBillingState(): Promise<void> {
     try {
-      const [usageResponse, subscriptionResponse] = await Promise.all([
+      const [usageResponse, subscriptionResponse, storageResponse] = await Promise.all([
         unwrapApiResponse<TenantUsageResponse>(api.get('/tenants/usage')),
-        unwrapApiResponse<SubscriptionResponse>(api.get('/subscriptions/current'))
+        unwrapApiResponse<SubscriptionResponse>(api.get('/subscriptions/current')),
+        unwrapApiResponse<StorageUsageResponse>(api.get('/tenants/storage'))
       ]);
       setUsage(usageResponse);
       setSubscription(subscriptionResponse);
+      setStorage(storageResponse);
       hydrateFromStorage();
       setError(null);
     } catch (error) {
@@ -1283,6 +1295,57 @@ function SettingsPage(): JSX.Element {
       </div>
 
       {error ? <div className="mt-6 rounded-2xl bg-red-50 p-4 font-bold text-red-700">{error}</div> : null}
+
+      {storage ? (
+        <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Almacenamiento</p>
+              <p className="mt-2 text-2xl font-black text-slate-950">
+                {storage.isUnlimited
+                  ? 'Ilimitado'
+                  : `${storage.usedMb} MB / ${storage.limitMb} MB`}
+              </p>
+              {!storage.isUnlimited && storage.remainingMb !== null ? (
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  {storage.remainingMb} MB disponibles
+                </p>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-3">
+              {storage.isUnlimited ? (
+                <span className="rounded-full bg-violet-100 px-4 py-2 text-xs font-black text-violet-700">
+                  Enterprise — sin limite
+                </span>
+              ) : (
+                <span className={`rounded-full px-4 py-2 text-xs font-black ${
+                  storage.percentageUsed >= 90
+                    ? 'bg-red-100 text-red-700'
+                    : storage.percentageUsed >= 70
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-emerald-100 text-emerald-700'
+                }`}>
+                  {storage.percentageUsed}% usado
+                </span>
+              )}
+            </div>
+          </div>
+          {!storage.isUnlimited && storage.limitMb !== null ? (
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  storage.percentageUsed >= 90
+                    ? 'bg-red-500'
+                    : storage.percentageUsed >= 70
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500'
+                }`}
+                style={{ width: `${storage.percentageUsed}%` }}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <PlanCard
