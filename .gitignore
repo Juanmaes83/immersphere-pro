@@ -12,6 +12,9 @@ Thumbs.db
 !.vscode/extensions.json
 .idea
 
+# Env snapshots — never track
+server/.env.txt
+
 # Local emergency backups
 *.backup_*
 *.backup*
