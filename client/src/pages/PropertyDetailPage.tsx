@@ -1,5 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import QRCode from 'qrcode';
 import UniversalViewer from '@/components/viewer/UniversalViewer';
 import { AUTH_STORAGE_KEYS, api, unwrapApiResponse } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
@@ -386,6 +387,49 @@ function PropertyLeadsList({ propertyId, leadCount }: { propertyId: string; lead
   );
 }
 
+function PropertyQRCode({ propertyId, primaryColor }: { propertyId: string; primaryColor: string }): JSX.Element {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const [ready, setReady] = useState(false);
+
+  useEffect(() => {
+    const url = `${window.location.origin}/property/${propertyId}`;
+    if (canvasRef.current) {
+      QRCode.toCanvas(canvasRef.current, url, {
+        width: 180,
+        margin: 2,
+        color: { dark: '#0f172a', light: '#ffffff' }
+      })
+        .then(() => setReady(true))
+        .catch(() => {});
+    }
+  }, [propertyId]);
+
+  function handleDownload(): void {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const link = document.createElement('a');
+    link.download = `qr-tour-${propertyId.slice(0, 8)}.png`;
+    link.href = canvas.toDataURL('image/png');
+    link.click();
+  }
+
+  return (
+    <div className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-5">
+      <p className="text-xs font-black uppercase tracking-[0.16em]" style={{ color: primaryColor }}>
+        QR del tour
+      </p>
+      <canvas ref={canvasRef} className={ready ? '' : 'opacity-0'} />
+      <button
+        type="button"
+        onClick={handleDownload}
+        className="w-full rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-50"
+      >
+        ↓ Descargar QR PNG
+      </button>
+    </div>
+  );
+}
+
 export default function PropertyDetailPage({ propertyId, embed = false }: PropertyDetailPageProps): JSX.Element {
   const navigate = useNavigate();
   const { selectedProperty, fetchPropertyById, isLoading, error, clearSelectedProperty } = usePropertyStore();
@@ -602,6 +646,9 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
               <p className="mt-4 text-center text-xs leading-5 text-slate-500">
                 En producción, este CTA abrirá lead, email, CRM o reserva de visita física.
               </p>
+              {isAuthenticated && !embed ? (
+                <PropertyQRCode propertyId={property.id} primaryColor={primaryColor} />
+              ) : null}
             </aside>
           </div>
         </div>
