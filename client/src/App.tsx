@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
+import { HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams, useMatch } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
 import LoginForm from '@/components/auth/LoginForm';
@@ -1772,8 +1773,10 @@ function AppRoutes(): JSX.Element {
 
 export default function App(): JSX.Element {
   return (
-    <BrowserRouter>
-      <AppRoutes />
-    </BrowserRouter>
+    <HelmetProvider>
+      <BrowserRouter>
+        <AppRoutes />
+      </BrowserRouter>
+    </HelmetProvider>
   );
 }

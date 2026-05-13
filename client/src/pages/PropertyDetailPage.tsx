@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { Helmet } from 'react-helmet-async';
 import QRCode from 'qrcode';
 import UniversalViewer from '@/components/viewer/UniversalViewer';
 import { AUTH_STORAGE_KEYS, api, unwrapApiResponse } from '@/services/api';
@@ -545,8 +546,25 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
 
   const property = selectedProperty;
 
+  const ogTitle = property.title;
+  const ogDescription = (property.description ?? '').replace(/\s+/g, ' ').trim().slice(0, 150);
+  const ogImage = property.coverImage ?? '';
+  const ogUrl = `${window.location.origin}/property/${property.id}`;
+
   return (
     <main className={embed ? 'bg-[#F8FAFC] text-slate-950' : 'min-h-[calc(100vh-73px)] bg-[#F8FAFC] text-slate-950'}>
+      <Helmet>
+        <title>{ogTitle} · Immersphere Pro</title>
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={ogUrl} />
+        <meta property="og:title" content={ogTitle} />
+        <meta property="og:description" content={ogDescription} />
+        {ogImage ? <meta property="og:image" content={ogImage} /> : null}
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content={ogTitle} />
+        <meta name="twitter:description" content={ogDescription} />
+        {ogImage ? <meta name="twitter:image" content={ogImage} /> : null}
+      </Helmet>
       <section className="mx-auto max-w-7xl px-5 py-10">
         {!embed ? (
           <Link
