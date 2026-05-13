@@ -142,6 +142,17 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
         </div>
       </header>
       {children}
+      <footer className="border-t border-slate-200 bg-white py-6">
+        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-5 sm:flex-row">
+          <p className="text-xs font-bold text-slate-400">
+            Powered by <span className="font-black text-slate-600">Immersphere Pro</span>
+          </p>
+          <p className="text-xs font-bold text-slate-400">
+            Idea by <span className="font-black text-slate-700">Rubik Sota</span>
+            <a href="tel:+34629554870" className="ml-2 font-black text-slate-700 hover:underline">629 554 870</a>
+          </p>
+        </div>
+      </footer>
     </div>
   );
 }
