@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import GaussianSplatViewer from '@/components/viewer/GaussianSplatViewer';
+import LeadCaptureModal from '@/components/viewer/LeadCaptureModal';
 import PanoramaViewer from '@/components/viewer/PanoramaViewer';
 import { AUTH_STORAGE_KEYS } from '@/services/api';
 import type {
@@ -82,6 +83,7 @@ export default function UniversalViewer({
   const firstSpaceId = sortedSpaces[0]?.id ?? '';
   const [activeSpaceId, setActiveSpaceId] = useState(initialSpaceId ?? firstSpaceId);
   const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null);
+  const [showLeadModal, setShowLeadModal] = useState(false);
   const sessionId = useRef(`s-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
   const activeSpace = sortedSpaces.find((space) => space.id === activeSpaceId) ?? sortedSpaces[0];
@@ -143,7 +145,12 @@ export default function UniversalViewer({
     }
   }
 
-  function handleLeadCta(): void {
+  function handleLeadCtaOpen(): void {
+    if (!activeHotspot) return;
+    setShowLeadModal(true);
+  }
+
+  function handleLeadSubmitted(): void {
     if (!activeHotspot || !activeSpace || !activeAsset) return;
 
     const event = createViewerEvent('cta_lead', {
@@ -179,6 +186,15 @@ export default function UniversalViewer({
 
   return (
     <section className={`overflow-hidden rounded-[1.6rem] bg-slate-950 text-white ${className}`}>
+      {showLeadModal && activeHotspot ? (
+        <LeadCaptureModal
+          propertyId={propertyId}
+          hotspotLabel={activeHotspot.label}
+          primaryColor={primaryColor}
+          onClose={() => setShowLeadModal(false)}
+          onSubmitted={() => { handleLeadSubmitted(); }}
+        />
+      ) : null}
       <div className="flex flex-col gap-4 border-b border-white/10 p-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
@@ -280,11 +296,11 @@ export default function UniversalViewer({
                 {activeHotspot.type === 'cta' ? (
                   <button
                     type="button"
-                    onClick={handleLeadCta}
+                    onClick={handleLeadCtaOpen}
                     className="mt-4 w-full rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90"
                     style={{ backgroundColor: primaryColor }}
                   >
-                    Contactar agente
+                    Solicitar información
                   </button>
                 ) : null}
               </div>
