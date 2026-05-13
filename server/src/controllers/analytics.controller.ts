@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { prisma } from '../index.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { createViewerEvent, getPropertyAnalyticsSummary } from '../services/analytics.service.js';
+import { createViewerEvent, getPropertyAnalyticsSummary, getTenantAnalyticsSummary } from '../services/analytics.service.js';
 
 const ALLOWED_EVENT_TYPES = new Set([
   'viewer_open',
@@ -83,6 +83,24 @@ export async function getPropertySummaryController(
 
     const summary = await getPropertyAnalyticsSummary(propertyId);
 
+    response.status(200).json({ success: true, data: summary });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getTenantSummaryController(
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const tenantId = request.auth?.tenantId;
+    if (!tenantId) {
+      throw new AppError(401, 'Autenticación requerida.');
+    }
+
+    const summary = await getTenantAnalyticsSummary(tenantId);
     response.status(200).json({ success: true, data: summary });
   } catch (error) {
     next(error);
