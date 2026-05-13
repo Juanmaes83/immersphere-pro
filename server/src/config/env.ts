@@ -22,7 +22,9 @@ const envSchema = z.object({
   CLOUDINARY_API_KEY: z.string().default(""),
   CLOUDINARY_API_SECRET: z.string().default(""),
   CLOUDINARY_FOLDER: z.string().default("immersphere-pro"),
-  LEAD_NOTIFICATION_WEBHOOK_URL: z.string().default("")
+  LEAD_NOTIFICATION_WEBHOOK_URL: z.string().default(""),
+  RESEND_API_KEY: z.string().default(""),
+  RESEND_FROM_EMAIL: z.string().default("noreply@immersphere.io")
 });
 
 const parsedEnv = envSchema.safeParse(process.env);
