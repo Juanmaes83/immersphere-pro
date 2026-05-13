@@ -17,7 +17,11 @@ const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().default(""),
   STRIPE_PRICE_STARTER: z.string().default(""),
   STRIPE_PRICE_PROFESSIONAL: z.string().default(""),
-  STRIPE_PRICE_ENTERPRISE: z.string().default("")
+  STRIPE_PRICE_ENTERPRISE: z.string().default(""),
+  CLOUDINARY_CLOUD_NAME: z.string().default(""),
+  CLOUDINARY_API_KEY: z.string().default(""),
+  CLOUDINARY_API_SECRET: z.string().default(""),
+  CLOUDINARY_FOLDER: z.string().default("immersphere-pro")
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

@@ -1,10 +1,11 @@
 ﻿import type { Request, Response } from 'express';
+import { storeUploadFile } from '../services/cloudinary.service.js';
 
 type UploadRequest = Request & {
   file?: Express.Multer.File;
 };
 
-export function uploadAsset(request: UploadRequest, response: Response): void {
+export async function uploadAsset(request: UploadRequest, response: Response): Promise<void> {
   const file = request.file;
 
   if (!file) {
@@ -15,20 +16,24 @@ export function uploadAsset(request: UploadRequest, response: Response): void {
     return;
   }
 
-  const publicPath = `/uploads/${file.filename}`;
+  try {
+    const storedUpload = await storeUploadFile(file, {
+      tenantId: request.auth?.tenantId ?? null,
+      userId: request.auth?.userId ?? null
+    });
 
-  response.status(201).json({
-    success: true,
-    data: {
-      id: file.filename,
-      originalName: file.originalname,
-      filename: file.filename,
-      mimeType: file.mimetype,
-      size: file.size,
-      url: publicPath,
-      path: publicPath,
-      uploadedBy: request.auth?.userId ?? null,
-      tenantId: request.auth?.tenantId ?? null
-    }
-  });
+    response.status(201).json({
+      success: true,
+      data: {
+        ...storedUpload,
+        uploadedBy: request.auth?.userId ?? null,
+        tenantId: request.auth?.tenantId ?? null
+      }
+    });
+  } catch {
+    response.status(500).json({
+      success: false,
+      error: 'No se ha podido subir el archivo.'
+    });
+  }
 }
