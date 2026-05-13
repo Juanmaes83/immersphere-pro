@@ -14,6 +14,25 @@
   /* White label brand tokens — overridden at runtime via useBrand() */
   --brand: #7C3AED;
   --brand-dark: #5B21B6;
+
+  /* Dark mode variables */
+  --bg: #F8FAFC;
+  --text: #0f172a;
+  --card: #ffffff;
+  --border: #e2e8f0;
+}
+
+html.dark {
+  color-scheme: dark;
+  --bg: #0f172a;
+  --text: #f1f5f9;
+  --card: #1e293b;
+  --border: #334155;
+}
+
+html.dark body {
+  background-color: var(--bg);
+  color: var(--text);
 }
 
 /* Applied to inputs that should show brand color on focus */

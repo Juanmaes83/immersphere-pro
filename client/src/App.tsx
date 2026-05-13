@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams, useMatch } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
@@ -72,9 +72,37 @@ interface UploadAssetResponse {
   format: string;
 }
 
+function useDarkMode(): [boolean, () => void] {
+  const [dark, setDark] = useState<boolean>(() => {
+    try {
+      return window.localStorage.getItem('theme') === 'dark';
+    } catch {
+      return false;
+    }
+  });
+
+  useEffect(() => {
+    const html = document.documentElement;
+    if (dark) {
+      html.classList.add('dark');
+    } else {
+      html.classList.remove('dark');
+    }
+    try {
+      window.localStorage.setItem('theme', dark ? 'dark' : 'light');
+    } catch {
+      // ignore
+    }
+  }, [dark]);
+
+  const toggle = useCallback(() => setDark((d) => !d), []);
+  return [dark, toggle];
+}
+
 function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
   const { user, isAuthenticated, logout } = useAuthStore();
   const { bgStyle, colorStyle } = useBrand();
+  const [dark, toggleDark] = useDarkMode();
 
   const logoText = user?.tenant.logoText ?? '✦';
   const logoUrl = user?.tenant.logoUrl ?? '';
@@ -82,8 +110,8 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
   const brandSub = isAuthenticated ? (user?.tenant.plan ?? 'STARTER') : 'Pro SaaS';
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-950">
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
+    <div className="min-h-screen bg-[#F8FAFC] text-slate-950 dark:bg-slate-900 dark:text-slate-100">
+      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/90">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
           <Link to="/" className="flex items-center gap-3">
             {logoUrl ? (
@@ -108,12 +136,22 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
               <>
                 <BrandNavLink to="/dashboard">Dashboard</BrandNavLink>
                 <BrandNavLink to="/properties">Propiedades</BrandNavLink>
+                <BrandNavLink to="/leads">Leads</BrandNavLink>
                 <BrandNavLink to="/settings">Planes</BrandNavLink>
               </>
             ) : null}
           </nav>
 
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={toggleDark}
+              title={dark ? 'Modo claro' : 'Modo oscuro'}
+              className="rounded-full border border-slate-200 px-3 py-2 text-sm transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
+              aria-label="Toggle dark mode"
+            >
+              {dark ? '☀️' : '🌙'}
+            </button>
             {isAuthenticated ? (
               <>
                 <span
@@ -125,14 +163,14 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
                 <button
                   type="button"
                   onClick={logout}
-                  className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50"
+                  className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
                 >
                   Salir
                 </button>
               </>
             ) : (
               <>
-                <Link to="/login" className="rounded-full px-4 py-2 text-sm font-black text-slate-600 hover:bg-slate-100">
+                <Link to="/login" className="rounded-full px-4 py-2 text-sm font-black text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800">
                   Entrar
                 </Link>
                 <Link
@@ -148,14 +186,14 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
         </div>
       </header>
       {children}
-      <footer className="border-t border-slate-200 bg-white py-6">
+      <footer className="border-t border-slate-200 bg-white py-6 dark:border-slate-700 dark:bg-slate-900">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-5 sm:flex-row">
           <p className="text-xs font-bold text-slate-400">
-            Powered by <span className="font-black text-slate-600">Immersphere Pro</span>
+            Powered by <span className="font-black text-slate-600 dark:text-slate-300">Immersphere Pro</span>
           </p>
           <p className="text-xs font-bold text-slate-400">
-            Idea by <span className="font-black text-slate-700">Rubik Sota</span>
-            <a href="tel:+34629554870" className="ml-2 font-black text-slate-700 hover:underline">629 554 870</a>
+            Idea by <span className="font-black text-slate-700 dark:text-slate-300">Rubik Sota</span>
+            <a href="tel:+34629554870" className="ml-2 font-black text-slate-700 hover:underline dark:text-slate-300">629 554 870</a>
           </p>
         </div>
       </footer>
@@ -300,9 +338,9 @@ function DashboardPage(): JSX.Element {
 
 function Kpi({ label, value }: { label: string; value: string | number }): JSX.Element {
   return (
-    <article className="rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+    <article className="rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
       <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">{label}</p>
-      <p className="mt-3 text-3xl font-black text-slate-950">{value}</p>
+      <p className="mt-3 text-3xl font-black text-slate-950 dark:text-slate-100">{value}</p>
     </article>
   );
 }
@@ -341,12 +379,12 @@ function GalleryPage(): JSX.Element {
           value={query}
           onChange={(event) => setQuery(event.target.value)}
           placeholder="Buscar propiedad"
-          className="brand-focus rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none md:w-80"
+          className="brand-focus rounded-2xl border border-slate-200 bg-white px-4 py-3 font-semibold outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 md:w-80"
         />
       </div>
 
       {error ? <div className="mt-6 rounded-2xl bg-red-50 p-4 font-bold text-red-700">{error}</div> : null}
-      {isLoading ? <p className="mt-8 font-bold text-slate-500">Cargando propiedades...</p> : null}
+      {isLoading ? <p className="mt-8 font-bold text-slate-500 dark:text-slate-400">Cargando propiedades...</p> : null}
 
       <div className="mt-8 grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {filteredProperties.map((property) => (
@@ -361,7 +399,7 @@ function PropertyCard({ property, onOpen, hotBadge }: { property: ImmersivePrope
   const { bgStyle, colorStyle } = useBrand();
   const thumb = property.thumbnailUrl;
   return (
-    <article className="overflow-hidden rounded-[1.7rem] bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-xl">
+    <article className="overflow-hidden rounded-[1.7rem] bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-xl dark:bg-slate-800 dark:ring-slate-700">
       <button type="button" onClick={onOpen} className="block w-full text-left">
         <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-cyan-400/35 via-violet-500/20 to-slate-950">
           {thumb ? (
@@ -392,8 +430,8 @@ function PropertyCard({ property, onOpen, hotBadge }: { property: ImmersivePrope
         </div>
       </button>
       <div className="p-5">
-        <p className="text-xl font-black text-slate-950">{formatCurrency(property.price)}</p>
-        <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{property.description}</p>
+        <p className="text-xl font-black text-slate-950 dark:text-slate-100">{formatCurrency(property.price)}</p>
+        <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{property.description}</p>
         {property.address ? <p className="mt-2 text-xs font-semibold" style={colorStyle}>📍 {property.address}</p> : null}
         <button type="button" onClick={onOpen} className="mt-5 w-full rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90" style={bgStyle}>
           Abrir ficha inmersiva
@@ -1131,7 +1169,7 @@ function PropertiesPage(): JSX.Element {
       <h1 className="mt-3 text-5xl font-black tracking-tight">Propiedades</h1>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
-        <form onSubmit={handleSubmit} className="rounded-[1.8rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <form onSubmit={handleSubmit} className="rounded-[1.8rem] bg-white p-6 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
           <div className="flex items-center justify-between gap-4">
             <h2 className="text-2xl font-black">{editingPropertyId ? 'Editar propiedad' : 'Nueva propiedad'}</h2>
 
