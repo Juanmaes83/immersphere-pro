@@ -13,6 +13,7 @@ interface AnalyticsCountByKey {
 
 interface AnalyticsSummary {
   totalEvents: number;
+  viewerOpens: number;
   hotspotClicks: number;
   spaceChanges: number;
   leadCtas: number;
@@ -80,7 +81,6 @@ function PropertyHero({ property, primaryColor }: { property: ImmersiveProperty;
           </span>
         </div>
         <h1 className="max-w-4xl text-5xl font-black tracking-tight md:text-7xl">{property.title}</h1>
-        <p className="mt-4 text-lg font-semibold text-white/75">{property.location}</p>
       </div>
     </div>
   );
@@ -494,7 +494,7 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
               {isAuthenticated ? (
                 <PropertyLeadsList
                   propertyId={property.id}
-                  leadCount={property.leads ?? 0}
+                  leadCount={analyticsSummary?.leadCtas ?? property.leads ?? 0}
                 />
               ) : null}
             </div>
@@ -504,9 +504,18 @@ export default function PropertyDetailPage({ propertyId }: PropertyDetailPagePro
                 Señales de intención
               </p>
               <div className="mt-5 space-y-4">
-                <DetailStat label="Visitas inmersivas" value={formatNumber(property.visits)} />
-                <DetailStat label="Leads generados" value={formatNumber(property.leads)} />
-                <DetailStat label="Lead score" value={`${property.leadScore}/100`} />
+                <DetailStat
+                  label="Aperturas del visor"
+                  value={analyticsSummary ? formatNumber(analyticsSummary.viewerOpens) : '—'}
+                />
+                <DetailStat
+                  label="Leads generados"
+                  value={analyticsSummary ? formatNumber(analyticsSummary.leadCtas) : '—'}
+                />
+                <DetailStat
+                  label="Engagement score"
+                  value={analyticsSummary ? `${analyticsSummary.engagementScore}/100` : '—'}
+                />
               </div>
               <button
                 type="button"

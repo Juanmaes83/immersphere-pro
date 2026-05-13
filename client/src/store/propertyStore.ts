@@ -43,7 +43,7 @@ interface ApiProperty {
   bathrooms: number;
   coverImage: string;
   spaces: ApiSpace[];
-  leadsCount?: number;
+  _count?: { leads: number };
   createdAt: string;
   updatedAt: string;
 }
@@ -370,9 +370,9 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
     description: property.description,
     coverImage: property.coverImage,
     panoramaUrl: getPrimaryPanoramaUrl(property.spaces ?? []),
-    leadScore: Math.min(95, 50 + (property.leadsCount ?? 0) * 3),
+    leadScore: 0,
     visits: 0,
-    leads: property.leadsCount ?? 0,
+    leads: property._count?.leads ?? 0,
     spaces: normalizeSpacesWithFallbacks(property.spaces ?? [], property)
   };
 }

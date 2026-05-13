@@ -108,7 +108,9 @@ const propertyInclude = {
       }
     }
   },
-  leads: true
+  _count: {
+    select: { leads: true }
+  }
 };
 
 const spaceInclude = {
