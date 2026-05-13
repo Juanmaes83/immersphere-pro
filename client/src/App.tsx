@@ -12,6 +12,7 @@ import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type CreateAssetPayload, type CreatePropertyPayload, type CreateSpacePayload, type ImmersiveProperty } from '@/store/propertyStore';
 import type { Hotspot, Space } from '@/types/viewer';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import HelpPage from '@/pages/HelpPage';
 const PanoramaViewer = lazy(() => import('@/components/viewer/PanoramaViewer'));
 const PropertyDetailPage = lazy(() => import('@/pages/PropertyDetailPage'));
 const TenantAnalyticsDashboard = lazy(() => import('@/pages/TenantAnalyticsDashboard'));
@@ -154,6 +155,14 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
           </nav>
 
           <div className="flex items-center gap-2">
+            <Link
+              to="/ayuda"
+              title="Ayuda y guía rápida"
+              aria-label="Ayuda"
+              className="rounded-full border border-slate-200 px-3 py-2 text-sm font-black text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
+            >
+              ?
+            </Link>
             <button
               type="button"
               onClick={toggleDark}
@@ -201,6 +210,8 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-5 sm:flex-row">
           <p className="text-xs font-bold text-slate-400">
             Powered by <span className="font-black text-slate-600 dark:text-slate-300">Immersphere Pro</span>
+            <span className="mx-2 text-slate-200 dark:text-slate-700">·</span>
+            <Link to="/ayuda" className="font-black text-slate-500 hover:underline dark:text-slate-400">Ayuda</Link>
           </p>
           <p className="text-xs font-bold text-slate-400">
             Idea by <span className="font-black text-slate-700 dark:text-slate-300">Rubik Sota</span>
@@ -294,6 +305,8 @@ function RegisterPage(): JSX.Element {
   );
 }
 
+const HELP_BANNER_KEY = 'immersphere_help_banner_dismissed';
+
 function DashboardPage(): JSX.Element {
   const user = useAuthStore((state) => state.user);
   const { properties, fetchProperties, isLoading } = usePropertyStore();
@@ -301,6 +314,9 @@ function DashboardPage(): JSX.Element {
   const [usage, setUsage] = useState<TenantUsageResponse | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showHelpBanner, setShowHelpBanner] = useState<boolean>(
+    () => !localStorage.getItem(HELP_BANNER_KEY)
+  );
 
   useEffect(() => {
     void fetchProperties({ limit: 100 });
@@ -332,6 +348,29 @@ function DashboardPage(): JSX.Element {
         <h1 className="mt-4 text-5xl font-black tracking-tight">{user?.tenant.name ?? 'Immersphere Pro'}</h1>
         <p className="mt-4 text-white/60">{user?.name} · {user?.email}</p>
       </section>
+
+      {showHelpBanner && (
+        <div className="mt-6 flex items-center justify-between gap-4 rounded-2xl bg-violet-50 px-5 py-4 ring-1 ring-violet-100 dark:bg-violet-950/30 dark:ring-violet-900">
+          <p className="text-sm font-bold text-violet-800 dark:text-violet-300">
+            👋 ¿Es tu primera vez?{' '}
+            <Link to="/ayuda" className="font-black underline underline-offset-2 hover:text-violet-600">
+              Visita la guía rápida →
+            </Link>
+            <span className="ml-1 text-violet-400 dark:text-violet-500">Aprende a publicar tu primer tour en 5 minutos.</span>
+          </p>
+          <button
+            type="button"
+            aria-label="Cerrar banner"
+            onClick={() => {
+              localStorage.setItem(HELP_BANNER_KEY, '1');
+              setShowHelpBanner(false);
+            }}
+            className="shrink-0 text-violet-400 hover:text-violet-600 dark:text-violet-600 dark:hover:text-violet-400"
+          >
+            ✕
+          </button>
+        </div>
+      )}
 
       {error ? <div className="mt-6 rounded-2xl bg-red-50 p-4 font-bold text-red-700">{error}</div> : null}
 
@@ -2800,6 +2839,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
+        <Route path="/ayuda" element={<HelpPage />} />
         <Route path="/compare" element={<ComparePage />} />
         <Route path="/property/:id" element={<PropertyRoutePage />} />
         <Route path="/embed/:id" element={<EmbedRoutePage />} />
