@@ -6,7 +6,9 @@ export interface AuthTenant {
   name: string;
   slug: string;
   logoText: string;
+  logoUrl: string;
   primaryColor: string;
+  webhookUrl: string;
   plan: string;
 }
 

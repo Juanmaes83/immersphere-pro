@@ -77,6 +77,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
   const { bgStyle, colorStyle } = useBrand();
 
   const logoText = user?.tenant.logoText ?? '✦';
+  const logoUrl = user?.tenant.logoUrl ?? '';
   const brandName = user?.tenant.name ?? 'Immersphere';
   const brandSub = isAuthenticated ? (user?.tenant.plan ?? 'STARTER') : 'Pro SaaS';
 
@@ -85,12 +86,16 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
           <Link to="/" className="flex items-center gap-3">
-            <span
-              className="flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-black text-white"
-              style={bgStyle}
-            >
-              {logoText}
-            </span>
+            {logoUrl ? (
+              <img src={logoUrl} alt={brandName} className="h-10 w-10 rounded-2xl object-cover" />
+            ) : (
+              <span
+                className="flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-black text-white"
+                style={bgStyle}
+              >
+                {logoText}
+              </span>
+            )}
             <span>
               <span className="block text-sm font-black uppercase tracking-[0.24em]">{brandName}</span>
               <span className="block text-xs font-bold uppercase tracking-[0.2em]" style={colorStyle}>{brandSub}</span>
@@ -1639,6 +1644,8 @@ function SettingsPage(): JSX.Element {
   const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [portalLoading, setPortalLoading] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [settingsMsg, setSettingsMsg] = useState<string | null>(null);
 
   useEffect(() => {
     void loadBillingState();
@@ -1658,6 +1665,37 @@ function SettingsPage(): JSX.Element {
       setError(null);
     } catch (error) {
       setError(getApiErrorMessage(error));
+    }
+  }
+
+  async function handleLogoUpload(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setLogoUploading(true);
+    setSettingsMsg(null);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const upload = await unwrapApiResponse<UploadAssetResponse>(
+        api.post('/uploads', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      );
+      await unwrapApiResponse(api.put('/tenants/settings', { logoUrl: upload.url }));
+      hydrateFromStorage();
+      setSettingsMsg('Logo actualizado correctamente.');
+      // Reload user from API to reflect change in header
+      const settings = await unwrapApiResponse<{ id: string; logoUrl: string }>(api.get('/tenants/settings'));
+      const stored = window.localStorage.getItem('user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        parsed.tenant.logoUrl = settings.logoUrl;
+        window.localStorage.setItem('user', JSON.stringify(parsed));
+        hydrateFromStorage();
+      }
+    } catch {
+      setSettingsMsg('Error al subir el logo.');
+    } finally {
+      setLogoUploading(false);
+      event.target.value = '';
     }
   }
 
@@ -1701,6 +1739,27 @@ function SettingsPage(): JSX.Element {
       </div>
 
       {error ? <div className="mt-6 rounded-2xl bg-red-50 p-4 font-bold text-red-700">{error}</div> : null}
+      {settingsMsg ? <div className="mt-4 rounded-2xl bg-emerald-50 p-4 font-bold text-emerald-700">{settingsMsg}</div> : null}
+
+      <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Logo de la agencia</p>
+        <div className="mt-4 flex items-center gap-5">
+          {user?.tenant.logoUrl ? (
+            <img src={user.tenant.logoUrl} alt="Logo" className="h-16 w-16 rounded-2xl object-cover ring-1 ring-slate-200" />
+          ) : (
+            <span className="flex h-16 w-16 items-center justify-center rounded-2xl text-xl font-black text-white" style={bgStyle}>
+              {user?.tenant.logoText ?? '✦'}
+            </span>
+          )}
+          <div>
+            <label className={`flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50 ${logoUploading ? 'cursor-not-allowed opacity-50' : ''}`}>
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={(e) => { void handleLogoUpload(e); }} disabled={logoUploading} className="sr-only" />
+              {logoUploading ? 'Subiendo...' : '↑ Subir logo'}
+            </label>
+            <p className="mt-1.5 text-xs text-slate-400">PNG, JPG, WEBP o SVG. Recomendado 400×400 px.</p>
+          </div>
+        </div>
+      </div>
 
       {storage ? (
         <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">

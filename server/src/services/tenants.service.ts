@@ -5,7 +5,9 @@ type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'EXPIRE
 export interface TenantSettingsUpdateInput {
   name?: string;
   logoText?: string;
+  logoUrl?: string;
   primaryColor?: string;
+  webhookUrl?: string;
 }
 
 export interface TenantPlanUpdateInput {
@@ -66,7 +68,9 @@ function serializeTenantSettings(tenant: {
   name: string;
   slug: string;
   logoText: string;
+  logoUrl: string;
   primaryColor: string;
+  webhookUrl: string;
   plan: string;
   createdAt: Date;
   subscription: {
@@ -84,7 +88,9 @@ function serializeTenantSettings(tenant: {
     name: tenant.name,
     slug: tenant.slug,
     logoText: tenant.logoText,
+    logoUrl: tenant.logoUrl,
     primaryColor: tenant.primaryColor,
+    webhookUrl: tenant.webhookUrl,
     plan: tenant.plan,
     createdAt: tenant.createdAt,
     subscription: tenant.subscription
@@ -133,7 +139,9 @@ export async function updateTenantSettings(tenantId: string, input: TenantSettin
     data: {
       name: input.name?.trim() || currentTenant.name,
       logoText: normalizeLogoText(input.logoText, currentTenant.logoText),
-      primaryColor: normalizePrimaryColor(input.primaryColor, currentTenant.primaryColor)
+      logoUrl: input.logoUrl !== undefined ? input.logoUrl.trim() : currentTenant.logoUrl,
+      primaryColor: normalizePrimaryColor(input.primaryColor, currentTenant.primaryColor),
+      webhookUrl: input.webhookUrl !== undefined ? input.webhookUrl.trim() : currentTenant.webhookUrl
     },
     include: {
       subscription: true
