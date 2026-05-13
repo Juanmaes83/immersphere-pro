@@ -129,7 +129,7 @@ function buildZip(files: Array<{ name: string; data: Buffer }>): Buffer {
 
 function buildTourHtml(propertyTitle: string, splatUrl: string): string {
   const encoded = encodeURIComponent(splatUrl);
-  const viewerUrl = `https://superspl.at/viewer?content=${encoded}`;
+  const viewerUrl = `https://superspl.at/scene/251b52bb?content=${encoded}`;
 
   return `<!DOCTYPE html>
 <html lang="es">
