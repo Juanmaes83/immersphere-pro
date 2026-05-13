@@ -24,6 +24,7 @@ export class PanoramaEngine360 implements RendererLifecycle {
   private yaw: number;
   private pitch: number;
   private fov: number;
+  private gyroscopeActive = false;
 
   public constructor(config: PanoramaEngineConfig) {
     this.container = config.container;
@@ -59,6 +60,7 @@ export class PanoramaEngine360 implements RendererLifecycle {
     this.handlePointerMove = this.handlePointerMove.bind(this);
     this.handlePointerUp = this.handlePointerUp.bind(this);
     this.handleWheel = this.handleWheel.bind(this);
+    this.handleDeviceOrientation = this.handleDeviceOrientation.bind(this);
 
     this.renderer.domElement.addEventListener('pointerdown', this.handlePointerDown);
     window.addEventListener('pointermove', this.handlePointerMove);
@@ -122,6 +124,38 @@ export class PanoramaEngine360 implements RendererLifecycle {
     this.render();
   }
 
+  public async enableGyroscope(onDenied?: () => void): Promise<void> {
+    if (this.gyroscopeActive || this.isDisposed) return;
+
+    // iOS 13+ requires explicit user permission
+    const DOE = DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> };
+    if (typeof DOE.requestPermission === 'function') {
+      try {
+        const permission = await DOE.requestPermission();
+        if (permission !== 'granted') {
+          onDenied?.();
+          return;
+        }
+      } catch {
+        onDenied?.();
+        return;
+      }
+    }
+
+    this.gyroscopeActive = true;
+    window.addEventListener('deviceorientation', this.handleDeviceOrientation, true);
+  }
+
+  public disableGyroscope(): void {
+    if (!this.gyroscopeActive) return;
+    this.gyroscopeActive = false;
+    window.removeEventListener('deviceorientation', this.handleDeviceOrientation, true);
+  }
+
+  public isGyroscopeActive(): boolean {
+    return this.gyroscopeActive;
+  }
+
   public dispose(): void {
     this.isDisposed = true;
 
@@ -130,6 +164,7 @@ export class PanoramaEngine360 implements RendererLifecycle {
       this.animationFrameId = null;
     }
 
+    this.disableGyroscope();
     this.renderer.domElement.removeEventListener('pointerdown', this.handlePointerDown);
     window.removeEventListener('pointermove', this.handlePointerMove);
     window.removeEventListener('pointerup', this.handlePointerUp);
@@ -240,8 +275,35 @@ export class PanoramaEngine360 implements RendererLifecycle {
     this.renderer.domElement.setPointerCapture(event.pointerId);
   }
 
+  private handleDeviceOrientation(event: DeviceOrientationEvent): void {
+    if (!this.gyroscopeActive || this.isDisposed) return;
+
+    const alpha = event.alpha ?? 0;
+    const beta = event.beta ?? 90;
+    const gamma = event.gamma ?? 0;
+    const screenAngle = screen.orientation?.angle ?? 0;
+
+    let newYaw: number;
+    let newPitch: number;
+
+    if (Math.abs(screenAngle) === 90 || Math.abs(screenAngle) === 270) {
+      // Landscape orientation
+      newYaw = -alpha;
+      newPitch = THREE.MathUtils.clamp(gamma < 0 ? -beta : beta, -85, 85);
+    } else {
+      // Portrait orientation (default)
+      newYaw = -alpha;
+      newPitch = THREE.MathUtils.clamp(90 - beta, -85, 85);
+    }
+
+    this.yaw = newYaw;
+    this.pitch = newPitch;
+    this.updateCamera();
+    this.emitViewChange();
+  }
+
   private handlePointerMove(event: PointerEvent): void {
-    if (!this.isPointerDown) return;
+    if (!this.isPointerDown || this.gyroscopeActive) return;
 
     const deltaX = event.clientX - this.pointerStartX;
     const deltaY = event.clientY - this.pointerStartY;

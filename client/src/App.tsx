@@ -2707,6 +2707,18 @@ function LeadsPage(): JSX.Element {
   );
 }
 
+const MobileViewerPage = lazy(() => import('@/pages/MobileViewerPage'));
+
+function MobileViewerRoutePage(): JSX.Element {
+  const { id } = useParams();
+  if (!id) return <Navigate to="/gallery" replace />;
+  return (
+    <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center bg-slate-950"><div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" /></div>}>
+      <MobileViewerPage />
+    </Suspense>
+  );
+}
+
 function AppRoutes(): JSX.Element {
   const hydrateFromStorage = useAuthStore((state) => state.hydrateFromStorage);
 
@@ -2741,7 +2753,12 @@ export default function App(): JSX.Element {
   return (
     <HelmetProvider>
       <BrowserRouter>
-        <AppRoutes />
+        <Routes>
+          {/* Mobile viewer: standalone fullscreen, no AppLayout header/footer */}
+          <Route path="/property/:id/mobile" element={<MobileViewerRoutePage />} />
+          {/* All other routes get AppLayout */}
+          <Route path="*" element={<AppRoutes />} />
+        </Routes>
       </BrowserRouter>
     </HelmetProvider>
   );

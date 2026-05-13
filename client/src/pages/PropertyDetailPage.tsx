@@ -730,6 +730,21 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                   </button>
                 </>
               ) : null}
+              <button
+                type="button"
+                onClick={() => {
+                  const url = `/property/${property.id}/mobile`;
+                  const isMobile = navigator.maxTouchPoints > 0 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                  if (isMobile) {
+                    window.location.href = url;
+                  } else {
+                    window.open(url, '_blank', 'noopener,noreferrer');
+                  }
+                }}
+                className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700"
+              >
+                📱 Ver en móvil
+              </button>
               <p className="mt-4 text-center text-xs leading-5 text-slate-500">
                 En producción, este CTA abrirá lead, email, CRM o reserva de visita física.
               </p>

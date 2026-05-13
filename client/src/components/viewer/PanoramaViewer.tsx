@@ -113,11 +113,13 @@ export default function PanoramaViewer({
   const analyticsRef = useRef(onAnalyticsEvent);
   const hotspotClickRef = useRef(onHotspotClick);
 
-  
   const runtimeImageUrl = getRuntimePanoramaUrl(asset, propertyId);
   const [isReady, setIsReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [currentFov, setCurrentFov] = useState(75);
+  const [gyroActive, setGyroActive] = useState(false);
+  const [gyroPermDenied, setGyroPermDenied] = useState(false);
+  const supportsGyro = typeof DeviceOrientationEvent !== 'undefined' && navigator.maxTouchPoints > 0;
 
   useEffect(() => {
     analyticsRef.current = onAnalyticsEvent;
@@ -267,6 +269,21 @@ export default function PanoramaViewer({
     );
   }
 
+  async function handleGyroToggle(): Promise<void> {
+    const engine = engineRef.current;
+    if (!engine) return;
+
+    if (gyroActive) {
+      engine.disableGyroscope();
+      setGyroActive(false);
+    } else {
+      await engine.enableGyroscope(() => {
+        setGyroPermDenied(true);
+      });
+      setGyroActive(engine.isGyroscopeActive());
+    }
+  }
+
   function handleReset(): void {
     engineRef.current?.setYaw(0);
     engineRef.current?.setPitch(0);
@@ -330,6 +347,19 @@ export default function PanoramaViewer({
       ))}
 
       <div className="absolute bottom-5 right-5 z-30 flex gap-2 rounded-2xl border border-white/10 bg-black/45 p-2 text-white backdrop-blur">
+        {supportsGyro ? (
+          <button
+            type="button"
+            onClick={() => { void handleGyroToggle(); }}
+            disabled={gyroPermDenied}
+            title={gyroPermDenied ? 'Permiso de giroscopio denegado' : gyroActive ? 'Desactivar giroscopio' : 'Activar giroscopio'}
+            className={`h-10 rounded-xl px-3 text-xs font-black transition hover:bg-white/20 ${
+              gyroActive ? 'bg-cyan-500/80 text-white' : 'bg-white/10'
+            } ${gyroPermDenied ? 'opacity-40' : ''}`}
+          >
+            {gyroActive ? '⬤ Gyro' : 'Gyro'}
+          </button>
+        ) : null}
         <button
           type="button"
           onClick={() => handleZoom(6)}
