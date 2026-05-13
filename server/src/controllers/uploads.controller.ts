@@ -1,9 +1,21 @@
-﻿import type { Request, Response } from 'express';
+import { unlink } from 'node:fs/promises';
+import type { Request, Response } from 'express';
 import { storeUploadFile } from '../services/cloudinary.service.js';
+import { checkTenantStorageQuota } from '../services/quota.service.js';
 
 type UploadRequest = Request & {
   file?: Express.Multer.File;
 };
+
+async function safeDeleteTempFile(filePath: string | undefined): Promise<void> {
+  if (!filePath) return;
+
+  try {
+    await unlink(filePath);
+  } catch {
+    // silencioso — el archivo puede no existir si ya fue eliminado
+  }
+}
 
 export async function uploadAsset(request: UploadRequest, response: Response): Promise<void> {
   const file = request.file;
@@ -16,21 +28,41 @@ export async function uploadAsset(request: UploadRequest, response: Response): P
     return;
   }
 
+  const tenantId = request.auth?.tenantId ?? null;
+  const userId = request.auth?.userId ?? null;
+
+  if (tenantId) {
+    const incomingMb = Math.ceil(file.size / (1024 * 1024));
+
+    try {
+      const quota = await checkTenantStorageQuota(tenantId, incomingMb);
+
+      if (!quota.allowed) {
+        await safeDeleteTempFile(file.path);
+        response.status(403).json({
+          success: false,
+          error: `Cuota de almacenamiento superada. Plan ${quota.plan}: limite ${quota.quotaMb} MB, usado ${Math.round(quota.usedMb)} MB, archivo ${incomingMb} MB.`
+        });
+        return;
+      }
+    } catch {
+      // Si el servicio de cuota falla, no bloqueamos la subida
+    }
+  }
+
   try {
-    const storedUpload = await storeUploadFile(file, {
-      tenantId: request.auth?.tenantId ?? null,
-      userId: request.auth?.userId ?? null
-    });
+    const storedUpload = await storeUploadFile(file, { tenantId, userId });
 
     response.status(201).json({
       success: true,
       data: {
         ...storedUpload,
-        uploadedBy: request.auth?.userId ?? null,
-        tenantId: request.auth?.tenantId ?? null
+        uploadedBy: userId,
+        tenantId
       }
     });
   } catch {
+    await safeDeleteTempFile(file.path);
     response.status(500).json({
       success: false,
       error: 'No se ha podido subir el archivo.'
