@@ -9,6 +9,7 @@ export interface AuthTenant {
   logoUrl: string;
   primaryColor: string;
   webhookUrl: string;
+  phone?: string;
   plan: string;
 }
 

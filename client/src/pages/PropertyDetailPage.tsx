@@ -2,6 +2,7 @@ import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import QRCode from 'qrcode';
+import ChatbotWidget from '@/components/ChatbotWidget';
 
 const PropertyMap = lazy(() => import('@/components/PropertyMap'));
 import UniversalViewer from '@/components/viewer/UniversalViewer';
@@ -755,6 +756,14 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
           </div>
         </div>
       </section>
+      {!embed ? (
+        <ChatbotWidget
+          propertyId={property.id}
+          propertyTitle={property.title}
+          tenantPhone={property.tenantPhone}
+          primaryColor={primaryColor}
+        />
+      ) : null}
     </main>
   );
 }

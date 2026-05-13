@@ -1,6 +1,7 @@
 import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import UniversalViewer from '@/components/viewer/UniversalViewer';
+import ChatbotWidget from '@/components/ChatbotWidget';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore } from '@/store/propertyStore';
 import type { ViewerEvent } from '@/types/viewer';
@@ -113,6 +114,13 @@ export default function MobileViewerPage(): JSX.Element {
           onAnalyticsEvent={handleAnalyticsEvent}
         />
       </div>
+
+      <ChatbotWidget
+        propertyId={selectedProperty.id}
+        propertyTitle={selectedProperty.title}
+        tenantPhone={selectedProperty.tenantPhone}
+        primaryColor="#7C3AED"
+      />
     </div>
   );
 }

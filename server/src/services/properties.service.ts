@@ -118,6 +118,9 @@ const propertyInclude = {
   },
   _count: {
     select: { leads: true }
+  },
+  tenant: {
+    select: { phone: true }
   }
 };
 

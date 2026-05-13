@@ -15,6 +15,7 @@ model Tenant {
   logoUrl      String @default("")
   primaryColor String @default("#7C3AED")
   webhookUrl   String @default("")
+  phone        String @default("")
 
   plan          String         @default("STARTER")
   createdAt     DateTime       @default(now())

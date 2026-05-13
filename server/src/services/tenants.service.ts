@@ -8,6 +8,7 @@ export interface TenantSettingsUpdateInput {
   logoUrl?: string;
   primaryColor?: string;
   webhookUrl?: string;
+  phone?: string;
 }
 
 export interface TenantPlanUpdateInput {
@@ -71,6 +72,7 @@ function serializeTenantSettings(tenant: {
   logoUrl: string;
   primaryColor: string;
   webhookUrl: string;
+  phone: string;
   plan: string;
   createdAt: Date;
   subscription: {
@@ -91,6 +93,7 @@ function serializeTenantSettings(tenant: {
     logoUrl: tenant.logoUrl,
     primaryColor: tenant.primaryColor,
     webhookUrl: tenant.webhookUrl,
+    phone: tenant.phone,
     plan: tenant.plan,
     createdAt: tenant.createdAt,
     subscription: tenant.subscription
@@ -141,7 +144,8 @@ export async function updateTenantSettings(tenantId: string, input: TenantSettin
       logoText: normalizeLogoText(input.logoText, currentTenant.logoText),
       logoUrl: input.logoUrl !== undefined ? input.logoUrl.trim() : currentTenant.logoUrl,
       primaryColor: normalizePrimaryColor(input.primaryColor, currentTenant.primaryColor),
-      webhookUrl: input.webhookUrl !== undefined ? input.webhookUrl.trim() : currentTenant.webhookUrl
+      webhookUrl: input.webhookUrl !== undefined ? input.webhookUrl.trim() : currentTenant.webhookUrl,
+      phone: input.phone !== undefined ? input.phone.trim() : currentTenant.phone
     },
     include: {
       subscription: true

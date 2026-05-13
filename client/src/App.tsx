@@ -1979,6 +1979,8 @@ function SettingsPage(): JSX.Element {
   const [settingsMsg, setSettingsMsg] = useState<string | null>(null);
   const [webhookInput, setWebhookInput] = useState(user?.tenant.webhookUrl ?? '');
   const [webhookSaving, setWebhookSaving] = useState(false);
+  const [phoneInput, setPhoneInput] = useState(user?.tenant.phone ?? '');
+  const [phoneSaving, setPhoneSaving] = useState(false);
 
   useEffect(() => {
     void loadBillingState();
@@ -2047,6 +2049,19 @@ function SettingsPage(): JSX.Element {
       setSettingsMsg('Error al guardar el webhook.');
     } finally {
       setWebhookSaving(false);
+    }
+  }
+
+  async function handleSavePhone(): Promise<void> {
+    setPhoneSaving(true);
+    setSettingsMsg(null);
+    try {
+      await unwrapApiResponse(api.put('/tenants/settings', { phone: phoneInput.trim() }));
+      setSettingsMsg('Teléfono guardado correctamente.');
+    } catch {
+      setSettingsMsg('Error al guardar el teléfono.');
+    } finally {
+      setPhoneSaving(false);
     }
   }
 
@@ -2131,6 +2146,29 @@ function SettingsPage(): JSX.Element {
             style={bgStyle}
           >
             {webhookSaving ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Teléfono de contacto</p>
+        <p className="mt-1 text-sm text-slate-500">Número que se mostrará en el chatbot del visor para que los visitantes puedan llamar directamente.</p>
+        <div className="mt-4 flex gap-3">
+          <input
+            type="tel"
+            value={phoneInput}
+            onChange={(e) => setPhoneInput(e.target.value)}
+            placeholder="+34 600 000 000"
+            className="brand-focus flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none"
+          />
+          <button
+            type="button"
+            disabled={phoneSaving}
+            onClick={() => { void handleSavePhone(); }}
+            className="rounded-2xl px-5 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50"
+            style={bgStyle}
+          >
+            {phoneSaving ? 'Guardando...' : 'Guardar'}
           </button>
         </div>
       </div>
