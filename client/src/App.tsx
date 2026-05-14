@@ -1301,7 +1301,7 @@ function PropertiesPage(): JSX.Element {
       url: String(assetForm.url ?? '').trim(),
       thumbnail: String(assetForm.thumbnail ?? '').trim(),
       format: assetForm.format,
-      size: Math.max(0, Number(assetForm.size ?? 0)),
+      size: Math.round(Math.max(0, Number(assetForm.size ?? 0))),
       hotspots: assetForm.hotspots ?? []
     };
 
