@@ -326,6 +326,154 @@ export default function HelpPage(): JSX.Element {
         </div>
       </section>
 
+      {/* ── CÓMO CREAR CONTENIDO 3D ─────────────────────────────── */}
+      <section className="bg-slate-50 px-5 py-20 dark:bg-slate-900">
+        <div className="mx-auto max-w-5xl">
+          <p className="text-center text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
+            Crea tu contenido
+          </p>
+          <h2 className="mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
+            Cómo crear contenido 3D
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-center text-base text-slate-500 dark:text-slate-400">
+            Tres formas de digitalizar tus espacios y objetos
+          </p>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+
+            {/* Tarjeta 1 — Polycam */}
+            <article className="flex flex-col rounded-[1.6rem] bg-white p-7 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+              <span className="mb-4 text-3xl">📸</span>
+              <h3 className="text-lg font-black text-slate-950 dark:text-white">
+                Escanear un espacio con Polycam
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                App gratuita para iPhone y Android. Escanea habitaciones o edificios enteros.
+              </p>
+              <ol className="mt-5 space-y-3">
+                {([
+                  'Descarga Polycam desde la App Store o Google Play',
+                  'Abre la app, toca "Scan" y escanea la habitación (2–5 min)',
+                  'Exporta el archivo como .splat o .ply desde la app',
+                  'Sube el archivo a Immersphere Pro con Drag & Drop',
+                ] as const).map((step, i) => (
+                  <li key={step} className="flex gap-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                    <span
+                      className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-black text-white"
+                      style={bgStyle}
+                    >
+                      {i + 1}
+                    </span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+              <div className="mt-auto pt-6">
+                <a
+                  href="https://poly.cam"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full rounded-2xl px-5 py-3 text-center text-sm font-black text-white transition hover:opacity-90"
+                  style={bgStyle}
+                >
+                  Abrir Polycam →
+                </a>
+                <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-400 dark:bg-slate-700 dark:text-slate-500">
+                  Mejor calidad con iPhone 12 Pro o superior (LiDAR). En Android, asegura buena iluminación.
+                </p>
+              </div>
+            </article>
+
+            {/* Tarjeta 2 — Luma AI */}
+            <article className="flex flex-col rounded-[1.6rem] bg-white p-7 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+              <span className="mb-4 text-3xl">🤖</span>
+              <h3 className="text-lg font-black text-slate-950 dark:text-white">
+                Escanear con IA (Luma AI)
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                Convierte vídeos en modelos 3D automáticamente. Ideal para Android.
+              </p>
+              <ol className="mt-5 space-y-3">
+                {([
+                  'Descarga Luma AI desde la App Store o Google Play',
+                  'Graba el espacio dando una vuelta completa (2 min)',
+                  'Sube el vídeo a Luma AI y espera el procesamiento',
+                  'Descarga el .splat generado y súbelo a Immersphere Pro',
+                ] as const).map((step, i) => (
+                  <li key={step} className="flex gap-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                    <span
+                      className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-black text-white"
+                      style={bgStyle}
+                    >
+                      {i + 1}
+                    </span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
+              <div className="mt-auto pt-6">
+                <a
+                  href="https://lumalabs.ai"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="block w-full rounded-2xl px-5 py-3 text-center text-sm font-black text-white transition hover:opacity-90"
+                  style={bgStyle}
+                >
+                  Abrir Luma AI →
+                </a>
+                <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-400 dark:bg-slate-700 dark:text-slate-500">
+                  Procesamiento en la nube: 5–15 minutos. Recibirás notificación al terminar.
+                </p>
+              </div>
+            </article>
+
+            {/* Tarjeta 3 — Ya tengo el archivo */}
+            <article className="flex flex-col rounded-[1.6rem] bg-white p-7 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+              <span className="mb-4 text-3xl">⬆️</span>
+              <h3 className="text-lg font-black text-slate-950 dark:text-white">
+                Ya tengo el archivo
+              </h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                Arrastra tu archivo .ply, .splat, .glb o .jpg 360° al formulario.
+              </p>
+              <div className="mt-5 flex flex-wrap gap-2">
+                {(['JPG', 'PNG', 'WEBP', 'PLY', 'SPLAT', 'GLB'] as const).map((fmt) => (
+                  <span
+                    key={fmt}
+                    className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600 dark:bg-slate-700 dark:text-slate-300"
+                  >
+                    .{fmt}
+                  </span>
+                ))}
+              </div>
+              <div className="mt-auto pt-6">
+                {isAuthenticated ? (
+                  <Link
+                    to="/properties"
+                    className="block w-full rounded-2xl px-5 py-3 text-center text-sm font-black text-white transition hover:opacity-90"
+                    style={bgStyle}
+                  >
+                    Ir al panel →
+                  </Link>
+                ) : (
+                  <Link
+                    to="/register"
+                    className="block w-full rounded-2xl px-5 py-3 text-center text-sm font-black text-white transition hover:opacity-90"
+                    style={bgStyle}
+                  >
+                    Crear cuenta gratis →
+                  </Link>
+                )}
+                <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-400 dark:bg-slate-700 dark:text-slate-500">
+                  Tamaño máximo: 100 MB
+                </p>
+              </div>
+            </article>
+
+          </div>
+        </div>
+      </section>
+
       {/* ── ANTES vs AHORA ──────────────────────────────────────── */}
       <section className="bg-slate-50 px-5 py-20 dark:bg-slate-900">
         <div className="mx-auto max-w-4xl">
