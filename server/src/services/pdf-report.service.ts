@@ -26,12 +26,37 @@ export async function generatePropertyReport(
 
   const tenant = await prisma.tenant.findUnique({
     where: { id: tenantId },
-    select: { name: true, logoText: true, primaryColor: true, removeBranding: true }
+    select: {
+      name: true,
+      logoText: true,
+      primaryColor: true,
+      removeBranding: true,
+      pdfReportsEnabled: true
+    }
   });
+
+  // Gate: PDF reports are an opt-in add-on. Activated manually per tenant in DB.
+  if (!tenant?.pdfReportsEnabled) {
+    throw new AppError(403, 'El add-on de informes PDF no está activo para esta cuenta.');
+  }
 
   const analytics = await getPropertyAnalyticsSummary(propertyId);
 
-  const appUrl = env.APP_URL.replace(/\/$/, '');
+  const rawAppUrl = env.APP_URL.replace(/\/$/, '');
+
+  // Warn if APP_URL looks like a local/dev URL — QR would be useless in production
+  const isLocalUrl =
+    rawAppUrl === '' ||
+    rawAppUrl.includes('localhost') ||
+    rawAppUrl.includes('127.0.0.1');
+  if (isLocalUrl) {
+    console.warn(
+      '[pdf-report] APP_URL is local or empty ("%s"). QR code will not point to a public URL.',
+      rawAppUrl
+    );
+  }
+
+  const appUrl = rawAppUrl;
   const propertyUrl = `${appUrl}/property/${propertyId}`;
 
   // Generate QR as PNG buffer — non-fatal if it fails

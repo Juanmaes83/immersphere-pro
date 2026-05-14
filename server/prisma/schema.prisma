@@ -20,6 +20,7 @@ model Tenant {
   plan            String  @default("STARTER")
   removeBranding  Boolean @default(false)
   whatsappNumber  String  @default("")
+  pdfReportsEnabled Boolean @default(false)
   createdAt     DateTime       @default(now())
   users         User[]
   properties    Property[]
