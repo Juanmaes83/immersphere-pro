@@ -13,6 +13,7 @@
   "dependencies": {
     "@google/model-viewer": "^4.2.0",
     "@sparkjsdev/spark": "^2.0.0",
+    "@vercel/og": "^0.11.1",
     "@vitejs/plugin-react": "4.3.4",
     "axios": "1.7.9",
     "leaflet": "^1.9.4",

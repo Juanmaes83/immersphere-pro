@@ -202,7 +202,11 @@ export default async function middleware(request: Request): Promise<Response | u
     const description = (
       property.description || 'Tour virtual inmersivo en Immersphere Pro'
     ).trim();
-    const image = property.coverImage || '';
+
+    // Use coverImage when available; fall back to the branded OG image generator.
+    // /api/og is a Vercel Edge Function that returns a 1200×630 PNG.
+    const fallbackOgImage = `${url.origin}/api/og?title=${encodeURIComponent(title)}`;
+    const image = property.coverImage || fallbackOgImage;
 
     const ogTags = buildOgTags({ title, description, image, canonicalUrl });
     const enrichedHtml = injectOgIntoHtml(indexHtml, title, ogTags);
