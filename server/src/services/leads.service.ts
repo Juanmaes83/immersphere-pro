@@ -32,8 +32,12 @@ export async function createLead(input: CreateLeadInput): Promise<LeadRecord> {
     }
   });
 
-  fireLeadWebhook(lead).catch(() => {});
-  sendLeadEmail(lead).catch(() => {});
+  fireLeadWebhook(lead).catch((err) => {
+    console.error('[leads] Webhook delivery failed:', err instanceof Error ? err.message : err);
+  });
+  sendLeadEmail(lead).catch((err) => {
+    console.error('[leads] Resend email failed:', err instanceof Error ? err.message : err);
+  });
 
   return lead;
 }
