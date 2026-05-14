@@ -326,36 +326,42 @@ export default function GaussianSplatViewer({
 
           <div className="mt-5 rounded-2xl bg-white/10 p-4">
             <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">Editor básico</p>
-            <div className="mt-4 space-y-3">
-              <button
-                type="button"
-                onClick={() => setEditorMode((current) => !current)}
-                className="w-full rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
-                style={{ backgroundColor: editorMode ? '#DC2626' : primaryColor }}
-              >
-                {editorMode ? 'Salir de selección' : 'Seleccionar gaussianas'}
-              </button>
-              <button
-                type="button"
-                onClick={handleToggleClip}
-                className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80 transition hover:bg-white/10"
-              >
-                {clipEnabled ? 'Desactivar clipping' : 'Activar plano de clipping'}
-              </button>
-              <button
-                type="button"
-                onClick={resetEditor}
-                className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80 transition hover:bg-white/10"
-              >
-                Reset editor
-              </button>
-
-              {isReady ? (
+            {!isReady && !errorMessage ? (
+              <p className="mt-3 text-xs text-white/40">Disponible cuando el splat termine de cargar.</p>
+            ) : !isReady && errorMessage ? (
+              <p className="mt-3 text-xs text-white/40">Sube un archivo .splat local para activar el editor.</p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setEditorMode((current) => !current)}
+                  title={editorMode ? 'Haz clic en el splat para ocultar zonas no deseadas. Clic de nuevo para salir.' : 'Activa el modo de borrado por esferas SDF. Haz clic sobre el splat para ocultar zonas.'}
+                  className="w-full rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
+                  style={{ backgroundColor: editorMode ? '#DC2626' : primaryColor }}
+                >
+                  {editorMode ? 'Salir de selección' : 'Seleccionar gaussianas'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleClip}
+                  title="Muestra un plano de recorte visual sobre el splat. Útil para ver secciones interiores."
+                  className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80 transition hover:bg-white/10"
+                >
+                  {clipEnabled ? 'Desactivar clipping' : 'Activar plano de clipping'}
+                </button>
+                <button
+                  type="button"
+                  onClick={resetEditor}
+                  title="Elimina todas las zonas ocultas y desactiva el plano de clipping."
+                  className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80 transition hover:bg-white/10"
+                >
+                  Reset editor
+                </button>
                 <div>
                   <button
                     type="button"
                     onClick={() => window.open('https://superspl.at/editor', '_blank', 'noopener,noreferrer')}
-                    title="Abrir editor profesional para limpiar y optimizar"
+                    title="Abre SuperSplat, el editor profesional de PlayCanvas. Limpia, recorta y optimiza el splat, luego expórtalo y vuelve a subirlo aquí."
                     className="w-full rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
                     style={{ backgroundColor: primaryColor }}
                   >
@@ -365,8 +371,8 @@ export default function GaussianSplatViewer({
                     Guarda y vuelve a subir el resultado
                   </p>
                 </div>
-              ) : null}
-            </div>
+              </div>
+            )}
             <div className="mt-4 rounded-2xl bg-black/25 p-4">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">Zonas ocultadas</p>
               <p className="mt-1 text-2xl font-black">{removedCount}</p>
