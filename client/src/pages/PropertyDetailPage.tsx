@@ -99,7 +99,8 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   hotspot_click: 'Hotspot',
   viewer_drag: 'Navegación',
   lead_cta: 'Lead CTA',
-  asset_load_error: 'Error carga'
+  asset_load_error: 'Error carga',
+  viewer_whatsapp_click: 'WhatsApp'
 };
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
@@ -507,6 +508,25 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
       .then((data) => { setAnalyticsSummary(data); })
       .catch(() => {});
   }, [propertyId, isAuthenticated]);
+
+  // Dynamic favicon: colored square using tenant primary color
+  useEffect(() => {
+    const color = selectedProperty?.tenantPrimaryColor || '#7C3AED';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="${color}"/></svg>`;
+    const faviconHref = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    const wasCreated = !link;
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    const prevHref = link.href;
+    link.href = faviconHref;
+    return () => {
+      if (link) link.href = wasCreated ? '' : prevHref;
+    };
+  }, [selectedProperty?.tenantPrimaryColor]);
 
   function handleAnalyticsEvent(event: ViewerEvent): void {
     window.dispatchEvent(

@@ -27,6 +27,24 @@ export default function MobileViewerPage(): JSX.Element {
     return () => { clearSelectedProperty(); };
   }, [id, fetchPropertyById, clearSelectedProperty, hydrateFromStorage]);
 
+  useEffect(() => {
+    const color = selectedProperty?.tenantPrimaryColor || '#7C3AED';
+    const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32"><rect width="32" height="32" rx="6" fill="${color}"/></svg>`;
+    const faviconHref = `data:image/svg+xml,${encodeURIComponent(svg)}`;
+    let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    const wasCreated = !link;
+    if (!link) {
+      link = document.createElement('link');
+      link.rel = 'icon';
+      document.head.appendChild(link);
+    }
+    const prevHref = link.href;
+    link.href = faviconHref;
+    return () => {
+      if (link) link.href = wasCreated ? '' : prevHref;
+    };
+  }, [selectedProperty?.tenantPrimaryColor]);
+
   function handleClose(): void {
     if (window.history.length > 1) {
       navigate(-1);
