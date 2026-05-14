@@ -1700,17 +1700,23 @@ function PropertiesPage(): JSX.Element {
                                     disabled={isUploadingAsset}
                                     className="sr-only"
                                   />
+                                  {isUploadingAsset ? (
+                                    <span className="mb-1 h-6 w-6 animate-spin rounded-full border-2 border-violet-300 border-t-violet-700" />
+                                  ) : null}
                                   <span className="text-sm font-bold text-violet-700">
-                                    {isUploadingAsset ? 'Subiendo...' : isDragOver ? 'Suelta el archivo aquí' : 'Haz clic o arrastra un archivo aquí'}
+                                    {isUploadingAsset ? 'Subiendo archivo...' : isDragOver ? 'Suelta el archivo aquí' : 'Haz clic o arrastra un archivo aquí'}
                                   </span>
                                   <span className="mt-1 text-xs font-semibold text-slate-400">
                                     JPG, JPEG, PNG, WEBP, SPLAT, PLY o GLB. Maximo 100 MB.
                                   </span>
                                 </label>
                                 {selectedAssetFileName ? (
-                                  <p className="mt-2 text-xs font-bold text-emerald-700">
-                                    Archivo seleccionado: {selectedAssetFileName}
-                                  </p>
+                                  <div className="mt-2 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 ring-1 ring-emerald-200">
+                                    <span className="text-base leading-none text-emerald-600">✓</span>
+                                    <p className="text-xs font-bold text-emerald-700">
+                                      Subido: {selectedAssetFileName}
+                                    </p>
+                                  </div>
                                 ) : null}
                               </div>
 
