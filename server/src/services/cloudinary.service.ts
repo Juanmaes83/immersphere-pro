@@ -2,12 +2,20 @@
 import path from 'node:path';
 import { v2 as cloudinary } from 'cloudinary';
 import { env } from '../config/env.js';
+import { tryOptimizeGlb } from './glb-optimizer.service.js';
 
 type CloudinaryResourceType = 'image' | 'video' | 'raw' | 'auto';
 
 interface StoreUploadMetadata {
   tenantId?: string | null;
   userId?: string | null;
+}
+
+export interface OptimizationStats {
+  originalBytes: number;
+  optimizedBytes: number;
+  /** 0-1 float, e.g. 0.72 means 72% size reduction */
+  compressionRatio: number;
 }
 
 interface StoredUpload {
@@ -27,6 +35,7 @@ interface StoredUpload {
   width: number | null;
   height: number | null;
   format: string;
+  optimizationStats: OptimizationStats | null;
 }
 
 let configured = false;
@@ -104,8 +113,39 @@ async function removeTempFile(filePath: string | undefined): Promise<void> {
 export async function storeUploadFile(file: Express.Multer.File, metadata: StoreUploadMetadata): Promise<StoredUpload> {
   const tenantFolder = sanitizeFolderSegment(metadata.tenantId);
   const originalFormat = getFormat(file);
+  const extension = path.extname(file.originalname).toLowerCase();
+  const isGlb = extension === '.glb';
+
+  // ── GLB optimization (pre-upload) ─────────────────────────────────────────
+  // Try to optimize GLB files with Draco + WebP before uploading to Cloudinary.
+  // If optimization fails or times out, fall back to the original file silently.
+  let optimizationStats: OptimizationStats | null = null;
+  let uploadPath = file.path;
+  let uploadSize = file.size;
+  let optimizedTempPath: string | null = null;
+
+  if (isGlb) {
+    const result = await tryOptimizeGlb(file.path, file.size);
+    if (result) {
+      optimizationStats = {
+        originalBytes: result.originalBytes,
+        optimizedBytes: result.optimizedBytes,
+        compressionRatio: result.compressionRatio
+      };
+      uploadPath = result.optimizedPath;
+      uploadSize = result.optimizedBytes;
+      optimizedTempPath = result.optimizedPath;
+      const pct = (result.compressionRatio * 100).toFixed(1);
+      console.log(`[glb-optimizer] ${file.originalname}: ${(result.originalBytes / 1_048_576).toFixed(1)} MB → ${(result.optimizedBytes / 1_048_576).toFixed(1)} MB (${pct}% smaller)`);
+    }
+  }
+  // ─────────────────────────────────────────────────────────────────────────
 
   if (!hasCloudinaryConfig()) {
+    if (optimizedTempPath) {
+      await removeTempFile(optimizedTempPath);
+    }
+
     const publicPath = `/uploads/${file.filename}`;
 
     return {
@@ -114,8 +154,8 @@ export async function storeUploadFile(file: Express.Multer.File, metadata: Store
       originalName: file.originalname,
       filename: file.filename,
       mimeType: file.mimetype,
-      size: file.size,
-      bytes: file.size,
+      size: uploadSize,
+      bytes: uploadSize,
       url: publicPath,
       path: publicPath,
       thumbnailUrl: file.mimetype.startsWith('image/') ? publicPath : '',
@@ -124,7 +164,8 @@ export async function storeUploadFile(file: Express.Multer.File, metadata: Store
       storageKey: null,
       width: null,
       height: null,
-      format: originalFormat
+      format: originalFormat,
+      optimizationStats
     };
   }
 
@@ -134,7 +175,7 @@ export async function storeUploadFile(file: Express.Multer.File, metadata: Store
   const folder = `${env.CLOUDINARY_FOLDER}/${tenantFolder}`;
 
   try {
-    const result = (await cloudinary.uploader.upload(file.path, {
+    const result = (await cloudinary.uploader.upload(uploadPath, {
       folder,
       resource_type: resourceType,
       use_filename: true,
@@ -151,8 +192,8 @@ export async function storeUploadFile(file: Express.Multer.File, metadata: Store
       originalName: file.originalname,
       filename: file.filename,
       mimeType: file.mimetype,
-      size: file.size,
-      bytes: Number(result.bytes ?? file.size),
+      size: uploadSize,
+      bytes: Number(result.bytes ?? uploadSize),
       url: secureUrl,
       path: secureUrl,
       thumbnailUrl:
@@ -160,7 +201,7 @@ export async function storeUploadFile(file: Express.Multer.File, metadata: Store
           ? buildImageThumbnailUrl(secureUrl)
           : resourceType === 'video'
             ? buildVideoThumbnailUrl(publicId)
-            : path.extname(file.originalname).toLowerCase() === '.glb'
+            : isGlb
               ? buildGlbThumbnailUrl(publicId)
               : '',
       resourceType,
@@ -168,9 +209,13 @@ export async function storeUploadFile(file: Express.Multer.File, metadata: Store
       storageKey: publicId,
       width: typeof result.width === 'number' ? result.width : null,
       height: typeof result.height === 'number' ? result.height : null,
-      format: getFormat(file, result.format)
+      format: getFormat(file, result.format),
+      optimizationStats
     };
   } finally {
     await removeTempFile(file.path);
+    if (optimizedTempPath) {
+      await removeTempFile(optimizedTempPath);
+    }
   }
 }
