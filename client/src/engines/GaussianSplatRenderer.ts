@@ -99,10 +99,23 @@ export class GaussianSplatRenderer implements RendererLifecycle {
 
     let loadResolved = false;
 
+    // Guard against stalled loads (incompatible PLY format, silent network errors)
+    // where neither onLoad nor initialized.catch ever fires.
+    const loadTimeoutId = setTimeout(() => {
+      if (!loadResolved && !this.isDisposed) {
+        this.emitError(
+          new Error(
+            'Tiempo de carga agotado (30 s). Verifica que el archivo sea un Gaussian Splat válido (.splat o PLY con propiedades 3DGS) y que la URL sea accesible.'
+          )
+        );
+      }
+    }, 30_000);
+
     const splat = new SplatMesh({
       url: sourceUrl,
       onLoad: () => {
         loadResolved = true;
+        clearTimeout(loadTimeoutId);
         if (!this.isDisposed) this.onReady?.();
       }
     });
@@ -113,6 +126,7 @@ export class GaussianSplatRenderer implements RendererLifecycle {
     this.splatMesh = splat;
 
     splat.initialized.catch((err: unknown) => {
+      clearTimeout(loadTimeoutId);
       if (this.isDisposed || loadResolved) return;
       const message = err instanceof Error ? err.message : 'No se pudo cargar el Gaussian Splat.';
       this.emitError(new Error(message));
