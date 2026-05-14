@@ -27,7 +27,7 @@ function isAllowedCorsOrigin(origin: string | undefined): boolean {
 
   if (/^http:\/\/localhost:\d+$/.test(origin)) return true;
 
-  if (/^https:\/\/immersphere.*\.vercel\.app$/.test(origin)) return true;
+  if (/^https:\/\/imm(?:er|o)sphere.*\.vercel\.app$/.test(origin)) return true;
 
   return false;
 }
