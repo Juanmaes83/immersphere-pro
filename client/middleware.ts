@@ -1,35 +1,54 @@
 /**
- * Vercel Edge Middleware — Open Graph for public property pages.
+ * Vercel Edge Middleware — Open Graph injection + sitemap proxy.
  *
- * Social crawlers (WhatsApp, Facebook, LinkedIn, etc.) do not execute JavaScript.
- * When they fetch /property/:id they receive the blank index.html of the SPA.
- * This middleware intercepts those requests and returns a minimal HTML page
- * with populated Open Graph meta tags so link previews work correctly.
+ * For every /property/:id request this middleware:
+ *   1. Fetches property data from the Railway backend API.
+ *   2. Fetches the Vite-built index.html from this Vercel deployment.
+ *   3. Injects OG / Twitter / canonical meta tags into <head>.
+ *   4. Returns the enriched HTML to ALL clients — crawlers AND browsers.
  *
- * Regular browser requests are passed through unchanged → SPA loads as normal.
+ * Benefits over UA-based detection:
+ *   - view-source shows real OG tags (user-visible test).
+ *   - No regex maintenance as new crawlers appear.
+ *   - Google receives the same HTML as any other client.
+ *   - SPA still hydrates correctly (all assets remain in the HTML).
  *
- * No external dependencies — uses only native Web APIs (Request, Response, fetch, URL).
+ * /sitemap.xml requests are proxied to Railway, bypassing the
+ * Vercel catch-all rewrite (/* → /index.html).
+ *
+ * On any error this middleware returns undefined, which triggers
+ * Vercel's catch-all rewrite and serves the plain SPA index.html.
+ *
+ * No external dependencies — only native Web Edge APIs.
  */
 
 export const config = {
   matcher: ['/property/:path*', '/sitemap.xml']
 };
 
-/** Known social / messaging crawler User-Agent patterns. */
-const BOT_UA_PATTERN =
-  /WhatsApp|facebookexternalhit|Facebot|LinkedInBot|Twitterbot|Googlebot|Slackbot|Discordbot|TelegramBot|bingbot|DuckDuckBot|ia_archiver/i;
-
 const TIMEOUT_MS = 4000;
 
-function isCrawler(request: Request): boolean {
-  const ua = request.headers.get('user-agent') ?? '';
-  return BOT_UA_PATTERN.test(ua);
-}
+// ── Types ────────────────────────────────────────────────────────────────────
+
+type PropertyData = {
+  id: string;
+  title: string;
+  description: string;
+  coverImage: string;
+  status: string;
+  isPasswordProtected?: boolean;
+};
+
+type PropertyApiResponse = {
+  success: boolean;
+  data: PropertyData;
+};
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
 
 function extractPropertyId(pathname: string): string | null {
   // pathname is /property/<id> or /property/<id>/...
   const parts = pathname.split('/');
-  // ['', 'property', '<id>', ...]
   const id = parts[2];
   return id && id.length > 0 ? id : null;
 }
@@ -43,7 +62,7 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
-function buildOgHtml(opts: {
+function buildOgTags(opts: {
   title: string;
   description: string;
   image: string;
@@ -51,50 +70,52 @@ function buildOgHtml(opts: {
 }): string {
   const title = escapeHtml(opts.title);
   const description = escapeHtml(opts.description.slice(0, 200));
-  const image = opts.image ? escapeHtml(opts.image) : '';
-  const url = escapeHtml(opts.canonicalUrl);
+  const canonicalUrl = escapeHtml(opts.canonicalUrl);
   const siteName = 'Immersphere Pro';
 
-  const imageTag = image
-    ? `
-  <meta property="og:image" content="${image}">
+  const imageBlock = opts.image
+    ? `  <meta property="og:image" content="${escapeHtml(opts.image)}">
   <meta property="og:image:width" content="1200">
   <meta property="og:image:height" content="630">
-  <meta name="twitter:image" content="${image}">
+  <meta name="twitter:image" content="${escapeHtml(opts.image)}">
   <meta name="twitter:card" content="summary_large_image">`
-    : `
-  <meta name="twitter:card" content="summary">`;
+    : `  <meta name="twitter:card" content="summary">`;
 
-  return `<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>${title} · ${siteName}</title>
+  return `  <!-- Open Graph — injected by Vercel Edge Middleware -->
+  <link rel="canonical" href="${canonicalUrl}">
   <meta name="description" content="${description}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="${siteName}">
-  <meta property="og:url" content="${url}">
-  <meta property="og:title" content="${title} · ${siteName}">
-  <meta property="og:description" content="${description}">${imageTag}
-  <meta name="twitter:title" content="${title} · ${siteName}">
-  <meta name="twitter:description" content="${description}">
-</head>
-<body></body>
-</html>`;
+  <meta property="og:url" content="${canonicalUrl}">
+  <meta property="og:title" content="${title}">
+  <meta property="og:description" content="${description}">
+${imageBlock}
+  <meta name="twitter:title" content="${title}">
+  <meta name="twitter:description" content="${description}">`;
 }
 
 /**
- * Proxy /sitemap.xml from the Railway backend.
- * Vercel's catch-all rewrite (/* → /index.html) would otherwise swallow it.
- * The middleware intercepts before rewrites and returns the XML directly.
+ * Inject OG tags and update <title> in the Vite index.html string.
+ * Uses simple string replacement — no DOM parser required.
  */
+function injectOgIntoHtml(html: string, title: string, ogTags: string): string {
+  // Replace <title>…</title> with the property title
+  const withTitle = html.replace(
+    /<title>[^<]*<\/title>/,
+    `<title>${escapeHtml(title)} · Immersphere Pro</title>`
+  );
+  // Inject OG tags immediately before </head>
+  return withTitle.replace('</head>', `${ogTags}\n</head>`);
+}
+
+// ── Sitemap proxy ─────────────────────────────────────────────────────────────
+
 async function proxySitemap(): Promise<Response> {
   const apiBase =
     process.env.API_BASE_URL ??
     'https://immersphere-pro-production.up.railway.app/api';
 
-  // API_BASE_URL ends with /api — sitemap lives at the Express root
+  // API_BASE_URL ends with /api — sitemap is served at the Express root
   const railwayBase = apiBase.replace(/\/api\/?$/, '');
 
   try {
@@ -105,10 +126,7 @@ async function proxySitemap(): Promise<Response> {
     if (!upstream.ok) {
       return new Response(
         '<?xml version="1.0" encoding="UTF-8"?><error>Sitemap no disponible</error>',
-        {
-          status: 503,
-          headers: { 'Content-Type': 'application/xml; charset=utf-8' }
-        }
+        { status: 503, headers: { 'Content-Type': 'application/xml; charset=utf-8' } }
       );
     }
 
@@ -124,87 +142,82 @@ async function proxySitemap(): Promise<Response> {
   } catch {
     return new Response(
       '<?xml version="1.0" encoding="UTF-8"?><error>Sitemap temporalmente no disponible</error>',
-      {
-        status: 503,
-        headers: { 'Content-Type': 'application/xml; charset=utf-8' }
-      }
+      { status: 503, headers: { 'Content-Type': 'application/xml; charset=utf-8' } }
     );
   }
 }
 
+// ── Main middleware ───────────────────────────────────────────────────────────
+
 export default async function middleware(request: Request): Promise<Response | undefined> {
   const url = new URL(request.url);
 
-  // ── Sitemap proxy ─────────────────────────────────────────────────────────
-  // Must run before the crawler check — all clients (bots + browsers) need it.
+  // ── /sitemap.xml — proxy to Railway ───────────────────────────────────────
   if (url.pathname === '/sitemap.xml') {
     return proxySitemap();
   }
 
-  // ── Open Graph — only act on known crawler requests ───────────────────────
-  if (!isCrawler(request)) {
-    return undefined; // pass through → Vercel rewrite serves index.html
-  }
+  // ── /property/:id — OG injection for all clients ─────────────────────────
   const propertyId = extractPropertyId(url.pathname);
-
-  if (!propertyId) {
-    return undefined;
-  }
+  if (!propertyId) return undefined;
 
   const apiBase =
     process.env.API_BASE_URL ??
     'https://immersphere-pro-production.up.railway.app/api';
 
   try {
-    const res = await fetch(`${apiBase}/properties/${propertyId}`, {
-      headers: { 'Accept': 'application/json' },
+    // Step 1 — fetch property data from Railway
+    const apiRes = await fetch(`${apiBase}/properties/${propertyId}`, {
+      headers: { Accept: 'application/json' },
       signal: AbortSignal.timeout(TIMEOUT_MS)
     });
 
-    if (!res.ok) {
-      return undefined; // property not found or error → serve SPA
-    }
+    if (!apiRes.ok) return undefined; // 404, 5xx → SPA handles it
 
-    const body = await res.json() as {
-      success: boolean;
-      data: {
-        id: string;
-        title: string;
-        description: string;
-        coverImage: string;
-        status: string;
-        isPasswordProtected?: boolean;
-      };
-    };
+    const body = await apiRes.json() as PropertyApiResponse;
 
-    if (!body.success || !body.data) {
-      return undefined;
-    }
+    if (!body.success || !body.data) return undefined;
 
     const property = body.data;
 
-    // Only serve OG for publicly published, non-password-protected properties
+    // Non-published or password-protected: let SPA handle auth/404 flow
     if (property.status !== 'PUBLISHED' || property.isPasswordProtected) {
       return undefined;
     }
 
+    // Step 2 — fetch the Vite-built index.html from this Vercel deployment.
+    // /index.html is a static file — it doesn't match the middleware matcher,
+    // so this fetch is served directly by Vercel's CDN with no recursion.
+    const indexRes = await fetch(`${url.origin}/index.html`, {
+      signal: AbortSignal.timeout(TIMEOUT_MS)
+    });
+
+    if (!indexRes.ok) return undefined;
+
+    const indexHtml = await indexRes.text();
+
+    // Step 3 — build and inject OG tags
     const canonicalUrl = `${url.origin}${url.pathname}`;
     const title = property.title || 'Propiedad';
-    const description =
-      (property.description || 'Tour virtual inmersivo en Immersphere Pro').trim();
+    const description = (
+      property.description || 'Tour virtual inmersivo en Immersphere Pro'
+    ).trim();
     const image = property.coverImage || '';
 
-    const html = buildOgHtml({ title, description, image, canonicalUrl });
+    const ogTags = buildOgTags({ title, description, image, canonicalUrl });
+    const enrichedHtml = injectOgIntoHtml(indexHtml, title, ogTags);
 
-    return new Response(html, {
+    return new Response(enrichedHtml, {
       status: 200,
       headers: {
         'Content-Type': 'text/html; charset=utf-8',
+        // Cache at CDN: 60 s fresh, up to 5 min stale-while-revalidate
         'Cache-Control': 's-maxage=60, stale-while-revalidate=300'
       }
     });
   } catch {
-    // API timeout, network error, JSON parse error → fall back to SPA
+    // Timeout, network error, JSON parse error, etc.
+    // Fall through to Vercel catch-all → serves plain index.html
     return undefined;
   }
 }
