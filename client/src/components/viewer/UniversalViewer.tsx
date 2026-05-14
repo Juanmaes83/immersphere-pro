@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import DollhouseViewer from '@/components/viewer/DollhouseViewer';
 import GaussianSplatViewer from '@/components/viewer/GaussianSplatViewer';
 import LeadCaptureModal from '@/components/viewer/LeadCaptureModal';
 import PanoramaViewer from '@/components/viewer/PanoramaViewer';
+
+const GlbViewer = lazy(() => import('@/components/viewer/GlbViewer'));
 import { AUTH_STORAGE_KEYS } from '@/services/api';
 import type {
   Hotspot,
@@ -384,12 +386,22 @@ export default function UniversalViewer({
               onAnalyticsEvent={onAnalyticsEvent}
             />
           ) : (
-            <div className="relative min-h-[520px] overflow-hidden rounded-[1.5rem] bg-gradient-to-br from-fuchsia-500/30 via-violet-800/25 to-slate-950">
-              <div className="absolute inset-10 rounded-[2rem] border border-fuchsia-300/15 bg-[radial-gradient(circle_at_35%_35%,rgba(217,70,239,0.28),transparent_18%),radial-gradient(circle_at_65%_55%,rgba(34,211,238,0.18),transparent_20%),radial-gradient(circle_at_48%_72%,rgba(255,255,255,0.12),transparent_16%)] shadow-[0_0_90px_rgba(217,70,239,0.18)]" />
-              <div className="absolute left-8 top-8 rounded-2xl border border-fuchsia-300/20 bg-black/35 px-4 py-3 text-sm font-black text-fuchsia-100 backdrop-blur">
-                Mesh 3D se implementa en fase posterior
-              </div>
-            </div>
+            <Suspense
+              fallback={
+                <div className="flex min-h-[520px] items-center justify-center rounded-[1.5rem] bg-slate-800">
+                  <p className="text-sm font-bold text-slate-400">Cargando modelo 3D...</p>
+                </div>
+              }
+            >
+              <GlbViewer
+                src={activeAsset.url}
+                alt={activeSpace.name}
+                autoRotate
+                cameraControls
+                ar={false}
+                className="min-h-[520px]"
+              />
+            </Suspense>
           )}
         </div>
 
