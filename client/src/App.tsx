@@ -16,6 +16,7 @@ import HelpPage from '@/pages/HelpPage';
 const PanoramaViewer = lazy(() => import('@/components/viewer/PanoramaViewer'));
 const PropertyDetailPage = lazy(() => import('@/pages/PropertyDetailPage'));
 const TenantAnalyticsDashboard = lazy(() => import('@/pages/TenantAnalyticsDashboard'));
+const GlbViewer = lazy(() => import('@/components/viewer/GlbViewer'));
 
 interface SubscriptionResponse {
   tenantId: string;
@@ -1888,6 +1889,29 @@ function PropertiesPage(): JSX.Element {
                                 </button>
                               </div>
                             </form>
+                          ) : null}
+
+                          {assetForm.type === 'mesh' &&
+                          (assetForm.url ?? '').trim().length > 0 &&
+                          !String(assetForm.url ?? '').startsWith('demo://') &&
+                          activeAssetFormTarget?.propertyId === property.id &&
+                          activeAssetFormTarget?.spaceId === space.id ? (
+                            <div className="mt-4">
+                              <p className="mb-2 text-sm font-black text-slate-950">
+                                Vista previa del objeto 3D
+                              </p>
+                              <Suspense fallback={
+                                <div className="flex min-h-[300px] items-center justify-center rounded-[1.5rem] bg-slate-100">
+                                  <p className="text-sm font-bold text-slate-400">Cargando modelo 3D...</p>
+                                </div>
+                              }>
+                                <GlbViewer
+                                  src={String(assetForm.url ?? '')}
+                                  cameraControls
+                                  autoRotate
+                                />
+                              </Suspense>
+                            </div>
                           ) : null}
 
                           <div className="mt-4 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
