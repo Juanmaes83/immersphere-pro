@@ -331,9 +331,26 @@ function normalizeSpacesWithFallbacks(spaces: ApiSpace[] = [], property: ApiProp
       };
     }
 
+    // If there is at least one real panorama_360 asset (non-demo, non-empty URL),
+    // filter out placeholder demo assets so selectPrimaryAsset always picks
+    // the real uploaded asset instead of the auto-created demo placeholder.
+    const hasRealPanorama = space.assets.some((asset) => {
+      if (asset.type !== 'panorama_360') return false;
+      const url = (asset.url ?? '').trim();
+      return url.length > 0 && !url.startsWith('demo://');
+    });
+
+    const assetsToProcess = hasRealPanorama
+      ? space.assets.filter((asset) => {
+          if (asset.type !== 'panorama_360') return true;
+          const url = (asset.url ?? '').trim();
+          return url.length > 0 && !url.startsWith('demo://');
+        })
+      : space.assets;
+
     return {
       ...space,
-      assets: space.assets.map((asset) => {
+      assets: assetsToProcess.map((asset) => {
         if (asset.type !== 'panorama_360') {
           return asset;
         }
