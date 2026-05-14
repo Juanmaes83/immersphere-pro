@@ -29,6 +29,7 @@ export class GaussianSplatRenderer implements RendererLifecycle {
   private splatMesh: SplatMesh | null = null;
   private sdfEdits: SplatEdit[] = [];
   private isDisposed = false;
+  private currentAssetUrl: string | null = null;
   private lastTime = 0;
 
   public constructor(config: GaussianSplatRendererConfig) {
@@ -95,6 +96,7 @@ export class GaussianSplatRenderer implements RendererLifecycle {
     }
     if (this.isDisposed) return;
 
+    this.currentAssetUrl = sourceUrl;
     this.removeCurrentSplat();
 
     let loadResolved = false;
@@ -236,6 +238,10 @@ export class GaussianSplatRenderer implements RendererLifecycle {
 
   private emitError(error: Error): void {
     this.onError?.(error);
+  }
+
+  public getAssetUrl(): string | null {
+    return this.currentAssetUrl;
   }
 }
 

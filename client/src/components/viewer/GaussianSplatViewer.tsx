@@ -330,6 +330,23 @@ export default function GaussianSplatViewer({
               >
                 Reset editor
               </button>
+
+              {isReady ? (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => window.open('https://superspl.at/editor', '_blank', 'noopener,noreferrer')}
+                    title="Abrir editor profesional para limpiar y optimizar"
+                    className="w-full rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    Editar en SuperSplat →
+                  </button>
+                  <p className="mt-2 text-center text-xs text-white/40">
+                    Guarda y vuelve a subir el resultado
+                  </p>
+                </div>
+              ) : null}
             </div>
             <div className="mt-4 rounded-2xl bg-black/25 p-4">
               <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">Zonas ocultadas</p>
