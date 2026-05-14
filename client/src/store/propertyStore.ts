@@ -6,7 +6,8 @@ interface ApiHotspot {
   id: string;
   label: string;
   type: string;
-  position: { x: number; y: number; z?: number };
+  // Prisma stores position as JSON.stringify'd string; the normalizer parses it back.
+  position: { x: number; y: number; z?: number } | string;
   body?: string;
   metric?: string;
 }
@@ -26,7 +27,8 @@ interface ApiSpace {
   name: string;
   order: number;
   status: string;
-  dimensions: { width: number | null; height: number | null; depth: number | null } | null;
+  // Prisma stores dimensions as JSON.stringify'd string; the normalizer parses it back.
+  dimensions: { width: number | null; height: number | null; depth: number | null } | string | null;
   assets: ApiAsset[];
 }
 
@@ -195,7 +197,12 @@ function normalizeAsset(asset: ApiAsset): ViewerAsset {
       id: hotspot.id,
       label: hotspot.label,
       type: normalizeHotspotType(hotspot.type),
-      position: hotspot.position,
+      position: (() => {
+        if (typeof hotspot.position === 'string') {
+          try { return JSON.parse(hotspot.position) as { x: number; y: number; z?: number }; } catch { return { x: 50, y: 50 }; }
+        }
+        return (hotspot.position as { x: number; y: number; z?: number }) ?? { x: 50, y: 50 };
+      })(),
       body: hotspot.body,
       metric: hotspot.metric
     }))
@@ -253,7 +260,13 @@ function normalizeSpace(space: ApiSpace): Space {
     name: space.name,
     order: space.order,
     status: String(space.status ?? 'ACTIVE').toUpperCase() === 'HIDDEN' ? 'HIDDEN' : 'ACTIVE',
-    dimensions: space.dimensions ?? { width: null, height: null, depth: null },
+    dimensions: (() => {
+      if (space.dimensions == null) return { width: null, height: null, depth: null };
+      if (typeof space.dimensions === 'string') {
+        try { return JSON.parse(space.dimensions) as { width: number | null; height: number | null; depth: number | null }; } catch { return { width: null, height: null, depth: null }; }
+      }
+      return space.dimensions as { width: number | null; height: number | null; depth: number | null };
+    })(),
     assets: (Array.isArray(space.assets) ? space.assets : []).map(normalizeAsset)
   };
 }
