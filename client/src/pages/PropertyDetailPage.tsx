@@ -503,10 +503,11 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   }, [clearSelectedProperty, fetchPropertyById, propertyId]);
 
   useEffect(() => {
+    if (!isAuthenticated) return;
     unwrapApiResponse<AnalyticsSummary>(api.get(`/analytics/properties/${propertyId}/summary`))
       .then((data) => { setAnalyticsSummary(data); })
       .catch(() => {});
-  }, [propertyId]);
+  }, [propertyId, isAuthenticated]);
 
   function handleAnalyticsEvent(event: ViewerEvent): void {
     window.dispatchEvent(
@@ -514,7 +515,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
         detail: event
       })
     );
-    if (event.type === 'space_change' || event.type === 'hotspot_click' || event.type === 'cta_lead') {
+    if (isAuthenticated && (event.type === 'space_change' || event.type === 'hotspot_click' || event.type === 'cta_lead')) {
       setTimeout(() => {
         unwrapApiResponse<AnalyticsSummary>(api.get(`/analytics/properties/${propertyId}/summary`))
           .then((data) => { setAnalyticsSummary(data); })
