@@ -11,6 +11,8 @@ export interface AuthTenant {
   webhookUrl: string;
   phone?: string;
   plan: string;
+  removeBranding?: boolean;
+  whatsappNumber?: string;
 }
 
 export interface AuthUser {

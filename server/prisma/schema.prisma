@@ -17,7 +17,9 @@ model Tenant {
   webhookUrl   String @default("")
   phone        String @default("")
 
-  plan          String         @default("STARTER")
+  plan            String  @default("STARTER")
+  removeBranding  Boolean @default(false)
+  whatsappNumber  String  @default("")
   createdAt     DateTime       @default(now())
   users         User[]
   properties    Property[]

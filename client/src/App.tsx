@@ -2080,6 +2080,10 @@ function SettingsPage(): JSX.Element {
   const [webhookSaving, setWebhookSaving] = useState(false);
   const [phoneInput, setPhoneInput] = useState(user?.tenant.phone ?? '');
   const [phoneSaving, setPhoneSaving] = useState(false);
+  const [removeBranding, setRemoveBranding] = useState(user?.tenant.removeBranding ?? false);
+  const [brandingSaving, setBrandingSaving] = useState(false);
+  const [whatsappInput, setWhatsappInput] = useState(user?.tenant.whatsappNumber ?? '');
+  const [whatsappSaving, setWhatsappSaving] = useState(false);
 
   useEffect(() => {
     void loadBillingState();
@@ -2161,6 +2165,34 @@ function SettingsPage(): JSX.Element {
       setSettingsMsg('Error al guardar el teléfono.');
     } finally {
       setPhoneSaving(false);
+    }
+  }
+
+  async function handleToggleRemoveBranding(value: boolean): Promise<void> {
+    setRemoveBranding(value);
+    setBrandingSaving(true);
+    setSettingsMsg(null);
+    try {
+      await unwrapApiResponse(api.put('/tenants/settings', { removeBranding: value }));
+      setSettingsMsg(value ? 'Marca "Powered by" eliminada del tour.' : 'Marca "Powered by" activada en el tour.');
+    } catch {
+      setRemoveBranding(!value);
+      setSettingsMsg('Error al guardar la configuración.');
+    } finally {
+      setBrandingSaving(false);
+    }
+  }
+
+  async function handleSaveWhatsapp(): Promise<void> {
+    setWhatsappSaving(true);
+    setSettingsMsg(null);
+    try {
+      await unwrapApiResponse(api.put('/tenants/settings', { whatsappNumber: whatsappInput.trim() }));
+      setSettingsMsg('Número de WhatsApp guardado correctamente.');
+    } catch {
+      setSettingsMsg('Error al guardar el número de WhatsApp.');
+    } finally {
+      setWhatsappSaving(false);
     }
   }
 
@@ -2268,6 +2300,46 @@ function SettingsPage(): JSX.Element {
             style={bgStyle}
           >
             {phoneSaving ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Eliminar marca "Powered by"</p>
+            <p className="mt-1 text-sm text-slate-500">Cuando está activo, el texto "Powered by Immersphere Pro" no aparece en el tour ZIP que compartes con clientes.</p>
+          </div>
+          <button
+            type="button"
+            disabled={brandingSaving}
+            onClick={() => { void handleToggleRemoveBranding(!removeBranding); }}
+            className={`relative shrink-0 inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 ${removeBranding ? 'bg-violet-600' : 'bg-slate-200'}`}
+          >
+            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${removeBranding ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">WhatsApp de contacto</p>
+        <p className="mt-1 text-sm text-slate-500">Número con prefijo internacional (ej. <code className="rounded bg-slate-100 px-1 text-xs">+34612345678</code>). Aparecerá como botón de WhatsApp en la ficha de propiedad.</p>
+        <div className="mt-4 flex gap-3">
+          <input
+            type="tel"
+            value={whatsappInput}
+            onChange={(e) => setWhatsappInput(e.target.value)}
+            placeholder="+34612345678"
+            className="brand-focus flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none"
+          />
+          <button
+            type="button"
+            disabled={whatsappSaving}
+            onClick={() => { void handleSaveWhatsapp(); }}
+            className="rounded-2xl px-5 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50"
+            style={bgStyle}
+          >
+            {whatsappSaving ? 'Guardando...' : 'Guardar'}
           </button>
         </div>
       </div>

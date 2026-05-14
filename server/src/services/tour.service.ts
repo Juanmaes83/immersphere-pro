@@ -132,7 +132,7 @@ function safeTitle(title: string): string {
   return title.replace(/[<>&"'`]/g, '');
 }
 
-function buildPanoramaHtml(propertyTitle: string, imageUrl: string, propertyUrl: string): string {
+function buildPanoramaHtml(propertyTitle: string, imageUrl: string, propertyUrl: string, removeBranding = false): string {
   const title = safeTitle(propertyTitle);
   const safeImageUrl = encodeURI(imageUrl);
   const safePropertyUrl = propertyUrl.replace(/'/g, '%27');
@@ -192,7 +192,7 @@ function buildPanoramaHtml(propertyTitle: string, imageUrl: string, propertyUrl:
   </div>
 
   <div id="bottom">
-    <span id="powered">Powered by Immersphere Pro</span>
+    ${removeBranding ? '' : '<span id="powered">Powered by Immersphere Pro</span>'}
     <a class="btn-cta" href="${safePropertyUrl}" target="_blank" rel="noopener noreferrer">
       Contactar agente →
     </a>
@@ -221,7 +221,7 @@ function buildPanoramaHtml(propertyTitle: string, imageUrl: string, propertyUrl:
 </html>`;
 }
 
-function buildSplatHtml(propertyTitle: string, splatUrl: string, propertyUrl: string): string {
+function buildSplatHtml(propertyTitle: string, splatUrl: string, propertyUrl: string, removeBranding = false): string {
   const title = safeTitle(propertyTitle);
   const encoded = encodeURIComponent(splatUrl);
   const safePropertyUrl = propertyUrl.replace(/'/g, '%27');
@@ -286,7 +286,7 @@ function buildSplatHtml(propertyTitle: string, splatUrl: string, propertyUrl: st
     </a>
     <p class="note">Se abrirá el visor 3D en una nueva pestaña. Compatible con Chrome y Edge.</p>
   </div>
-  <p class="powered">Powered by Immersphere Pro</p>
+  ${removeBranding ? '' : '<p class="powered">Powered by Immersphere Pro</p>'}
 </body>
 </html>`;
 }
@@ -295,21 +295,29 @@ export async function buildPropertyTourZip(
   tenantId: string,
   propertyId: string
 ): Promise<{ buffer: Buffer; filename: string } | null> {
-  const property = await prisma.property.findFirst({
-    where: { id: propertyId, tenantId },
-    include: {
-      spaces: {
-        orderBy: { order: 'asc' },
-        include: {
-          assets: {
-            orderBy: { createdAt: 'asc' }
+  const [property, tenant] = await Promise.all([
+    prisma.property.findFirst({
+      where: { id: propertyId, tenantId },
+      include: {
+        spaces: {
+          orderBy: { order: 'asc' },
+          include: {
+            assets: {
+              orderBy: { createdAt: 'asc' }
+            }
           }
         }
       }
-    }
-  });
+    }),
+    prisma.tenant.findUnique({
+      where: { id: tenantId },
+      select: { removeBranding: true }
+    })
+  ]);
 
   if (!property) return null;
+
+  const removeBranding = tenant?.removeBranding ?? false;
 
   let assetUrl: string | null = null;
   let assetType: 'GAUSSIAN_SPLAT' | 'PANORAMA_360' = 'PANORAMA_360';
@@ -344,8 +352,8 @@ export async function buildPropertyTourZip(
   const propertyUrl = `${appUrl}/property/${propertyId}`;
 
   const html = assetType === 'GAUSSIAN_SPLAT'
-    ? buildSplatHtml(property.title, assetUrl, propertyUrl)
-    : buildPanoramaHtml(property.title, assetUrl, propertyUrl);
+    ? buildSplatHtml(property.title, assetUrl, propertyUrl, removeBranding)
+    : buildPanoramaHtml(property.title, assetUrl, propertyUrl, removeBranding);
 
   const htmlBuf = Buffer.from(html, 'utf8');
   const zip = buildZip([{ name: 'tour.html', data: htmlBuf }]);
