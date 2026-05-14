@@ -50,7 +50,6 @@ const AssetFormat = {
   GLB: "GLB"
 } as const;
 // LOCAL STRING ENUMS PROPERTIES END
-import type { Prisma } from '@prisma/client';
 import { prisma } from '../index.js';
 import { AppError } from '../middleware/errorHandler.js';
 
@@ -134,8 +133,17 @@ const spaceInclude = {
   }
 };
 
-function buildPropertyWhere(filters: PropertyFilters, tenantId?: string): Prisma.PropertyWhereInput {
-  const where: Prisma.PropertyWhereInput = {};
+type PropertyWhereClause = {
+  tenantId?: string;
+  status?: string;
+  type?: string;
+  OR?: Array<{ title?: { contains: string }; description?: { contains: string } }>;
+  price?: { gte?: number; lte?: number };
+  area?: { gte?: number; lte?: number };
+};
+
+function buildPropertyWhere(filters: PropertyFilters, tenantId?: string): PropertyWhereClause {
+  const where: PropertyWhereClause = {};
 
   if (tenantId) {
     where.tenantId = tenantId;
@@ -203,7 +211,7 @@ function buildAssetsCreate(assets: AssetInput[] | undefined) {
   }));
 }
 
-function buildSpacesCreate(spaces: SpaceInput[] | undefined): Prisma.SpaceCreateWithoutPropertyInput[] {
+function buildSpacesCreate(spaces: SpaceInput[] | undefined) {
   if (!spaces?.length) return [];
 
   return spaces.map((space, index) => ({
@@ -598,7 +606,7 @@ export async function updateAsset(
 ) {
   await assertTenantAsset(tenantId, propertyId, spaceId, assetId);
 
-  return prisma.$transaction(async (transaction) => {
+  return prisma.$transaction(async (transaction: any) => {
     const data: any = {};
 
     if (input.type !== undefined) data.type = input.type;

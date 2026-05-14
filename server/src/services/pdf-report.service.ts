@@ -73,7 +73,7 @@ export async function generatePropertyReport(
   }
 
   // Asset type breakdown
-  const allAssets = property.spaces.flatMap((s) => s.assets);
+  const allAssets = property.spaces.flatMap((s: { assets: Array<{ type: string }> }) => s.assets);
   const assetCounts: Record<string, number> = {};
   for (const asset of allAssets) {
     assetCounts[asset.type] = (assetCounts[asset.type] ?? 0) + 1;

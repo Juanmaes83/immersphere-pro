@@ -223,10 +223,10 @@ export async function getTenantAnalyticsSummary(tenantId: string): Promise<Tenan
     .slice(0, 8);
 
   const totalEvents = allEvents.length;
-  const totalHotspotClicks = allEvents.filter((e) => e.type === 'hotspot_click').length;
-  const totalLeadCtas = allEvents.filter((e) => e.type === 'lead_cta').length;
-  const totalSpaceChanges = allEvents.filter((e) => e.type === 'space_change').length;
-  const totalViewerOpens = allEvents.filter((e) => e.type === 'viewer_open').length;
+  const totalHotspotClicks = allEvents.filter((e: { type: string }) => e.type === 'hotspot_click').length;
+  const totalLeadCtas = allEvents.filter((e: { type: string }) => e.type === 'lead_cta').length;
+  const totalSpaceChanges = allEvents.filter((e: { type: string }) => e.type === 'space_change').length;
+  const totalViewerOpens = allEvents.filter((e: { type: string }) => e.type === 'viewer_open').length;
   const propertiesWithEvents = buckets.size;
 
   const overallEngagementScore = computeEngagementScore({

@@ -98,7 +98,7 @@ export async function exportPropertyLeadsCsv(
 
   const header = ['id', 'email', 'phone', 'notes', 'source', 'createdAt'].map(csvEscape).join(',');
 
-  const rows = leads.map((l) =>
+  const rows = leads.map((l: { id: string; email: string; phone: string; notes: string; source: string; createdAt: Date }) =>
     [
       l.id,
       l.email,
