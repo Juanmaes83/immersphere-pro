@@ -19,6 +19,7 @@ import {
   deleteSpaceAsset
 } from '../controllers/properties.controller.js';
 import { exportPropertyTourController } from '../controllers/tour.controller.js';
+import { exportPropertyReportController } from '../controllers/pdf-report.controller.js';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { enforcePropertyLimit } from '../middleware/planLimits.js';
 import { unlockRateLimit, viewRateLimit } from '../middleware/rateLimit.js';
@@ -50,6 +51,7 @@ propertiesRoutes.get('/', requireAuth, listProperties);
 propertiesRoutes.post('/', requireAuth, enforcePropertyLimit, createProperty);
 
 propertiesRoutes.get('/:propertyId/export-tour', requireAuth, exportPropertyTourController);
+propertiesRoutes.get('/:propertyId/report.pdf', requireAuth, exportPropertyReportController);
 
 propertiesRoutes.get('/:propertyId/spaces', requireAuth, listPropertySpaces);
 propertiesRoutes.post('/:propertyId/spaces', requireAuth, createPropertySpace);
