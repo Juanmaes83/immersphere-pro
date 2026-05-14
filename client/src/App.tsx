@@ -1137,7 +1137,10 @@ function PropertiesPage(): JSX.Element {
         rooms: property.rooms,
         bathrooms: property.bathrooms,
         coverImage: property.coverImage,
-        panoramaUrl: property.panoramaUrl
+        panoramaUrl: property.panoramaUrl,
+        address: property.address ?? '',
+        latitude: property.latitude ?? null,
+        longitude: property.longitude ?? null
       });
 
       setMessage(
