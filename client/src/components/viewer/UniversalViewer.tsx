@@ -93,6 +93,7 @@ export default function UniversalViewer({
   spaces,
   initialSpaceId,
   primaryColor = '#7C3AED',
+  removeBranding = false,
   className = '',
   onAnalyticsEvent
 }: UniversalViewerProps): JSX.Element {
@@ -268,19 +269,23 @@ export default function UniversalViewer({
       ) : null}
       <div className="flex flex-col gap-4 border-b border-white/10 p-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
-            Visor universal · Fase 4
-          </p>
+          {!removeBranding ? (
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
+              Visor inmersivo
+            </p>
+          ) : null}
           <h2 className="mt-2 text-3xl font-black">
-            {activeAsset.type === 'panorama_360'
-              ? 'Panorama 360° real'
-              : activeAsset.type === 'gaussian_splat'
-                ? 'Gaussian Splat real / editor básico'
-                : 'Mesh reservado'}
+            {activeSpace.name}
           </h2>
-          <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">
-            Selección por estancia, asset primario, hotspots contextuales y eventos de analytics.
-          </p>
+          {!removeBranding ? (
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">
+              {activeAsset.type === 'panorama_360'
+                ? 'Panorama 360°'
+                : activeAsset.type === 'gaussian_splat'
+                  ? 'Gaussian Splat 3D'
+                  : 'Modelo 3D'}
+            </p>
+          ) : null}
         </div>
 
         <div className="flex flex-wrap gap-2">

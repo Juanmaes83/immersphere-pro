@@ -9,7 +9,8 @@ const ALLOWED_EVENT_TYPES = new Set([
   'hotspot_click',
   'viewer_drag',
   'lead_cta',
-  'asset_load_error'
+  'asset_load_error',
+  'viewer_whatsapp_click'
 ]);
 
 export async function createViewerEventController(

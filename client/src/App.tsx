@@ -2308,7 +2308,7 @@ function SettingsPage(): JSX.Element {
         <div className="flex items-start justify-between gap-4">
           <div>
             <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Eliminar marca "Powered by"</p>
-            <p className="mt-1 text-sm text-slate-500">Cuando está activo, el texto "Powered by Immersphere Pro" no aparece en el tour ZIP que compartes con clientes.</p>
+            <p className="mt-1 text-sm text-slate-500">Cuando está activo, elimina la marca "Immersphere Pro" del visor público, del título de la página y del tour ZIP. El tour aparece completamente bajo tu marca.</p>
           </div>
           <button
             type="button"

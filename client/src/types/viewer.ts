@@ -27,7 +27,8 @@ export type ViewerEventType =
   | 'splat_ready'
   | 'splat_error'
   | 'splat_editor_remove'
-  | 'splat_editor_clip';
+  | 'splat_editor_clip'
+  | 'viewer_whatsapp_click';
 
 export interface SpaceDimensions {
   width: number | null;
@@ -96,6 +97,7 @@ export interface UniversalViewerProps {
   spaces: Space[];
   initialSpaceId?: string;
   primaryColor?: string;
+  removeBranding?: boolean;
   className?: string;
   onAnalyticsEvent: (event: ViewerEvent) => void;
 }

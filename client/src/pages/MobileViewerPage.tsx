@@ -109,7 +109,8 @@ export default function MobileViewerPage(): JSX.Element {
         <UniversalViewer
           propertyId={selectedProperty.id}
           spaces={selectedProperty.spaces}
-          primaryColor="#7C3AED"
+          primaryColor={selectedProperty.tenantPrimaryColor || '#7C3AED'}
+          removeBranding={selectedProperty.removeBranding}
           className="h-full rounded-none border-0"
           onAnalyticsEvent={handleAnalyticsEvent}
         />
@@ -119,7 +120,7 @@ export default function MobileViewerPage(): JSX.Element {
         propertyId={selectedProperty.id}
         propertyTitle={selectedProperty.title}
         tenantPhone={selectedProperty.tenantPhone}
-        primaryColor="#7C3AED"
+        primaryColor={selectedProperty.tenantPrimaryColor || '#7C3AED'}
       />
     </div>
   );
