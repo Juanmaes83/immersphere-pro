@@ -36,7 +36,7 @@ const assetSchema = z.object({
   url: z.string().trim().min(1, 'El asset necesita URL.'),
   thumbnail: z.string().optional(),
   format: z.string(),
-  size: z.number().int().min(0).optional(),
+  size: z.number().min(0).optional(),
   hotspots: z.array(hotspotSchema).optional()
 });
 
