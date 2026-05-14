@@ -56,6 +56,7 @@ export class PanoramaEngine360 implements RendererLifecycle {
 
     this.container.innerHTML = '';
     this.container.appendChild(this.renderer.domElement);
+    this.renderer.domElement.style.touchAction = 'none';
 
     this.handlePointerDown = this.handlePointerDown.bind(this);
     this.handlePointerMove = this.handlePointerMove.bind(this);
