@@ -143,175 +143,79 @@ function buildPanoramaHtml(propertyTitle: string, imageUrl: string, propertyUrl:
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Tour 360° — ${title}</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/pannellum@2.5.7/build/pannellum.min.css"/>
   <style>
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #0a0a14; overflow: hidden; font-family: system-ui, -apple-system, sans-serif; }
-    #wrap { width: 100vw; height: 100vh; position: relative; }
-    canvas { display: block; cursor: grab; }
-    canvas:active { cursor: grabbing; }
+    html, body { height: 100%; overflow: hidden; background: #0a0a14; font-family: system-ui, -apple-system, sans-serif; }
+    /* Override Pannellum defaults for brand consistency */
+    .pnlm-load-box { background: rgba(10,10,20,0.92) !important; border-radius: 1rem !important; }
+    .pnlm-load-box p { color: #a5b4fc !important; font-weight: 700 !important; }
+    .pnlm-lbar { background: linear-gradient(90deg, #7c3aed, #06b6d4) !important; }
+    .pnlm-lbar-fill { background: transparent !important; }
+    /* Top overlay: property name */
     #top {
-      position: absolute; top: 0; left: 0; right: 0; z-index: 10;
+      position: fixed; top: 0; left: 0; right: 0; z-index: 10;
       padding: 1rem 1.5rem;
-      background: linear-gradient(to bottom, rgba(0,0,0,0.65) 0%, transparent 100%);
+      background: linear-gradient(to bottom, rgba(0,0,0,0.7) 0%, transparent 100%);
       pointer-events: none;
     }
     #badge {
-      font-size: 0.65rem; font-weight: 800; letter-spacing: 0.18em;
+      font-size: 0.6rem; font-weight: 800; letter-spacing: 0.2em;
       text-transform: uppercase; color: #06b6d4; margin-bottom: 0.2rem;
     }
-    #prop-title { color: #fff; font-size: 1.1rem; font-weight: 900; }
+    #prop-title { color: #fff; font-size: 1rem; font-weight: 900; }
+    /* Bottom overlay: CTA + powered */
     #bottom {
-      position: absolute; bottom: 0; left: 0; right: 0; z-index: 10;
-      padding: 1.25rem 1.5rem;
-      display: flex; align-items: center; justify-content: space-between;
-      background: linear-gradient(to top, rgba(0,0,0,0.65) 0%, transparent 100%);
+      position: fixed; bottom: 0; left: 0; right: 0; z-index: 10;
+      padding: 1rem 1.5rem 1.25rem;
+      display: flex; align-items: center; justify-content: space-between; gap: 1rem;
+      background: linear-gradient(to top, rgba(0,0,0,0.7) 0%, transparent 100%);
     }
-    #powered { color: rgba(255,255,255,0.2); font-size: 0.65rem; letter-spacing: 0.1em; }
-    #actions { display: flex; gap: 0.6rem; align-items: center; }
-    .btn {
-      border: none; border-radius: 999px; font-weight: 800; font-size: 0.8rem;
-      cursor: pointer; padding: 0.55rem 1.2rem; text-decoration: none;
+    #powered { color: rgba(255,255,255,0.25); font-size: 0.62rem; letter-spacing: 0.1em; white-space: nowrap; }
+    .btn-cta {
+      display: inline-block;
+      background: linear-gradient(135deg, #7c3aed, #06b6d4);
+      color: #fff; font-weight: 900; font-size: 0.8rem;
+      text-decoration: none; border-radius: 999px;
+      padding: 0.55rem 1.3rem; white-space: nowrap;
       transition: opacity 0.15s;
     }
-    .btn:hover { opacity: 0.82; }
-    .btn-ghost {
-      background: rgba(255,255,255,0.12); color: #fff;
-    }
-    .btn-primary {
-      background: linear-gradient(135deg, #7c3aed, #06b6d4); color: #fff;
-      display: inline-block;
-    }
-    #hint {
-      position: absolute; bottom: 5rem; left: 50%; transform: translateX(-50%);
-      background: rgba(0,0,0,0.55); color: rgba(255,255,255,0.75);
-      font-size: 0.75rem; padding: 0.4rem 1.1rem; border-radius: 999px;
-      z-index: 10; transition: opacity 0.8s; white-space: nowrap;
-    }
-    #err {
-      display: none; position: absolute; inset: 0; z-index: 20;
-      align-items: center; justify-content: center; flex-direction: column; gap: 1rem;
-      background: #0a0a14; color: rgba(255,255,255,0.5); font-size: 0.9rem; text-align: center;
-      padding: 2rem;
-    }
+    .btn-cta:hover { opacity: 0.85; }
   </style>
 </head>
 <body>
-  <div id="wrap">
-    <div id="top">
-      <div id="badge">Immersphere Pro · Tour 360°</div>
-      <div id="prop-title">${title}</div>
-    </div>
-    <div id="hint">Arrastra para girar &nbsp;·&nbsp; Scroll para zoom</div>
-    <div id="bottom">
-      <span id="powered">Powered by Immersphere Pro</span>
-      <div id="actions">
-        <button class="btn btn-ghost" onclick="toggleFs()">⛶ Pantalla completa</button>
-        <a class="btn btn-primary" href="${safePropertyUrl}" target="_blank" rel="noopener">Contactar agente →</a>
-      </div>
-    </div>
-    <div id="err">
-      <span style="font-size:2rem">⚠</span>
-      <span>No se pudo cargar la imagen del tour.<br>Verifica tu conexión a internet.</span>
-    </div>
+  <div id="panorama" style="width:100%;height:100vh;max-height:100dvh;"></div>
+
+  <div id="top">
+    <div id="badge">Immersphere Pro · Tour 360°</div>
+    <div id="prop-title">${title}</div>
   </div>
-  <script src="https://cdn.jsdelivr.net/npm/three@0.170.0/build/three.min.js"></script>
+
+  <div id="bottom">
+    <span id="powered">Powered by Immersphere Pro</span>
+    <a class="btn-cta" href="${safePropertyUrl}" target="_blank" rel="noopener noreferrer">
+      Contactar agente →
+    </a>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.7/build/pannellum.min.js"></script>
   <script>
-    (function () {
-      var wrap = document.getElementById('wrap');
-      var hint = document.getElementById('hint');
-      var errBox = document.getElementById('err');
-
-      setTimeout(function () { hint.style.opacity = '0'; }, 3500);
-      setTimeout(function () { hint.remove(); }, 4400);
-
-      var W = function () { return wrap.clientWidth; };
-      var H = function () { return wrap.clientHeight; };
-
-      var scene = new THREE.Scene();
-      var camera = new THREE.PerspectiveCamera(75, W() / H(), 0.1, 1000);
-      camera.position.set(0, 0, 0.01);
-
-      var renderer = new THREE.WebGLRenderer({ antialias: true });
-      renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-      renderer.setSize(W(), H());
-      wrap.appendChild(renderer.domElement);
-
-      var geo = new THREE.SphereGeometry(500, 64, 40);
-      geo.scale(-1, 1, 1);
-
-      var loader = new THREE.TextureLoader();
-      loader.load(
-        '${safeImageUrl}',
-        function (tex) {
-          var mat = new THREE.MeshBasicMaterial({ map: tex });
-          scene.add(new THREE.Mesh(geo, mat));
-        },
-        undefined,
-        function () {
-          errBox.style.display = 'flex';
-        }
-      );
-
-      var isDragging = false, prevX = 0, prevY = 0;
-      var targetLon = 0, targetLat = 0, lon = 0, lat = 0, fov = 75;
-
-      renderer.domElement.addEventListener('pointerdown', function (e) {
-        isDragging = true; prevX = e.clientX; prevY = e.clientY;
-        renderer.domElement.setPointerCapture(e.pointerId);
-      });
-      renderer.domElement.addEventListener('pointermove', function (e) {
-        if (!isDragging) return;
-        targetLon -= (e.clientX - prevX) * 0.15;
-        targetLat += (e.clientY - prevY) * 0.15;
-        prevX = e.clientX; prevY = e.clientY;
-      });
-      renderer.domElement.addEventListener('pointerup', function () { isDragging = false; });
-
-      renderer.domElement.addEventListener('wheel', function (e) {
-        fov = Math.max(30, Math.min(100, fov + e.deltaY * 0.05));
-        camera.fov = fov;
-        camera.updateProjectionMatrix();
-      }, { passive: true });
-
-      var lastPinchDist = 0;
-      renderer.domElement.addEventListener('touchstart', function (e) {
-        if (e.touches.length === 2)
-          lastPinchDist = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-      }, { passive: true });
-      renderer.domElement.addEventListener('touchmove', function (e) {
-        if (e.touches.length !== 2) return;
-        var d = Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
-        fov = Math.max(30, Math.min(100, fov - (d - lastPinchDist) * 0.1));
-        camera.fov = fov; camera.updateProjectionMatrix(); lastPinchDist = d;
-      }, { passive: true });
-
-      window.addEventListener('resize', function () {
-        camera.aspect = W() / H();
-        camera.updateProjectionMatrix();
-        renderer.setSize(W(), H());
-      });
-
-      window.toggleFs = function () {
-        if (!document.fullscreenElement) wrap.requestFullscreen().catch(function () {});
-        else document.exitFullscreen();
-      };
-
-      var phi, theta;
-      (function animate() {
-        requestAnimationFrame(animate);
-        lon += (targetLon - lon) * 0.08;
-        lat += (targetLat - lat) * 0.08;
-        lat = Math.max(-85, Math.min(85, lat));
-        phi = THREE.MathUtils.degToRad(90 - lat);
-        theta = THREE.MathUtils.degToRad(lon);
-        camera.lookAt(
-          500 * Math.sin(phi) * Math.cos(theta),
-          500 * Math.cos(phi),
-          500 * Math.sin(phi) * Math.sin(theta)
-        );
-        renderer.render(scene, camera);
-      })();
-    })();
+    pannellum.viewer('panorama', {
+      type: 'equirectangular',
+      panorama: '${safeImageUrl}',
+      autoLoad: true,
+      title: '',
+      compass: false,
+      mouseZoom: true,
+      draggable: true,
+      disableKeyboardCtrl: false,
+      showFullscreenCtrl: true,
+      showZoomCtrl: false,
+      hfov: 100,
+      minHfov: 30,
+      maxHfov: 120,
+      errorMsg: 'No se pudo cargar la imagen. Verifica tu conexión a internet.'
+    });
   </script>
 </body>
 </html>`;
