@@ -254,6 +254,56 @@ async function sendLeadEmail(lead: LeadRecord): Promise<void> {
   });
 }
 
+/**
+ * Basic SSRF protection for outbound webhook URLs.
+ * Blocks private/loopback ranges (RFC1918, RFC5735) and non-HTTPS schemes.
+ * Returns true if the URL is safe to fetch, false otherwise.
+ */
+function isSafeWebhookUrl(raw: string): boolean {
+  let parsed: URL;
+  try {
+    parsed = new URL(raw);
+  } catch {
+    return false; // unparseable URL
+  }
+
+  // Only HTTPS is allowed — no http, ftp, file, data, etc.
+  if (parsed.protocol !== 'https:') return false;
+
+  const host = parsed.hostname.toLowerCase();
+
+  // Block loopback and unspecified
+  if (host === 'localhost' || host === '0.0.0.0') return false;
+
+  // Block IPv6 loopback / link-local
+  if (host === '::1' || host.startsWith('fe80:')) return false;
+
+  // Block private IPv4 ranges (RFC1918 + RFC5735 + CGNAT)
+  const ipv4 = host.match(
+    /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/
+  );
+  if (ipv4) {
+    const [, a, b] = ipv4.map(Number);
+    if (
+      a === 10 ||                        // 10.0.0.0/8
+      (a === 172 && b >= 16 && b <= 31) || // 172.16.0.0/12
+      (a === 192 && b === 168) ||        // 192.168.0.0/16
+      (a === 127) ||                     // 127.0.0.0/8  loopback
+      (a === 169 && b === 254) ||        // 169.254.0.0/16 link-local
+      (a === 100 && b >= 64 && b <= 127) // 100.64.0.0/10 CGNAT
+    ) return false;
+  }
+
+  // Block metadata services by hostname
+  const blockedHosts = [
+    'metadata.google.internal',
+    '169.254.169.254', // AWS/GCP/Azure metadata
+  ];
+  if (blockedHosts.includes(host)) return false;
+
+  return true;
+}
+
 async function fireLeadWebhook(lead: LeadRecord): Promise<void> {
   const property = await prisma.property.findUnique({
     where: { id: lead.propertyId },
@@ -269,6 +319,16 @@ async function fireLeadWebhook(lead: LeadRecord): Promise<void> {
     (env.LEAD_NOTIFICATION_WEBHOOK_URL ?? '').trim();
 
   if (!webhookUrl) return;
+
+  if (!isSafeWebhookUrl(webhookUrl)) {
+    try {
+      const { protocol, hostname } = new URL(webhookUrl);
+      console.warn('[leads] Webhook URL blocked by SSRF guard:', { protocol, hostname });
+    } catch {
+      console.warn('[leads] Webhook URL blocked by SSRF guard');
+    }
+    return;
+  }
 
   await fetch(webhookUrl, {
     method: 'POST',
