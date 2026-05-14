@@ -33,6 +33,7 @@ type AssetType = string;
 const AssetType = {
   PANORAMA_360: "PANORAMA_360",
   GAUSSIAN_SPLAT: "GAUSSIAN_SPLAT",
+  MESH: "MESH",
   IMAGE: "IMAGE",
   VIDEO: "VIDEO"
 } as const;
@@ -45,7 +46,8 @@ const AssetFormat = {
   WEBP: "WEBP",
   MP4: "MP4",
   SPLAT: "SPLAT",
-  PLY: "PLY"
+  PLY: "PLY",
+  GLB: "GLB"
 } as const;
 // LOCAL STRING ENUMS PROPERTIES END
 import type { Prisma } from '@prisma/client';
