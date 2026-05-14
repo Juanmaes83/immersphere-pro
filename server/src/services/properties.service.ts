@@ -122,7 +122,7 @@ const propertyInclude = {
     select: { leads: true }
   },
   tenant: {
-    select: { phone: true }
+    select: { phone: true, whatsappNumber: true }
   }
 };
 

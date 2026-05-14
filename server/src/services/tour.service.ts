@@ -132,7 +132,7 @@ function safeTitle(title: string): string {
   return title.replace(/[<>&"'`]/g, '');
 }
 
-function buildPanoramaHtml(propertyTitle: string, imageUrl: string, propertyUrl: string, removeBranding = false): string {
+function buildPanoramaHtml(propertyTitle: string, imageUrl: string, propertyUrl: string, removeBranding = false, whatsappNumber = ''): string {
   const title = safeTitle(propertyTitle);
   const safeImageUrl = encodeURI(imageUrl);
   const safePropertyUrl = propertyUrl.replace(/'/g, '%27');
@@ -193,9 +193,9 @@ function buildPanoramaHtml(propertyTitle: string, imageUrl: string, propertyUrl:
 
   <div id="bottom">
     ${removeBranding ? '' : '<span id="powered">Powered by Immersphere Pro</span>'}
-    <a class="btn-cta" href="${safePropertyUrl}" target="_blank" rel="noopener noreferrer">
-      Contactar agente →
-    </a>
+    ${whatsappNumber
+      ? `<a class="btn-cta" href="https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, me interesa esta propiedad: ${title}. ¿Podría darme más información?`)}" target="_blank" rel="noopener noreferrer" style="background:linear-gradient(135deg,#25D366,#128C7E)">💬 WhatsApp</a>`
+      : `<a class="btn-cta" href="${safePropertyUrl}" target="_blank" rel="noopener noreferrer">Contactar agente →</a>`}
   </div>
 
   <script src="https://cdn.jsdelivr.net/npm/pannellum@2.5.7/build/pannellum.min.js"></script>
@@ -221,7 +221,7 @@ function buildPanoramaHtml(propertyTitle: string, imageUrl: string, propertyUrl:
 </html>`;
 }
 
-function buildSplatHtml(propertyTitle: string, splatUrl: string, propertyUrl: string, removeBranding = false): string {
+function buildSplatHtml(propertyTitle: string, splatUrl: string, propertyUrl: string, removeBranding = false, whatsappNumber = ''): string {
   const title = safeTitle(propertyTitle);
   const encoded = encodeURIComponent(splatUrl);
   const safePropertyUrl = propertyUrl.replace(/'/g, '%27');
@@ -281,9 +281,9 @@ function buildSplatHtml(propertyTitle: string, splatUrl: string, propertyUrl: st
       Iniciar tour 3D →
     </a>
     <br>
-    <a href="${safePropertyUrl}" target="_blank" rel="noopener noreferrer" class="btn-ghost">
-      Ver ficha completa en Immersphere Pro
-    </a>
+    ${whatsappNumber
+      ? `<a href="https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, me interesa esta propiedad: ${title}. ¿Podría darme más información?`)}" target="_blank" rel="noopener noreferrer" class="btn" style="background:linear-gradient(135deg,#25D366,#128C7E)">💬 Contactar por WhatsApp</a><br>`
+      : `<a href="${safePropertyUrl}" target="_blank" rel="noopener noreferrer" class="btn-ghost">Ver ficha completa en Immersphere Pro</a>`}
     <p class="note">Se abrirá el visor 3D en una nueva pestaña. Compatible con Chrome y Edge.</p>
   </div>
   ${removeBranding ? '' : '<p class="powered">Powered by Immersphere Pro</p>'}
@@ -311,13 +311,14 @@ export async function buildPropertyTourZip(
     }),
     prisma.tenant.findUnique({
       where: { id: tenantId },
-      select: { removeBranding: true }
+      select: { removeBranding: true, whatsappNumber: true }
     })
   ]);
 
   if (!property) return null;
 
   const removeBranding = tenant?.removeBranding ?? false;
+  const whatsappNumber = tenant?.whatsappNumber ?? '';
 
   let assetUrl: string | null = null;
   let assetType: 'GAUSSIAN_SPLAT' | 'PANORAMA_360' = 'PANORAMA_360';
@@ -352,8 +353,8 @@ export async function buildPropertyTourZip(
   const propertyUrl = `${appUrl}/property/${propertyId}`;
 
   const html = assetType === 'GAUSSIAN_SPLAT'
-    ? buildSplatHtml(property.title, assetUrl, propertyUrl, removeBranding)
-    : buildPanoramaHtml(property.title, assetUrl, propertyUrl, removeBranding);
+    ? buildSplatHtml(property.title, assetUrl, propertyUrl, removeBranding, whatsappNumber)
+    : buildPanoramaHtml(property.title, assetUrl, propertyUrl, removeBranding, whatsappNumber);
 
   const htmlBuf = Buffer.from(html, 'utf8');
   const zip = buildZip([{ name: 'tour.html', data: htmlBuf }]);

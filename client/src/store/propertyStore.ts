@@ -50,7 +50,7 @@ interface ApiProperty {
   isPasswordProtected?: boolean;
   spaces: ApiSpace[];
   _count?: { leads: number };
-  tenant?: { phone?: string };
+  tenant?: { phone?: string; whatsappNumber?: string };
   createdAt: string;
   updatedAt: string;
 }
@@ -85,6 +85,7 @@ export interface ImmersiveProperty {
   thumbnailUrl: string;
   leads: number;
   tenantPhone: string;
+  tenantWhatsapp: string;
   spaces: Space[];
 }
 
@@ -432,6 +433,7 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
       isPasswordProtected: true,
       leads: 0,
       tenantPhone: '',
+      tenantWhatsapp: '',
       spaces: []
     };
   }
@@ -456,6 +458,7 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
     longitude: property.longitude ?? null,
     leads: property._count?.leads ?? 0,
     tenantPhone: property.tenant?.phone ?? '',
+    tenantWhatsapp: property.tenant?.whatsappNumber ?? '',
     spaces: normalizeSpacesWithFallbacks(property.spaces ?? [], property)
   };
 }
