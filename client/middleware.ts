@@ -12,7 +12,7 @@
  */
 
 export const config = {
-  matcher: ['/property/:path*']
+  matcher: ['/property/:path*', '/sitemap.xml']
 };
 
 /** Known social / messaging crawler User-Agent patterns. */
@@ -84,13 +84,67 @@ function buildOgHtml(opts: {
 </html>`;
 }
 
+/**
+ * Proxy /sitemap.xml from the Railway backend.
+ * Vercel's catch-all rewrite (/* → /index.html) would otherwise swallow it.
+ * The middleware intercepts before rewrites and returns the XML directly.
+ */
+async function proxySitemap(): Promise<Response> {
+  const apiBase =
+    process.env.API_BASE_URL ??
+    'https://immersphere-pro-production.up.railway.app/api';
+
+  // API_BASE_URL ends with /api — sitemap lives at the Express root
+  const railwayBase = apiBase.replace(/\/api\/?$/, '');
+
+  try {
+    const upstream = await fetch(`${railwayBase}/sitemap.xml`, {
+      signal: AbortSignal.timeout(5000)
+    });
+
+    if (!upstream.ok) {
+      return new Response(
+        '<?xml version="1.0" encoding="UTF-8"?><error>Sitemap no disponible</error>',
+        {
+          status: 503,
+          headers: { 'Content-Type': 'application/xml; charset=utf-8' }
+        }
+      );
+    }
+
+    const xml = await upstream.text();
+
+    return new Response(xml, {
+      status: 200,
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+        'Cache-Control': 'public, s-maxage=3600, stale-while-revalidate=86400'
+      }
+    });
+  } catch {
+    return new Response(
+      '<?xml version="1.0" encoding="UTF-8"?><error>Sitemap temporalmente no disponible</error>',
+      {
+        status: 503,
+        headers: { 'Content-Type': 'application/xml; charset=utf-8' }
+      }
+    );
+  }
+}
+
 export default async function middleware(request: Request): Promise<Response | undefined> {
-  // Only act on known crawler requests
+  const url = new URL(request.url);
+
+  // ── Sitemap proxy ─────────────────────────────────────────────────────────
+  // Must run before the crawler check — all clients (bots + browsers) need it.
+  if (url.pathname === '/sitemap.xml') {
+    return proxySitemap();
+  }
+
+  // ── Open Graph — only act on known crawler requests ───────────────────────
   if (!isCrawler(request)) {
     return undefined; // pass through → Vercel rewrite serves index.html
   }
-
-  const url = new URL(request.url);
   const propertyId = extractPropertyId(url.pathname);
 
   if (!propertyId) {

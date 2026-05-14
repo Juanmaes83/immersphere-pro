@@ -94,17 +94,66 @@ app.use('/api/leads', leadsRoutes);
 app.use('/api/tenants', tenantsRoutes);
 
 app.get('/sitemap.xml', async (_req, res) => {
-  const appUrl = env.APP_URL.replace(/\/$/, '');
-  const properties = await prisma.property.findMany({
-    where: { status: 'PUBLISHED' },
-    select: { id: true, updatedAt: true },
-    orderBy: { updatedAt: 'desc' }
-  });
-  const urls = properties.map((p) =>
-    `  <url><loc>${appUrl}/property/${p.id}</loc><lastmod>${p.updatedAt.toISOString().slice(0, 10)}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`
-  );
-  const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n  <url><loc>${appUrl}/</loc><changefreq>monthly</changefreq><priority>1.0</priority></url>\n  <url><loc>${appUrl}/gallery</loc><changefreq>daily</changefreq><priority>0.9</priority></url>\n${urls.join('\n')}\n</urlset>`;
-  res.header('Content-Type', 'application/xml').send(xml);
+  function escapeXml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&apos;');
+  }
+
+  try {
+    const rawAppUrl = (env.APP_URL ?? '').replace(/\/$/, '');
+
+    const isLocalOrEmpty =
+      !rawAppUrl ||
+      rawAppUrl.includes('localhost') ||
+      rawAppUrl.includes('127.0.0.1');
+
+    if (isLocalOrEmpty) {
+      console.warn(
+        '[sitemap] APP_URL is local or empty ("%s"). Sitemap <loc> URLs will not be publicly accessible.',
+        rawAppUrl
+      );
+    }
+
+    const appUrl = rawAppUrl;
+
+    // Only PUBLISHED properties without password protection
+    const properties = await prisma.property.findMany({
+      where: { status: 'PUBLISHED', passwordHash: null },
+      select: { id: true, updatedAt: true },
+      orderBy: { updatedAt: 'desc' }
+    });
+
+    const propertyUrls = properties.map((p) => {
+      const loc = escapeXml(`${appUrl}/property/${p.id}`);
+      const lastmod = p.updatedAt.toISOString().slice(0, 10);
+      return `  <url><loc>${loc}</loc><lastmod>${lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`;
+    });
+
+    const homeUrl = escapeXml(`${appUrl}/`);
+
+    const xml = [
+      '<?xml version="1.0" encoding="UTF-8"?>',
+      '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">',
+      `  <url><loc>${homeUrl}</loc><changefreq>monthly</changefreq><priority>1.0</priority></url>`,
+      ...propertyUrls,
+      '</urlset>'
+    ].join('\n');
+
+    res
+      .header('Content-Type', 'application/xml; charset=utf-8')
+      .header('Cache-Control', 'public, s-maxage=3600, stale-while-revalidate=86400')
+      .send(xml);
+  } catch (err) {
+    console.error('[sitemap] Error generating sitemap:', err instanceof Error ? err.message : err);
+    res
+      .status(500)
+      .header('Content-Type', 'application/xml; charset=utf-8')
+      .send('<?xml version="1.0" encoding="UTF-8"?><error>Sitemap temporalmente no disponible</error>');
+  }
 });
 
 app.use(notFoundHandler);
