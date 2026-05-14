@@ -31,7 +31,7 @@ function createViewerEvent(
 }
 
 function getAcceptedSplatFormats(): string {
-  return '.ply,.splat,.sog,.json,.glb';
+  return '.ply,.splat,.spz,.sog,.json,.glb';
 }
 
 export default function GaussianSplatViewer({
@@ -62,7 +62,11 @@ export default function GaussianSplatViewer({
     if (lower.endsWith('.sog')) return 'SOG';
     if (lower.endsWith('.ply')) return 'PLY';
     if (lower.endsWith('.splat')) return 'SPLAT';
-    return asset.format.toUpperCase();
+    if (lower.endsWith('.spz')) return 'SPZ';
+    if (lower.endsWith('.glb')) return 'GLB';
+    const fmt = asset.format.toUpperCase();
+    // Avoid showing image format labels on splat assets (stale DB metadata)
+    return ['JPG', 'JPEG', 'PNG', 'WEBP', 'GIF'].includes(fmt) ? 'SPLAT' : fmt;
   }, [asset.format, runtimeLabel]);
 
   useEffect(() => {
@@ -141,12 +145,12 @@ export default function GaussianSplatViewer({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const allowedExtensions = ['.ply', '.splat', '.sog', '.json', '.glb'];
+    const allowedExtensions = ['.ply', '.splat', '.spz', '.sog', '.json', '.glb'];
     const lowerName = file.name.toLowerCase();
     const isAllowed = allowedExtensions.some((extension) => lowerName.endsWith(extension));
 
     if (!isAllowed) {
-      setErrorMessage('Formato no soportado. Usa .ply, .splat, .sog, .json o .glb.');
+      setErrorMessage('Formato no soportado. Usa .ply, .splat, .spz, .sog, .json o .glb.');
       return;
     }
 
@@ -230,8 +234,116 @@ export default function GaussianSplatViewer({
 
   return (
     <div className="overflow-hidden rounded-[1.5rem] bg-slate-950">
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_320px]">
-        <div className="relative min-h-[520px] overflow-hidden bg-slate-950">
+      <div className="grid grid-cols-1 lg:grid-cols-[300px_1fr]">
+
+        {/* ── LEFT: Controls ──────────────────────────────────────── */}
+        <aside className="order-2 border-t border-white/10 bg-white/[0.04] p-5 text-white lg:order-1 lg:border-r lg:border-t-0">
+
+          {/* Header */}
+          <div className="mb-5">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">Gaussian Splat Editor</p>
+            <p className="mt-1 text-[0.7rem] leading-5 text-white/40">
+              Previsualización, edición básica y conexión con SuperSplat
+            </p>
+          </div>
+
+          {/* Asset local */}
+          <div className="rounded-2xl bg-white/10 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">Asset local</p>
+            <p className="mt-2 truncate text-sm font-bold text-white/80">{runtimeLabel}</p>
+            <label
+              className="mt-3 flex cursor-pointer flex-col items-center gap-2 rounded-2xl border border-dashed border-white/20 bg-black/25 p-5 text-center transition hover:border-fuchsia-400/50 hover:bg-white/10"
+              onDragOver={(e) => { e.preventDefault(); }}
+              onDrop={(e) => {
+                e.preventDefault();
+                const file = e.dataTransfer.files[0];
+                if (file) {
+                  handleFileChange({ target: { files: e.dataTransfer.files } } as React.ChangeEvent<HTMLInputElement>);
+                }
+              }}
+            >
+              <span className="text-2xl">📂</span>
+              <span className="block text-sm font-black text-white">Subir .ply / .splat / .spz / .sog</span>
+              <span className="text-xs text-white/40">Haz clic o arrastra el archivo aquí</span>
+              <input
+                type="file"
+                accept={getAcceptedSplatFormats()}
+                onChange={handleFileChange}
+                className="sr-only"
+              />
+            </label>
+          </div>
+
+          {/* Editor básico */}
+          <div className="mt-5 rounded-2xl bg-white/10 p-4">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">Editor básico</p>
+            {!isReady && !errorMessage ? (
+              <p className="mt-3 text-xs text-white/40">Disponible cuando el splat termine de cargar.</p>
+            ) : !isReady && errorMessage ? (
+              <p className="mt-3 text-xs text-white/40">Sube un archivo .splat local para activar el editor.</p>
+            ) : (
+              <div className="mt-4 space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setEditorMode((current) => !current)}
+                  title={editorMode ? 'Haz clic en el splat para ocultar zonas no deseadas. Clic de nuevo para salir.' : 'Activa el modo de borrado por esferas SDF. Haz clic sobre el splat para ocultar zonas.'}
+                  className="w-full rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
+                  style={{ backgroundColor: editorMode ? '#DC2626' : primaryColor }}
+                >
+                  {editorMode ? 'Salir de selección' : 'Seleccionar gaussianas'}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleToggleClip}
+                  title="Muestra un plano de recorte visual sobre el splat. Útil para ver secciones interiores."
+                  className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80 transition hover:bg-white/10"
+                >
+                  {clipEnabled ? 'Desactivar clipping' : 'Activar plano de clipping'}
+                </button>
+                <button
+                  type="button"
+                  onClick={resetEditor}
+                  title="Elimina todas las zonas ocultas y desactiva el plano de clipping."
+                  className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80 transition hover:bg-white/10"
+                >
+                  Reset editor
+                </button>
+                <div className="space-y-2">
+                  <button
+                    type="button"
+                    onClick={() => window.open('https://superspl.at/editor', '_blank', 'noopener,noreferrer')}
+                    title="Abre SuperSplat, el editor profesional de PlayCanvas. Limpia, recorta y optimiza el splat, luego expórtalo y vuelve a subirlo aquí."
+                    className="w-full rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    Editar en SuperSplat →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => window.open('https://superspl.at/scene/6a0c3ccf', '_blank', 'noopener,noreferrer')}
+                    title="Abre la escena de ejemplo en SuperSplat para ver cómo se visualiza un tour 3D completo."
+                    className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80 transition hover:bg-white/10"
+                  >
+                    Previsualizar en SuperSplat →
+                  </button>
+                  <p className="text-center text-xs text-white/40">
+                    Guarda y vuelve a subir el resultado
+                  </p>
+                </div>
+              </div>
+            )}
+            <div className="mt-4 rounded-2xl bg-black/25 p-4">
+              <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">Zonas ocultadas</p>
+              <p className="mt-1 text-2xl font-black">{removedCount}</p>
+            </div>
+            <p className="mt-4 text-xs leading-5 text-white/45">
+              Editor experimental conectado a flujo SuperSplat. Las zonas eliminadas usan esferas SDF con opacidad 0 sobre el SplatMesh.
+            </p>
+          </div>
+        </aside>
+
+        {/* ── RIGHT: Viewer ───────────────────────────────────────── */}
+        <div className="relative order-1 min-h-[520px] overflow-hidden bg-slate-950 lg:order-2">
           <div ref={containerRef} className="absolute inset-0" />
 
           {!isReady && !errorMessage ? (
@@ -249,18 +361,20 @@ export default function GaussianSplatViewer({
                   <p className="text-4xl">🫧</p>
                   <p className="mt-3 text-lg font-black">Sube tu Gaussian Splat</p>
                   <p className="mt-2 text-sm leading-6 text-white/60">
-                    El archivo de demo no está disponible desde este dominio. Sube tu propio <span className="font-bold text-fuchsia-300">.splat</span> o <span className="font-bold text-fuchsia-300">.ply</span> para verlo aquí.
+                    El archivo de demo no está disponible desde este dominio. Sube tu propio{' '}
+                    <span className="font-bold text-fuchsia-300">.splat</span> o{' '}
+                    <span className="font-bold text-fuchsia-300">.spz</span> para verlo aquí.
                   </p>
                 </div>
                 <div className="rounded-3xl border border-dashed border-fuchsia-400/40 bg-fuchsia-500/10 p-5 backdrop-blur">
                   <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-300">Subir archivo local</p>
                   <label className="mt-3 block cursor-pointer rounded-2xl border border-white/20 bg-black/30 p-4 transition hover:bg-white/10">
-                    <span className="block text-sm font-bold text-white">Seleccionar .ply / .splat / .sog</span>
+                    <span className="block text-sm font-bold text-white">Seleccionar .ply / .splat / .spz / .sog</span>
                     <input
                       type="file"
                       accept={getAcceptedSplatFormats()}
                       onChange={handleFileChange}
-                      className="mt-2 w-full text-xs text-white/60"
+                      className="sr-only"
                     />
                   </label>
                   <p className="mt-3 text-xs text-white/40">
@@ -309,79 +423,6 @@ export default function GaussianSplatViewer({
           />
         </div>
 
-        <aside className="border-t border-white/10 bg-white/[0.04] p-5 text-white lg:border-l lg:border-t-0">
-          <div className="rounded-2xl bg-white/10 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">Asset local</p>
-            <p className="mt-2 truncate text-sm font-bold text-white/80">{runtimeLabel}</p>
-            <label className="mt-4 block rounded-2xl border border-dashed border-white/20 bg-black/25 p-4 text-sm text-white/70">
-              <span className="block font-black text-white">Subir .ply / .splat / .sog</span>
-              <input
-                type="file"
-                accept={getAcceptedSplatFormats()}
-                onChange={handleFileChange}
-                className="mt-3 w-full text-xs"
-              />
-            </label>
-          </div>
-
-          <div className="mt-5 rounded-2xl bg-white/10 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">Editor básico</p>
-            {!isReady && !errorMessage ? (
-              <p className="mt-3 text-xs text-white/40">Disponible cuando el splat termine de cargar.</p>
-            ) : !isReady && errorMessage ? (
-              <p className="mt-3 text-xs text-white/40">Sube un archivo .splat local para activar el editor.</p>
-            ) : (
-              <div className="mt-4 space-y-3">
-                <button
-                  type="button"
-                  onClick={() => setEditorMode((current) => !current)}
-                  title={editorMode ? 'Haz clic en el splat para ocultar zonas no deseadas. Clic de nuevo para salir.' : 'Activa el modo de borrado por esferas SDF. Haz clic sobre el splat para ocultar zonas.'}
-                  className="w-full rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
-                  style={{ backgroundColor: editorMode ? '#DC2626' : primaryColor }}
-                >
-                  {editorMode ? 'Salir de selección' : 'Seleccionar gaussianas'}
-                </button>
-                <button
-                  type="button"
-                  onClick={handleToggleClip}
-                  title="Muestra un plano de recorte visual sobre el splat. Útil para ver secciones interiores."
-                  className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80 transition hover:bg-white/10"
-                >
-                  {clipEnabled ? 'Desactivar clipping' : 'Activar plano de clipping'}
-                </button>
-                <button
-                  type="button"
-                  onClick={resetEditor}
-                  title="Elimina todas las zonas ocultas y desactiva el plano de clipping."
-                  className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80 transition hover:bg-white/10"
-                >
-                  Reset editor
-                </button>
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => window.open('https://superspl.at/editor', '_blank', 'noopener,noreferrer')}
-                    title="Abre SuperSplat, el editor profesional de PlayCanvas. Limpia, recorta y optimiza el splat, luego expórtalo y vuelve a subirlo aquí."
-                    className="w-full rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
-                    style={{ backgroundColor: primaryColor }}
-                  >
-                    Editar en SuperSplat →
-                  </button>
-                  <p className="mt-2 text-center text-xs text-white/40">
-                    Guarda y vuelve a subir el resultado
-                  </p>
-                </div>
-              </div>
-            )}
-            <div className="mt-4 rounded-2xl bg-black/25 p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">Zonas ocultadas</p>
-              <p className="mt-1 text-2xl font-black">{removedCount}</p>
-            </div>
-            <p className="mt-4 text-xs leading-5 text-white/45">
-              Editor SDF real con SparkJS. Las zonas eliminadas usan esferas SDF con opacidad 0 aplicadas directamente sobre el SplatMesh.
-            </p>
-          </div>
-        </aside>
       </div>
     </div>
   );
