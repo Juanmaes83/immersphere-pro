@@ -243,13 +243,30 @@ export default function GaussianSplatViewer({
           ) : null}
 
           {errorMessage ? (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-br from-fuchsia-500/25 via-violet-900/35 to-slate-950 p-6 text-center text-white">
-              <div className="max-w-lg rounded-3xl border border-white/10 bg-black/35 p-6 backdrop-blur">
-                <p className="text-xl font-black">Splat no disponible</p>
-                <p className="mt-3 text-sm leading-6 text-white/65">{errorMessage}</p>
-                <p className="mt-4 text-xs leading-5 text-white/45">
-                  El visor SparkJS está activo. Si el asset no es un splat válido, la experiencia se mantiene estable y el error queda registrado.
-                </p>
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-br from-violet-950 via-slate-950 to-slate-950 p-6 text-center text-white">
+              <div className="max-w-md w-full space-y-4">
+                <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+                  <p className="text-4xl">🫧</p>
+                  <p className="mt-3 text-lg font-black">Sube tu Gaussian Splat</p>
+                  <p className="mt-2 text-sm leading-6 text-white/60">
+                    El archivo de demo no está disponible desde este dominio. Sube tu propio <span className="font-bold text-fuchsia-300">.splat</span> o <span className="font-bold text-fuchsia-300">.ply</span> para verlo aquí.
+                  </p>
+                </div>
+                <div className="rounded-3xl border border-dashed border-fuchsia-400/40 bg-fuchsia-500/10 p-5 backdrop-blur">
+                  <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-300">Subir archivo local</p>
+                  <label className="mt-3 block cursor-pointer rounded-2xl border border-white/20 bg-black/30 p-4 transition hover:bg-white/10">
+                    <span className="block text-sm font-bold text-white">Seleccionar .ply / .splat / .sog</span>
+                    <input
+                      type="file"
+                      accept={getAcceptedSplatFormats()}
+                      onChange={handleFileChange}
+                      className="mt-2 w-full text-xs text-white/60"
+                    />
+                  </label>
+                  <p className="mt-3 text-xs text-white/40">
+                    Captura con <span className="text-white/70">Luma AI</span> · <span className="text-white/70">Polycam</span> · <span className="text-white/70">Postshot</span> y exporta a .splat
+                  </p>
+                </div>
               </div>
             </div>
           ) : null}
@@ -277,11 +294,13 @@ export default function GaussianSplatViewer({
             ))}
           </div>
 
-          <div className="absolute bottom-5 left-5 z-40 rounded-2xl border border-white/10 bg-black/45 p-4 text-white backdrop-blur">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">Gaussian Splat · SparkJS</p>
-            <p className="mt-1 text-2xl font-black">{formatLabel}</p>
-            <p className="mt-1 text-xs text-white/50">WASD + ratón para navegar</p>
-          </div>
+          {isReady && !errorMessage ? (
+            <div className="absolute bottom-5 left-5 z-40 rounded-2xl border border-white/10 bg-black/45 p-4 text-white backdrop-blur">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">Gaussian Splat · SparkJS</p>
+              <p className="mt-1 text-2xl font-black">{formatLabel}</p>
+              <p className="mt-1 text-xs text-white/50">WASD + ratón para navegar</p>
+            </div>
+          ) : null}
 
           <MeasurementOverlay
             active={measureMode}
