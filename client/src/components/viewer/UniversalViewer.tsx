@@ -368,6 +368,7 @@ export default function UniversalViewer({
             />
           ) : activeAsset.type === 'panorama_360' ? (
             <PanoramaViewer
+              key={`pano-${activeSpace.id}-${activeAsset.id}`}
               propertyId={propertyId}
               spaceId={activeSpace.id}
               asset={activeAsset}
@@ -378,6 +379,7 @@ export default function UniversalViewer({
             />
           ) : activeAsset.type === 'gaussian_splat' ? (
             <GaussianSplatViewer
+              key={`splat-${activeSpace.id}-${activeAsset.id}`}
               propertyId={propertyId}
               spaceId={activeSpace.id}
               asset={activeAsset}
@@ -387,6 +389,7 @@ export default function UniversalViewer({
             />
           ) : (
             <Suspense
+              key={`glb-${activeSpace.id}-${activeAsset.id}`}
               fallback={
                 <div className="flex min-h-[520px] items-center justify-center rounded-[1.5rem] bg-slate-800">
                   <p className="text-sm font-bold text-slate-400">Cargando modelo 3D...</p>
