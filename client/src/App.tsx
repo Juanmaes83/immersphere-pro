@@ -308,35 +308,66 @@ function RegisterPage(): JSX.Element {
 
 const HELP_BANNER_KEY = 'immersphere_help_banner_dismissed';
 
+interface DashLead {
+  id: string;
+  propertyId: string;
+  propertyTitle: string;
+  email: string;
+  status: string;
+  nextActionAt: string | null;
+  createdAt: string;
+}
+
 function DashboardPage(): JSX.Element {
+  const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
   const { properties, fetchProperties, isLoading } = usePropertyStore();
-  const { colorStyle } = useBrand();
-  const [usage, setUsage] = useState<TenantUsageResponse | null>(null);
   const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showHelpBanner, setShowHelpBanner] = useState<boolean>(
     () => !localStorage.getItem(HELP_BANNER_KEY)
   );
+  const [dashLeads, setDashLeads] = useState<DashLead[]>([]);
+  const [dashLeadsLoading, setDashLeadsLoading] = useState(true);
 
   useEffect(() => {
     void fetchProperties({ limit: 100 });
     void loadBillingState();
+    void loadDashLeads();
   }, [fetchProperties]);
 
   async function loadBillingState(): Promise<void> {
     try {
-      const [usageResponse, subscriptionResponse] = await Promise.all([
-        unwrapApiResponse<TenantUsageResponse>(api.get('/tenants/usage')),
-        unwrapApiResponse<SubscriptionResponse>(api.get('/subscriptions/current'))
-      ]);
-      setUsage(usageResponse);
-      setSubscription(subscriptionResponse);
-      setError(null);
-    } catch (error) {
-      setError(getApiErrorMessage(error));
+      const sub = await unwrapApiResponse<SubscriptionResponse>(api.get('/subscriptions/current'));
+      setSubscription(sub);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
     }
   }
+
+  async function loadDashLeads(): Promise<void> {
+    try {
+      const data = await unwrapApiResponse<DashLead[]>(api.get('/leads'));
+      setDashLeads(Array.isArray(data) ? data : []);
+    } catch { /* silent — metrics show fallback state */ }
+    finally { setDashLeadsLoading(false); }
+  }
+
+  const metrics = useMemo(() => {
+    const now = new Date();
+    const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+    const weekStart = new Date(now); weekStart.setDate(weekStart.getDate() - 7); weekStart.setHours(0, 0, 0, 0);
+    const weekLeads = dashLeads.filter((l) => new Date(l.createdAt) >= weekStart);
+    const pendingToday = dashLeads.filter((l) =>
+      l.nextActionAt && new Date(l.nextActionAt) <= todayEnd && !DONE_STATUSES.has(l.status)
+    );
+    const activeProps = properties.filter((p) => p.status === 'PUBLISHED');
+    const topByContacts = [...properties].sort((a, b) => b.leads - a.leads).find((p) => p.leads > 0) ?? null;
+    const recentLeads = [...dashLeads]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 5);
+    return { weekLeads, pendingToday, activeProps, topByContacts, recentLeads };
+  }, [dashLeads, properties]);
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-10">
@@ -344,50 +375,219 @@ function DashboardPage(): JSX.Element {
         <title>Dashboard · {user?.tenant.name ?? 'Immersphere Pro'}</title>
         <meta name="robots" content="noindex" />
       </Helmet>
-      <section className="rounded-[2rem] bg-slate-950 p-7 text-white md:p-9">
-        <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Dashboard</p>
-        <h1 className="mt-4 text-5xl font-black tracking-tight">{user?.tenant.name ?? 'Immersphere Pro'}</h1>
-        <p className="mt-4 text-white/60">{user?.name} · {user?.email}</p>
-      </section>
 
+      {/* ── Page header ── */}
+      <div>
+        <p className="text-ip-xs font-semibold uppercase tracking-[0.22em] text-ip-accent">
+          {user?.tenant.name ?? 'Immersphere Pro'}
+        </p>
+        <h1 className="mt-2 text-ip-2xl font-bold tracking-tight text-white">
+          {user?.name ? `Hola, ${user.name.split(' ')[0]}` : 'Dashboard'}
+        </h1>
+      </div>
+
+      {/* ── Help banner ── */}
       {showHelpBanner && (
-        <div className="mt-6 flex items-center justify-between gap-4 rounded-2xl bg-violet-50 px-5 py-4 ring-1 ring-violet-100 dark:bg-violet-950/30 dark:ring-violet-900">
-          <p className="text-sm font-bold text-violet-800 dark:text-violet-300">
-            👋 ¿Es tu primera vez?{' '}
-            <Link to="/ayuda" className="font-black underline underline-offset-2 hover:text-violet-600">
+        <div className="mt-5 flex items-center justify-between gap-4 rounded-ip-card bg-ip-card px-5 py-4 ring-1 ring-ip-card-border">
+          <p className="text-ip-sm font-semibold text-white/50">
+            Primera vez?{' '}
+            <Link
+              to="/ayuda"
+              className="font-bold text-ip-accent underline underline-offset-2 hover:text-ip-accent-hover"
+            >
               Visita la guía rápida →
             </Link>
-            <span className="ml-1 text-violet-400 dark:text-violet-500">Aprende a publicar tu primer tour en 5 minutos.</span>
           </p>
           <button
             type="button"
             aria-label="Cerrar banner"
-            onClick={() => {
-              localStorage.setItem(HELP_BANNER_KEY, '1');
-              setShowHelpBanner(false);
-            }}
-            className="shrink-0 text-violet-400 hover:text-violet-600 dark:text-violet-600 dark:hover:text-violet-400"
+            onClick={() => { localStorage.setItem(HELP_BANNER_KEY, '1'); setShowHelpBanner(false); }}
+            className="shrink-0 text-white/25 transition hover:text-white/60"
           >
             ✕
           </button>
         </div>
       )}
 
-      {error ? <div className="mt-6 rounded-2xl bg-red-50 p-4 font-bold text-red-700">{error}</div> : null}
+      {error ? (
+        <div className="mt-4 rounded-ip-card bg-ip-danger/10 px-5 py-4 text-ip-sm font-semibold text-ip-danger ring-1 ring-ip-danger/20">
+          {error}
+        </div>
+      ) : null}
 
-      <div className="mt-6 grid grid-cols-1 gap-4 md:grid-cols-4">
-        <Kpi label="Plan" value={subscription?.plan ?? user?.tenant.plan ?? 'STARTER'} />
-        <Kpi label="Propiedades" value={isLoading ? '...' : properties.length} />
-        <Kpi label="Límite" value={usage?.propertyLimit ?? 'Ilimitado'} />
-        <Kpi label="Restantes" value={usage?.remaining ?? '∞'} />
+      {/* ── Hero summary ── */}
+      <div className="mt-5 flex flex-col gap-5 rounded-ip-panel bg-ip-card px-7 py-6 ring-1 ring-ip-card-border md:flex-row md:items-center md:justify-between">
+        <div>
+          <p className="text-ip-xs font-semibold uppercase tracking-[0.14em] text-white/35">
+            Resumen del día
+          </p>
+          <p className="mt-2 max-w-lg text-ip-lg font-semibold leading-snug text-white">
+            {dashLeadsLoading ? (
+              <span className="text-white/25">Calculando resumen...</span>
+            ) : (
+              <>
+                Hoy tienes{' '}
+                <span className={metrics.pendingToday.length > 0 ? 'text-ip-warning' : 'text-white'}>
+                  {metrics.pendingToday.length}{' '}
+                  {metrics.pendingToday.length === 1 ? 'seguimiento pendiente' : 'seguimientos pendientes'}
+                </span>
+                {' '}y{' '}
+                <span className="text-ip-accent">
+                  {metrics.weekLeads.length}{' '}
+                  {metrics.weekLeads.length === 1 ? 'nuevo interesado' : 'nuevos interesados'}
+                </span>
+                {' '}esta semana.
+              </>
+            )}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => navigate('/leads')}
+          className="shrink-0 rounded-ip-pill bg-ip-accent px-5 py-2.5 text-ip-sm font-semibold text-white transition duration-ip-base ease-ip-base hover:bg-ip-accent-hover focus:outline-none"
+        >
+          Ver interesados →
+        </button>
       </div>
 
-      <ErrorBoundary fallback={null}>
-        <Suspense fallback={<div className="mt-8 h-64 animate-pulse rounded-[1.6rem] bg-slate-100 dark:bg-slate-800" />}>
-          <TenantAnalyticsDashboard />
-        </Suspense>
-      </ErrorBoundary>
+      {/* ── Metric cards ── */}
+      <div className="mt-4 grid grid-cols-2 gap-4 lg:grid-cols-3">
+        <CommercialCard
+          label="Interesados esta semana"
+          value={dashLeadsLoading ? '…' : metrics.weekLeads.length}
+          sub="Últimos 7 días"
+          loading={dashLeadsLoading}
+        />
+        <CommercialCard
+          label="Seguimientos para hoy"
+          value={dashLeadsLoading ? '…' : metrics.pendingToday.length}
+          sub={metrics.pendingToday.length > 0 ? 'Requieren atención' : 'Al día'}
+          accent={!dashLeadsLoading && metrics.pendingToday.length > 0}
+          loading={dashLeadsLoading}
+        />
+        <CommercialCard
+          label="Propiedades activas"
+          value={isLoading ? '…' : metrics.activeProps.length}
+          sub="Tours publicados"
+          loading={isLoading}
+        />
+        <CommercialCard
+          label="Mayor actividad"
+          value={isLoading ? '…' : (metrics.topByContacts ? metrics.topByContacts.leads : '—')}
+          sub={
+            isLoading ? '' :
+            metrics.topByContacts
+              ? metrics.topByContacts.title
+              : 'Sin contactos aún'
+          }
+          loading={isLoading}
+        />
+        <CommercialCard
+          label="Propiedad más vista"
+          value="—"
+          sub="Sin datos suficientes"
+          dim
+        />
+        <CommercialCard
+          label="Conversión visita → contacto"
+          value="—"
+          sub="Sin datos suficientes"
+          dim
+        />
+      </div>
+
+      {/* ── Actividad reciente ── */}
+      <div className="mt-4 rounded-ip-card bg-ip-card px-5 py-5 ring-1 ring-ip-card-border">
+        <div className="mb-4 flex items-center justify-between">
+          <p className="text-ip-xs font-semibold uppercase tracking-[0.14em] text-white/35">
+            Actividad reciente
+          </p>
+          <button
+            type="button"
+            onClick={() => navigate('/leads')}
+            className="text-ip-xs font-semibold text-ip-accent transition hover:text-ip-accent-hover"
+          >
+            Ver todos →
+          </button>
+        </div>
+        {dashLeadsLoading ? (
+          <div className="space-y-3">
+            {[0, 1, 2].map((i) => (
+              <div key={i} className="h-10 animate-pulse rounded-lg bg-white/5" />
+            ))}
+          </div>
+        ) : metrics.recentLeads.length === 0 ? (
+          <EmptyState
+            icon={IcoInbox}
+            title="Sin actividad reciente"
+            body="Los interesados que lleguen desde tus tours aparecerán aquí."
+          />
+        ) : (
+          <ul className="divide-y divide-white/5">
+            {metrics.recentLeads.map((l) => (
+              <li key={l.id} className="flex items-center justify-between gap-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-ip-sm font-semibold text-white">{l.email}</p>
+                  <p className="truncate text-ip-xs text-white/35">
+                    {l.propertyTitle || l.propertyId.slice(0, 8)}
+                  </p>
+                </div>
+                <span className="shrink-0 whitespace-nowrap text-ip-xs text-white/25">
+                  {new Date(l.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* ── Billing strip ── */}
+      <div className="mt-4 flex flex-wrap gap-2">
+        <span className="rounded-ip-pill bg-white/5 px-4 py-1.5 text-ip-xs font-semibold text-white/35">
+          Plan:{' '}
+          <span className="text-white/55">{subscription?.plan ?? user?.tenant.plan ?? 'STARTER'}</span>
+        </span>
+        <span className="rounded-ip-pill bg-white/5 px-4 py-1.5 text-ip-xs font-semibold text-white/35">
+          {isLoading
+            ? '…'
+            : `${properties.length} propiedad${properties.length !== 1 ? 'es' : ''} en cartera`}
+        </span>
+      </div>
     </main>
+  );
+}
+
+function CommercialCard({
+  label,
+  value,
+  sub,
+  accent,
+  dim,
+  loading,
+}: {
+  label: string;
+  value: string | number;
+  sub?: string;
+  accent?: boolean;
+  dim?: boolean;
+  loading?: boolean;
+}): JSX.Element {
+  return (
+    <article className="rounded-ip-card bg-ip-card px-5 py-5 ring-1 ring-ip-card-border">
+      <p className="text-ip-xs font-semibold uppercase tracking-[0.14em] text-white/35">{label}</p>
+      {loading ? (
+        <div className="mt-3 h-8 w-10 animate-pulse rounded-lg bg-white/5" />
+      ) : (
+        <p className={`mt-3 text-ip-2xl font-bold tracking-tight ${
+          dim ? 'text-white/20' : accent ? 'text-ip-warning' : 'text-white'
+        }`}>
+          {value}
+        </p>
+      )}
+      {sub ? (
+        <p className={`mt-1 text-ip-xs ${dim ? 'text-white/20' : 'text-white/30'}`}>{sub}</p>
+      ) : null}
+    </article>
   );
 }
 
