@@ -1238,6 +1238,10 @@ function PropertiesPage(): JSX.Element {
   const [selectedAssetFileName, setSelectedAssetFileName] = useState<string | null>(null);
   const [isUploadingAsset, setIsUploadingAsset] = useState(false);
   const [isDragOver, setIsDragOver] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number>(0);
+  const [uploadPhase, setUploadPhase] = useState<'idle' | 'uploading' | 'processing' | 'done'>('idle');
+  const [assetPreviewUrl, setAssetPreviewUrl] = useState<string | null>(null);
+  const [assetPreviewType, setAssetPreviewType] = useState<CreateAssetPayload['type'] | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [leadsPropertyId, setLeadsPropertyId] = useState<string | null>(null);
   const [leads, setLeads] = useState<LeadRecord[]>([]);
@@ -1326,6 +1330,10 @@ function PropertiesPage(): JSX.Element {
     setAssetForm(getDefaultAssetForm());
     setEditingAsset(null);
     setSelectedAssetFileName(null);
+    setUploadProgress(0);
+    setUploadPhase('idle');
+    setAssetPreviewUrl(null);
+    setAssetPreviewType(null);
     setShowHotspotForm(false);
     setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: '' });
     setEditingHotspotIndex(null);
@@ -1388,6 +1396,10 @@ function PropertiesPage(): JSX.Element {
     }
 
     setIsUploadingAsset(true);
+    setUploadProgress(0);
+    setUploadPhase('uploading');
+    setAssetPreviewUrl(null);
+    setAssetPreviewType(null);
     setMessage(null);
 
     const formData = new FormData();
@@ -1395,7 +1407,16 @@ function PropertiesPage(): JSX.Element {
 
     try {
       const upload = await unwrapApiResponse<UploadAssetResponse>(
-        api.post('/uploads', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+        api.post('/uploads', formData, {
+          headers: { 'Content-Type': 'multipart/form-data' },
+          onUploadProgress: (progressEvent) => {
+            const pct = progressEvent.total
+              ? Math.round((progressEvent.loaded / progressEvent.total) * 90)
+              : 0;
+            setUploadProgress(pct);
+            if (pct >= 90) setUploadPhase('processing');
+          }
+        })
       );
 
       const detectedFormat = getUploadedAssetFormat(file.name, upload.format);
@@ -1411,9 +1432,15 @@ function PropertiesPage(): JSX.Element {
         size: sizeMb
       }));
 
+      setUploadProgress(100);
+      setUploadPhase('done');
+      setAssetPreviewUrl(upload.thumbnailUrl || upload.url || null);
+      setAssetPreviewType(detectedType);
       setSelectedAssetFileName(upload.originalName || file.name);
       setMessage('Archivo subido correctamente. Revisa y guarda el asset.');
     } catch (error) {
+      setUploadPhase('idle');
+      setUploadProgress(0);
       setMessage(getApiErrorMessage(error));
     } finally {
       setIsUploadingAsset(false);
@@ -1757,6 +1784,11 @@ function PropertiesPage(): JSX.Element {
     asset: ImmersiveProperty['spaces'][number]['assets'][number]
   ): void {
     setActiveAssetFormTarget({ propertyId, spaceId });
+    setAssetPreviewUrl(null);
+    setAssetPreviewType(null);
+    setUploadPhase('idle');
+    setUploadProgress(0);
+    setSelectedAssetFileName(null);
 
     if (isFallbackAssetId(asset.id)) {
       setEditingAsset(null);
@@ -1774,6 +1806,12 @@ function PropertiesPage(): JSX.Element {
       size: asset.size ?? 0,
       hotspots: asset.hotspots ?? []
     });
+    // Show existing thumbnail as preview if available
+    if (asset.thumbnail) {
+      setAssetPreviewUrl(asset.thumbnail);
+      setAssetPreviewType(asset.type);
+      setUploadPhase('done');
+    }
     setMessage('Editando asset seleccionado.');
   }
 
@@ -2185,52 +2223,72 @@ function PropertiesPage(): JSX.Element {
                             <form onSubmit={(event) => void handleSubmitAsset(event, property.id, space.id)} className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-violet-100 bg-violet-50/70 p-4 md:grid-cols-2">
                               <div className="md:col-span-2">
                                 <p className="text-sm font-black text-slate-950">
-                                  {editingAsset?.propertyId === property.id && editingAsset?.spaceId === space.id ? 'Editar asset' : 'Nuevo asset'}
+                                  {editingAsset?.propertyId === property.id && editingAsset?.spaceId === space.id ? 'Editar asset inmersivo' : 'Añadir asset inmersivo'}
                                 </p>
                                 <p className="mt-1 text-xs font-semibold text-slate-500">
-                                  Conecta una URL real de panorama 360, Gaussian Splat o mesh 3D.
+                                  Sube una imagen 360°, un modelo 3D o un Gaussian Splat para esta estancia
                                 </p>
                               </div>
 
-                              <label className="block">
-                                <span className="mb-2 block text-sm font-black text-slate-700">Tipo asset</span>
-                                <select
-                                  value={assetForm.type}
-                                  onChange={(event) => handleAssetTypeChange(event.target.value as CreateAssetPayload['type'])}
-                                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
-                                >
-                                  <option value="panorama_360">Panorama 360</option>
-                                  <option value="gaussian_splat">Gaussian Splat</option>
-                                  <option value="mesh">Mesh 3D</option>
-                                </select>
-                              </label>
+                              {/* Asset type pill selector */}
+                              <div className="md:col-span-2">
+                                <span className="mb-2 block text-sm font-black text-slate-700">Tipo de asset</span>
+                                <div className="flex gap-2">
+                                  {([
+                                    { value: 'panorama_360', label: '🌐 Panorama 360°', hint: 'JPG / WebP' },
+                                    { value: 'gaussian_splat', label: '✨ Gaussian Splat', hint: 'SPZ / SPLAT / PLY' },
+                                    { value: 'mesh', label: '📦 Modelo 3D', hint: 'GLB' }
+                                  ] as const).map(({ value, label, hint }) => (
+                                    <button
+                                      key={value}
+                                      type="button"
+                                      onClick={() => handleAssetTypeChange(value)}
+                                      className={`flex flex-1 flex-col items-center rounded-2xl border px-3 py-3 text-center transition ${
+                                        assetForm.type === value
+                                          ? 'border-violet-500 bg-violet-50 text-violet-700 ring-1 ring-violet-400'
+                                          : 'border-slate-200 bg-white text-slate-600 hover:border-violet-300 hover:bg-violet-50/40'
+                                      }`}
+                                    >
+                                      <span className="text-sm font-black leading-none">{label}</span>
+                                      <span className="mt-1 text-[10px] font-semibold text-slate-400">{hint}</span>
+                                    </button>
+                                  ))}
+                                </div>
+                              </div>
 
-                              <label className="block">
-                                <span className="mb-2 block text-sm font-black text-slate-700">Formato</span>
-                                <select
-                                  value={assetForm.format}
-                                  onChange={(event) => setAssetForm((current) => ({ ...current, format: event.target.value as CreateAssetPayload['format'] }))}
-                                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
-                                >
-                                  <option value="jpg">JPG</option>
-                                  <option value="jpeg">JPEG</option>
-                                  <option value="png">PNG</option>
-                                  <option value="webp">WEBP</option>
-                                  <option value="splat">SPLAT</option>
-                                  <option value="ply">PLY</option>
-                                  <option value="glb">GLB</option>
-                                </select>
-                              </label>
+                              {/* Format selector — compact, inline */}
+                              <div className="md:col-span-2">
+                                <label className="block">
+                                  <span className="mb-2 block text-sm font-black text-slate-700">Formato detectado <span className="font-semibold text-slate-400">(se autodetecta al subir)</span></span>
+                                  <select
+                                    value={assetForm.format}
+                                    onChange={(event) => setAssetForm((current) => ({ ...current, format: event.target.value as CreateAssetPayload['format'] }))}
+                                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+                                  >
+                                    <option value="jpg">JPG</option>
+                                    <option value="jpeg">JPEG</option>
+                                    <option value="png">PNG</option>
+                                    <option value="webp">WEBP</option>
+                                    <option value="splat">SPLAT</option>
+                                    <option value="ply">PLY</option>
+                                    <option value="glb">GLB</option>
+                                  </select>
+                                </label>
+                              </div>
 
                               <div className="md:col-span-2">
                                 <span className="mb-2 block text-sm font-black text-slate-700">Subir archivo</span>
+
+                                {/* Drop zone */}
                                 <label
-                                  className={`flex w-full cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed px-4 py-5 text-center transition ${
+                                  className={`relative flex w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed px-4 py-6 text-center transition ${
                                     isUploadingAsset
-                                      ? 'cursor-not-allowed border-slate-200 bg-slate-50 opacity-60'
+                                      ? 'cursor-not-allowed border-slate-200 bg-slate-50'
                                       : isDragOver
-                                        ? 'border-violet-500 bg-violet-100 scale-[1.01]'
-                                        : 'border-violet-300 bg-violet-50/50 hover:bg-violet-50'
+                                        ? 'scale-[1.01] border-violet-500 bg-violet-100'
+                                        : uploadPhase === 'done'
+                                          ? 'border-emerald-400 bg-emerald-50/60'
+                                          : 'border-violet-300 bg-violet-50/50 hover:bg-violet-50'
                                   }`}
                                   onDragOver={(e) => { e.preventDefault(); if (!isUploadingAsset) setIsDragOver(true); }}
                                   onDragEnter={(e) => { e.preventDefault(); if (!isUploadingAsset) setIsDragOver(true); }}
@@ -2250,53 +2308,122 @@ function PropertiesPage(): JSX.Element {
                                     disabled={isUploadingAsset}
                                     className="sr-only"
                                   />
-                                  {isUploadingAsset ? (
-                                    <span className="mb-1 h-6 w-6 animate-spin rounded-full border-2 border-violet-300 border-t-violet-700" />
+
+                                  {/* Icon */}
+                                  {uploadPhase === 'done' ? (
+                                    <span className="text-2xl leading-none">✅</span>
+                                  ) : isUploadingAsset ? (
+                                    <span className="h-6 w-6 animate-spin rounded-full border-2 border-violet-300 border-t-violet-700" />
+                                  ) : (
+                                    <span className="text-2xl leading-none">{isDragOver ? '📂' : '📁'}</span>
+                                  )}
+
+                                  {/* Label */}
+                                  <span className={`text-sm font-black ${uploadPhase === 'done' ? 'text-emerald-700' : 'text-violet-700'}`}>
+                                    {isUploadingAsset
+                                      ? (uploadPhase === 'processing' ? 'Procesando en Cloudinary…' : `Subiendo… ${uploadProgress}%`)
+                                      : isDragOver
+                                        ? 'Suelta el archivo aquí'
+                                        : uploadPhase === 'done'
+                                          ? `✓ ${selectedAssetFileName ?? 'Archivo subido'}`
+                                          : 'Arrastra tu archivo aquí o haz clic para seleccionar'}
+                                  </span>
+
+                                  {/* Hint */}
+                                  {!isUploadingAsset && uploadPhase !== 'done' ? (
+                                    <span className="text-xs font-semibold text-slate-400">
+                                      JPG / WebP para 360° · GLB para modelos 3D · SPZ / SPLAT / PLY para Gaussian Splats · Máx. 100 MB
+                                    </span>
                                   ) : null}
-                                  <span className="text-sm font-bold text-violet-700">
-                                    {isUploadingAsset ? 'Subiendo archivo...' : isDragOver ? 'Suelta el archivo aquí' : 'Haz clic o arrastra un archivo aquí'}
-                                  </span>
-                                  <span className="mt-1 text-xs font-semibold text-slate-400">
-                                    JPG, JPEG, PNG, WEBP, SPLAT, PLY o GLB. Maximo 100 MB.
-                                  </span>
+
+                                  {/* Progress bar */}
+                                  {isUploadingAsset ? (
+                                    <div className="w-full max-w-xs overflow-hidden rounded-full bg-violet-100">
+                                      <div
+                                        className="h-1.5 rounded-full bg-violet-500 transition-all duration-300"
+                                        style={{ width: `${uploadProgress}%` }}
+                                      />
+                                    </div>
+                                  ) : null}
                                 </label>
-                                {selectedAssetFileName ? (
-                                  <div className="mt-2 flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 ring-1 ring-emerald-200">
-                                    <span className="text-base leading-none text-emerald-600">✓</span>
-                                    <p className="text-xs font-bold text-emerald-700">
-                                      Subido: {selectedAssetFileName}
-                                    </p>
+
+                                {/* Preview section — shown after upload */}
+                                {uploadPhase === 'done' && assetPreviewUrl ? (
+                                  <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
+                                    {assetPreviewType === 'panorama_360' ? (
+                                      <div className="relative aspect-video bg-slate-900">
+                                        <img
+                                          src={assetPreviewUrl}
+                                          alt="Preview"
+                                          className="h-full w-full object-cover"
+                                          onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                        />
+                                        <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white">
+                                          Vista previa · Panorama 360°
+                                        </span>
+                                      </div>
+                                    ) : (
+                                      /* GLB / Splat: file card */
+                                      <div className="flex items-center gap-3 px-4 py-3">
+                                        <span className="text-2xl leading-none">
+                                          {assetPreviewType === 'gaussian_splat' ? '✨' : '📦'}
+                                        </span>
+                                        <div className="min-w-0 flex-1">
+                                          <p className="truncate text-sm font-black text-slate-900">{selectedAssetFileName}</p>
+                                          <p className="text-xs font-semibold text-slate-400">
+                                            {assetPreviewType === 'gaussian_splat' ? 'Gaussian Splat' : 'Modelo 3D · GLB'}
+                                            {(assetForm.size ?? 0) > 0 ? ` · ${assetForm.size} MB` : ''}
+                                          </p>
+                                        </div>
+                                        <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black text-emerald-700">
+                                          Subido
+                                        </span>
+                                      </div>
+                                    )}
                                   </div>
                                 ) : null}
                               </div>
 
-                              <label className="block md:col-span-2">
-                                <span className="mb-2 block text-sm font-black text-slate-700">URL del asset <span className="font-semibold text-slate-400">(o pega una URL directamente)</span></span>
-                                <input
-                                  type="url"
-                                  value={assetForm.url ?? ''}
-                                  onChange={(event) => setAssetForm((current) => ({ ...current, url: event.target.value }))}
-                                  placeholder="https://..."
-                                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
-                                />
-                              </label>
+                              <div className="md:col-span-2">
+                                <label className="block">
+                                  <span className="mb-2 block text-sm font-black text-slate-700">
+                                    URL del asset <span className="font-semibold text-slate-400">(se rellena automáticamente al subir · o pega una URL directamente)</span>
+                                  </span>
+                                  <input
+                                    type="url"
+                                    value={assetForm.url ?? ''}
+                                    onChange={(event) => setAssetForm((current) => ({ ...current, url: event.target.value }))}
+                                    placeholder="https://res.cloudinary.com/…"
+                                    className={`w-full rounded-2xl border px-4 py-3 text-sm font-semibold outline-none transition ${
+                                      assetForm.url && !assetForm.url.startsWith('http')
+                                        ? 'border-amber-400 bg-amber-50 focus:border-amber-500'
+                                        : 'border-slate-200 bg-white focus:border-violet-400'
+                                    }`}
+                                  />
+                                  {assetForm.url && !assetForm.url.startsWith('http') ? (
+                                    <p className="mt-1 text-xs font-semibold text-amber-600">La URL debe empezar por https://</p>
+                                  ) : null}
+                                </label>
+                              </div>
 
+                              {/* Thumbnail + Size — secondary, collapsible feel */}
                               <label className="block">
-                                <span className="mb-2 block text-sm font-black text-slate-700">Thumbnail opcional</span>
+                                <span className="mb-2 block text-sm font-black text-slate-700">Thumbnail <span className="font-semibold text-slate-400">(auto)</span></span>
                                 <input
                                   type="url"
                                   value={assetForm.thumbnail ?? ''}
                                   onChange={(event) => setAssetForm((current) => ({ ...current, thumbnail: event.target.value }))}
-                                  placeholder="https://..."
+                                  placeholder="https://…"
                                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
                                 />
                               </label>
 
                               <label className="block">
-                                <span className="mb-2 block text-sm font-black text-slate-700">Peso MB</span>
+                                <span className="mb-2 block text-sm font-black text-slate-700">Tamaño <span className="font-semibold text-slate-400">(MB · auto)</span></span>
                                 <input
                                   type="number"
                                   min="0"
+                                  step="0.01"
                                   value={String(assetForm.size ?? 0)}
                                   onChange={(event) => setAssetForm((current) => ({ ...current, size: Number(event.target.value) }))}
                                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
