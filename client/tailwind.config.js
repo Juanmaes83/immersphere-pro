@@ -41,7 +41,7 @@ export default {
         // Legacy
         premium: '0 24px 80px rgba(15, 23, 42, 0.18)',
         // Immersphere
-        'ip-accent-glow': '0 0 24px rgba(124, 92, 255, 0.35)',
+        'ip-accent-glow': '0 0 24px rgba(124, 92, 255, 0.12)',
         'ip-card-soft':   '0 4px 24px rgba(0, 0, 0, 0.40)',
       },
 

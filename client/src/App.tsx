@@ -768,6 +768,72 @@ function EmbedRoutePage(): JSX.Element {
   );
 }
 
+// ── EmptyState ─────────────────────────────────────────────────────────────
+function EmptyState({
+  icon,
+  title,
+  body,
+  action,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  body: string;
+  action?: { label: string; onClick: () => void };
+}): JSX.Element {
+  return (
+    <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
+      <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-ip-card bg-ip-card text-ip-accent ring-1 ring-ip-card-border">
+        {icon}
+      </div>
+      <h3 className="text-ip-lg font-semibold text-white">{title}</h3>
+      <p className="mt-2 max-w-xs text-ip-sm text-white/40">{body}</p>
+      {action ? (
+        <button
+          type="button"
+          onClick={action.onClick}
+          className="mt-6 rounded-ip-pill bg-ip-accent px-5 py-2 text-ip-sm font-semibold text-white transition duration-ip-base ease-ip-base hover:bg-ip-accent-hover focus:outline-none"
+        >
+          {action.label}
+        </button>
+      ) : null}
+    </div>
+  );
+}
+
+// Inline Lucide-style SVG icons (no extra dependency)
+const IcoInbox = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7">
+    <path d="M22 12h-6l-2 3h-4l-2-3H2" />
+    <path d="M5.45 5.11 2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z" />
+  </svg>
+);
+const IcoSearchX = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7">
+    <circle cx="11" cy="11" r="8" />
+    <path d="m21 21-4.35-4.35" />
+    <path d="m8 8 6 6" />
+    <path d="m14 8-6 6" />
+  </svg>
+);
+const IcoBuilding = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7">
+    <path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z" />
+    <path d="M6 12H4a2 2 0 0 0-2 2v8h4" />
+    <path d="M18 9h2a2 2 0 0 1 2 2v11h-4" />
+    <path d="M10 6h4" />
+    <path d="M10 10h4" />
+    <path d="M10 14h4" />
+    <path d="M10 18h4" />
+  </svg>
+);
+const IcoCheckCircle = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-7 w-7">
+    <circle cx="12" cy="12" r="10" />
+    <path d="m9 12 2 2 4-4" />
+  </svg>
+);
+// ──────────────────────────────────────────────────────────────────────────
+
 function PropertiesPage(): JSX.Element {
   const navigate = useNavigate();
   const {
@@ -1500,6 +1566,13 @@ function PropertiesPage(): JSX.Element {
         </form>
 
         <section className="space-y-4">
+          {!isLoading && properties.length === 0 ? (
+            <EmptyState
+              icon={IcoBuilding}
+              title="Crea tu primera propiedad inmersiva"
+              body="Empieza a medir visitas, contactos y rendimiento comercial desde un solo lugar."
+            />
+          ) : null}
           {properties.map((property) => (
             <article key={property.id} className="rounded-[1.5rem] bg-white p-5 shadow-sm ring-1 ring-slate-200">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
@@ -3322,6 +3395,17 @@ function LeadsPage(): JSX.Element {
       ) : null}
 
       {/* ── Pendientes hoy ── */}
+      {!loading && leads.length > 0 && pendingLeads.length === 0 ? (
+        <div className="mb-5 flex items-center gap-4 rounded-ip-card bg-ip-card px-5 py-4 ring-1 ring-ip-card-border">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ip-success/10 text-ip-success">
+            {IcoCheckCircle}
+          </span>
+          <div>
+            <p className="text-ip-base font-semibold text-white">Todo al día</p>
+            <p className="text-ip-sm text-white/40">No tienes acciones pendientes para hoy.</p>
+          </div>
+        </div>
+      ) : null}
       {!loading && pendingLeads.length > 0 ? (
         <div className="mb-5 rounded-[1.5rem] border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
           <p className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-red-500">
@@ -3497,15 +3581,21 @@ function LeadsPage(): JSX.Element {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="px-4 py-12 text-center">
-                      <p className="text-slate-400 font-semibold">
-                        {leads.length === 0 ? 'Aún no hay leads. Configura un hotspot CTA en el visor para capturarlos.' : 'Ningún lead coincide con los filtros activos.'}
-                      </p>
-                      {leads.length > 0 && hasActiveFilters ? (
-                        <button type="button" onClick={handleClearFilters} className="mt-3 text-sm font-black text-violet-600 hover:underline">
-                          Limpiar filtros
-                        </button>
-                      ) : null}
+                    <td colSpan={8}>
+                      {leads.length === 0 ? (
+                        <EmptyState
+                          icon={IcoInbox}
+                          title="Aún no hay interesados"
+                          body="Comparte tu tour por WhatsApp, email o redes para empezar a recibir leads."
+                        />
+                      ) : (
+                        <EmptyState
+                          icon={IcoSearchX}
+                          title="No hay interesados con estos filtros"
+                          body="Prueba a limpiar filtros o cambia el estado seleccionado."
+                          action={{ label: 'Limpiar filtros', onClick: handleClearFilters }}
+                        />
+                      )}
                     </td>
                   </tr>
                 ) : filtered.map((l) => {
