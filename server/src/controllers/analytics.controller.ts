@@ -10,7 +10,10 @@ const ALLOWED_EVENT_TYPES = new Set([
   'viewer_drag',
   'lead_cta',
   'asset_load_error',
-  'viewer_whatsapp_click'
+  'viewer_whatsapp_click',
+  'tour_start',
+  'tour_step',
+  'tour_complete'
 ]);
 
 export async function createViewerEventController(

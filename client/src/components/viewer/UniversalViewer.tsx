@@ -74,18 +74,26 @@ function selectPrimaryAsset(space: Space | undefined, preferredType?: ViewerAsse
   return space.assets[0] ?? null;
 }
 
-interface TourStop { spaceId: string; hotspot: Hotspot }
-
-function buildTourStops(spaces: Space[]): TourStop[] {
-  const stops: TourStop[] = [];
-  for (const space of sortSpaces(spaces)) {
-    for (const asset of space.assets) {
-      for (const hotspot of asset.hotspots ?? []) {
-        stops.push({ spaceId: space.id, hotspot });
+/** Returns the body of the first info-type hotspot in a space, or null. */
+function getSpaceDescription(space: Space): string | null {
+  for (const asset of space.assets) {
+    for (const hotspot of asset.hotspots ?? []) {
+      if (hotspot.type === 'info' && hotspot.body) {
+        return hotspot.body;
       }
     }
   }
-  return stops;
+  return null;
+}
+
+/** Formats non-null space dimensions as a human-readable string, or null. */
+function formatSpaceDimensions(dims: Space['dimensions']): string | null {
+  if (!dims) return null;
+  const parts: string[] = [];
+  if (dims.width != null)  parts.push(`ancho ${dims.width} m`);
+  if (dims.height != null) parts.push(`altura ${dims.height} m`);
+  if (dims.depth != null)  parts.push(`fondo ${dims.depth} m`);
+  return parts.length > 0 ? parts.join(' · ') : null;
 }
 
 export default function UniversalViewer({
@@ -99,21 +107,27 @@ export default function UniversalViewer({
 }: UniversalViewerProps): JSX.Element {
   const sortedSpaces = useMemo(() => sortSpaces(spaces), [spaces]);
   const firstSpaceId = sortedSpaces[0]?.id ?? '';
+
   const [activeSpaceId, setActiveSpaceId] = useState(initialSpaceId ?? firstSpaceId);
   const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null);
   const [showLeadModal, setShowLeadModal] = useState(false);
-  const [isTourActive, setIsTourActive] = useState(false);
+
+  // ── Guided tour ─────────────────────────────────────────────────────────────
+  const [isGuidedTour, setIsGuidedTour]     = useState(false);
+  const [guidedTourIdx, setGuidedTourIdx]   = useState(0);
+
+  // ── Other viewer modes ───────────────────────────────────────────────────────
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isMeasuring, setIsMeasuring] = useState(false);
+  const [isMeasuring,  setIsMeasuring]  = useState(false);
   const [showDollhouse, setShowDollhouse] = useState(false);
-  const tourIndexRef = useRef(0);
-  const tourStops = useMemo(() => buildTourStops(spaces), [spaces]);
-  const viewerRef = useRef<HTMLElement>(null);
-  const sessionId = useRef(`s-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+
+  const viewerRef  = useRef<HTMLElement>(null);
+  const sessionId  = useRef(`s-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
   const activeSpace = sortedSpaces.find((space) => space.id === activeSpaceId) ?? sortedSpaces[0];
   const activeAsset = selectPrimaryAsset(activeSpace);
 
+  // Track initial viewer open
   useEffect(() => {
     if (!activeSpace) return;
     trackToBackend({
@@ -125,23 +139,7 @@ export default function UniversalViewer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  useEffect(() => {
-    if (!isTourActive || tourStops.length === 0) return;
-
-    const interval = setInterval(() => {
-      tourIndexRef.current = (tourIndexRef.current + 1) % tourStops.length;
-      const stop = tourStops[tourIndexRef.current];
-      if (!stop) return;
-
-      if (stop.spaceId !== activeSpaceId) {
-        setActiveSpaceId(stop.spaceId);
-      }
-      setActiveHotspot(stop.hotspot);
-    }, 4000);
-
-    return () => clearInterval(interval);
-  }, [isTourActive, tourStops, activeSpaceId]);
-
+  // Fullscreen listener
   useEffect(() => {
     function onFullscreenChange(): void {
       setIsFullscreen(Boolean(document.fullscreenElement));
@@ -159,20 +157,87 @@ export default function UniversalViewer({
     }
   }
 
-  function toggleTour(): void {
-    if (isTourActive) {
-      setIsTourActive(false);
-      return;
-    }
-    tourIndexRef.current = -1;
-    setIsTourActive(true);
+  // ── Guided tour functions ────────────────────────────────────────────────────
+
+  function startGuidedTour(): void {
+    const firstSpace = sortedSpaces[0];
+    if (!firstSpace || sortedSpaces.length < 2) return;
+
+    setIsGuidedTour(true);
+    setGuidedTourIdx(0);
+    setActiveSpaceId(firstSpace.id);
+    setActiveHotspot(null);
+    setIsMeasuring(false);
+    setShowDollhouse(false);
+
+    const payload = {
+      step: 1,
+      totalSteps: sortedSpaces.length,
+      spaceId: firstSpace.id,
+      spaceName: firstSpace.name
+    };
+    onAnalyticsEvent(createViewerEvent('tour_start', { spaceId: firstSpace.id, data: payload }));
+    trackToBackend({
+      propertyId,
+      spaceId: firstSpace.id,
+      type: 'tour_start',
+      label: firstSpace.name,
+      payload,
+      sessionId: sessionId.current
+    });
   }
+
+  function exitGuidedTour(): void {
+    setIsGuidedTour(false);
+    setGuidedTourIdx(0);
+  }
+
+  function stepGuidedTour(dir: 1 | -1): void {
+    const newIdx = guidedTourIdx + dir;
+    if (newIdx < 0 || newIdx >= sortedSpaces.length) return;
+    const nextSpace = sortedSpaces[newIdx];
+    if (!nextSpace) return;
+
+    setGuidedTourIdx(newIdx);
+    setActiveSpaceId(nextSpace.id);
+    setActiveHotspot(null);
+
+    const isLast     = newIdx === sortedSpaces.length - 1;
+    const eventType: ViewerEvent['type'] = isLast ? 'tour_complete' : 'tour_step';
+    const payload = {
+      step: newIdx + 1,
+      totalSteps: sortedSpaces.length,
+      spaceId: nextSpace.id,
+      spaceName: nextSpace.name
+    };
+    onAnalyticsEvent(createViewerEvent(eventType, { spaceId: nextSpace.id, data: payload }));
+    trackToBackend({
+      propertyId,
+      spaceId: nextSpace.id,
+      type: eventType,
+      label: nextSpace.name,
+      payload,
+      sessionId: sessionId.current
+    });
+  }
+
+  // ── Navigation ───────────────────────────────────────────────────────────────
 
   function handleSpaceChange(spaceId: string): void {
     const nextSpace = sortedSpaces.find((space) => space.id === spaceId);
     if (!nextSpace) return;
 
-    setIsTourActive(false);
+    // Sync guided tour index when the user navigates manually
+    if (isGuidedTour) {
+      const newIdx = sortedSpaces.findIndex((s) => s.id === spaceId);
+      if (newIdx >= 0) {
+        setGuidedTourIdx(newIdx);
+      } else {
+        setIsGuidedTour(false);
+        setGuidedTourIdx(0);
+      }
+    }
+
     setIsMeasuring(false);
     setShowDollhouse(false);
     setActiveSpaceId(spaceId);
@@ -193,8 +258,6 @@ export default function UniversalViewer({
   }
 
   function handleHotspotClick(hotspot: Hotspot): void {
-    setIsTourActive(false);
-
     const event = createViewerEvent('hotspot_click', {
       spaceId: activeSpace?.id,
       assetId: activeAsset?.id,
@@ -208,7 +271,9 @@ export default function UniversalViewer({
       assetId: activeAsset?.id,
       type: 'hotspot_click',
       label: hotspot.label,
-      payload: hotspot.targetSpaceId ? JSON.stringify({ hotspotType: hotspot.type, targetSpaceId: hotspot.targetSpaceId }) : undefined,
+      payload: hotspot.targetSpaceId
+        ? JSON.stringify({ hotspotType: hotspot.type, targetSpaceId: hotspot.targetSpaceId })
+        : undefined,
       sessionId: sessionId.current
     });
 
@@ -222,29 +287,28 @@ export default function UniversalViewer({
   }
 
   function handleLeadCtaOpen(): void {
-    if (!activeHotspot) return;
     setShowLeadModal(true);
   }
 
   function handleLeadSubmitted(): void {
-    if (!activeHotspot || !activeSpace || !activeAsset) return;
-
     const event = createViewerEvent('cta_lead', {
-      spaceId: activeSpace.id,
-      assetId: activeAsset.id,
-      hotspotId: activeHotspot.id,
-      data: { propertyId, hotspotLabel: activeHotspot.label }
+      spaceId: activeSpace?.id,
+      assetId: activeAsset?.id,
+      hotspotId: activeHotspot?.id,
+      data: { propertyId, hotspotLabel: activeHotspot?.label ?? 'Tour guiado' }
     });
     onAnalyticsEvent(event);
     trackToBackend({
       propertyId,
-      spaceId: activeSpace.id,
-      assetId: activeAsset.id,
+      spaceId: activeSpace?.id,
+      assetId: activeAsset?.id,
       type: 'lead_cta',
-      label: activeHotspot.label,
+      label: activeHotspot?.label ?? 'Tour guiado',
       sessionId: sessionId.current
     });
   }
+
+  // ── Empty state ──────────────────────────────────────────────────────────────
 
   if (!activeSpace || !activeAsset) {
     return (
@@ -260,27 +324,43 @@ export default function UniversalViewer({
     );
   }
 
+  // ── Derived values for tour panel ────────────────────────────────────────────
+  const tourDimensions  = formatSpaceDimensions(activeSpace.dimensions);
+  const tourDescription = isGuidedTour ? getSpaceDescription(activeSpace) : null;
+  const isLastTourStep  = guidedTourIdx === sortedSpaces.length - 1;
+  const tourProgress    = sortedSpaces.length > 0
+    ? ((guidedTourIdx + 1) / sortedSpaces.length) * 100
+    : 0;
+  const leadModalLabel  = activeHotspot?.label ?? 'Tour guiado';
+
+  // ── Render ───────────────────────────────────────────────────────────────────
+
   return (
-    <section ref={viewerRef} className={`overflow-hidden rounded-[1.6rem] bg-slate-950 text-white ${className} ${isFullscreen ? 'fixed inset-0 z-[9999] rounded-none' : ''}`}>
-      {showLeadModal && activeHotspot ? (
+    <section
+      ref={viewerRef}
+      className={`overflow-hidden rounded-[1.6rem] bg-slate-950 text-white ${className} ${isFullscreen ? 'fixed inset-0 z-[9999] rounded-none' : ''}`}
+    >
+      {showLeadModal ? (
         <LeadCaptureModal
           propertyId={propertyId}
-          hotspotLabel={activeHotspot.label}
+          hotspotLabel={leadModalLabel}
           primaryColor={primaryColor}
           onClose={() => setShowLeadModal(false)}
           onSubmitted={() => { handleLeadSubmitted(); }}
         />
       ) : null}
+
+      {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 border-b border-white/10 p-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           {!removeBranding ? (
             <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
-              Visor inmersivo
+              {isGuidedTour
+                ? `Tour guiado · ${guidedTourIdx + 1} / ${sortedSpaces.length}`
+                : 'Visor inmersivo'}
             </p>
           ) : null}
-          <h2 className="mt-2 text-3xl font-black">
-            {activeSpace.name}
-          </h2>
+          <h2 className="mt-2 text-3xl font-black">{activeSpace.name}</h2>
           {!removeBranding ? (
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">
               {activeAsset.type === 'panorama_360'
@@ -293,6 +373,7 @@ export default function UniversalViewer({
         </div>
 
         <div className="flex flex-wrap gap-2">
+          {/* Space selector pills */}
           {sortedSpaces.map((space) => (
             <button
               key={space.id}
@@ -308,23 +389,31 @@ export default function UniversalViewer({
               {space.order}. {space.name}
             </button>
           ))}
-          {tourStops.length > 1 ? (
-            <button
-              type="button"
-              onClick={toggleTour}
-              className={`rounded-full px-4 py-2 text-sm font-black transition ${
-                isTourActive
-                  ? 'bg-amber-400 text-slate-950 hover:bg-amber-300'
-                  : 'bg-white/10 text-white/70 hover:bg-white/15'
-              }`}
-            >
-              {isTourActive ? '⏸ Pausar tour' : '▶ Tour guiado'}
-            </button>
+
+          {/* Guided tour button — only visible with 2+ spaces */}
+          {sortedSpaces.length >= 2 ? (
+            isGuidedTour ? (
+              <button
+                type="button"
+                onClick={exitGuidedTour}
+                className="rounded-full bg-amber-400 px-4 py-2 text-sm font-black text-slate-950 transition hover:bg-amber-300"
+              >
+                ✕ Salir del tour
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={startGuidedTour}
+                className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white/70 transition hover:bg-white/15"
+              >
+                ▶ Iniciar tour
+              </button>
+            )
           ) : null}
+
           <button
             type="button"
             onClick={() => {
-              setIsTourActive(false);
               setIsMeasuring((prev) => !prev);
               setShowDollhouse(false);
             }}
@@ -339,7 +428,6 @@ export default function UniversalViewer({
           <button
             type="button"
             onClick={() => {
-              setIsTourActive(false);
               setIsMeasuring(false);
               setShowDollhouse((prev) => !prev);
             }}
@@ -364,16 +452,17 @@ export default function UniversalViewer({
         </div>
       </div>
 
+      {/* ── Main content ───────────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px]">
+
+        {/* Viewer area */}
         <div className="p-5">
           {showDollhouse ? (
             <DollhouseViewer
               spaces={sortedSpaces}
               primaryColor={primaryColor}
               activeSpaceId={activeSpace.id}
-              onSpaceClick={(spaceId) => {
-                handleSpaceChange(spaceId);
-              }}
+              onSpaceClick={(spaceId) => { handleSpaceChange(spaceId); }}
             />
           ) : activeAsset.type === 'panorama_360' ? (
             <PanoramaViewer
@@ -417,57 +506,136 @@ export default function UniversalViewer({
           )}
         </div>
 
+        {/* ── Aside panel ──────────────────────────────────────────────────── */}
         <aside className="border-t border-white/10 bg-white/[0.04] p-5 lg:border-l lg:border-t-0">
-          <div className="rounded-2xl bg-white/10 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">
-              Estancia activa
-            </p>
-            <h3 className="mt-3 text-2xl font-black">{activeSpace.name}</h3>
-            <p className="mt-2 text-sm text-white/55">
-              Asset: {activeAsset.format.toUpperCase()} · {activeAsset.size} MB · order{' '}
-              {activeSpace.order}
-            </p>
-          </div>
 
-          <div className="mt-5 rounded-2xl bg-white/10 p-4">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">
-              Hotspot activo
-            </p>
-
-            {activeHotspot ? (
-              <div className="mt-4">
-                <h3 className="text-2xl font-black">{activeHotspot.label}</h3>
-                {activeHotspot.body ? (
-                  <p className="mt-3 text-sm leading-6 text-white/65">{activeHotspot.body}</p>
+          {/* GUIDED TOUR PANEL — shown when tour active and no hotspot is open */}
+          {isGuidedTour && !activeHotspot ? (
+            <>
+              <div className="rounded-2xl bg-white/10 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">
+                  Tour guiado
+                </p>
+                <div className="mt-3 flex items-center justify-between text-xs font-bold text-white/50">
+                  <span>Estancia {guidedTourIdx + 1} de {sortedSpaces.length}</span>
+                  <span>{Math.round(tourProgress)}%</span>
+                </div>
+                <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
+                  <div
+                    className="h-full rounded-full bg-cyan-400 transition-all duration-500"
+                    style={{ width: `${tourProgress}%` }}
+                  />
+                </div>
+                <h3 className="mt-4 text-2xl font-black">{activeSpace.name}</h3>
+                {tourDimensions ? (
+                  <p className="mt-2 text-xs font-semibold text-white/40">{tourDimensions}</p>
                 ) : null}
-
-                {activeHotspot.metric ? (
-                  <div className="mt-4 rounded-2xl bg-black/25 p-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">
-                      Dato
-                    </p>
-                    <p className="mt-1 text-xl font-black">{activeHotspot.metric}</p>
-                  </div>
+                {tourDescription ? (
+                  <p className="mt-3 text-sm leading-6 text-white/65">{tourDescription}</p>
                 ) : null}
+              </div>
 
-                {activeHotspot.type === 'cta' ? (
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  disabled={guidedTourIdx === 0}
+                  onClick={() => { stepGuidedTour(-1); }}
+                  className="flex-1 rounded-2xl bg-white/10 px-4 py-3 text-sm font-black text-white/70 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  ← Anterior
+                </button>
+                {isLastTourStep ? (
                   <button
                     type="button"
                     onClick={handleLeadCtaOpen}
-                    className="mt-4 w-full rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90"
+                    className="flex-1 rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
                     style={{ backgroundColor: primaryColor }}
                   >
                     Solicitar información
                   </button>
-                ) : null}
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => { stepGuidedTour(1); }}
+                    className="flex-1 rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    Siguiente →
+                  </button>
+                )}
               </div>
-            ) : (
-              <p className="mt-4 text-sm leading-6 text-white/55">
-                Haz clic en un hotspot dentro del visor para abrir información contextual, medición
-                estimada o CTA comercial.
-              </p>
-            )}
-          </div>
+
+              <button
+                type="button"
+                onClick={exitGuidedTour}
+                className="mt-3 w-full rounded-2xl bg-white/5 px-4 py-2 text-xs font-bold text-white/40 transition hover:bg-white/10 hover:text-white/60"
+              >
+                ✕ Salir del tour
+              </button>
+            </>
+          ) : (
+            /* DEFAULT / HOTSPOT PANEL */
+            <>
+              <div className="rounded-2xl bg-white/10 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">
+                  Estancia activa
+                </p>
+                <h3 className="mt-3 text-2xl font-black">{activeSpace.name}</h3>
+                <p className="mt-2 text-sm text-white/55">
+                  Asset: {activeAsset.format.toUpperCase()} · {activeAsset.size} MB · order{' '}
+                  {activeSpace.order}
+                </p>
+              </div>
+
+              <div className="mt-5 rounded-2xl bg-white/10 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">
+                  Hotspot activo
+                </p>
+
+                {activeHotspot ? (
+                  <div className="mt-4">
+                    <h3 className="text-2xl font-black">{activeHotspot.label}</h3>
+                    {activeHotspot.body ? (
+                      <p className="mt-3 text-sm leading-6 text-white/65">{activeHotspot.body}</p>
+                    ) : null}
+                    {activeHotspot.metric ? (
+                      <div className="mt-4 rounded-2xl bg-black/25 p-4">
+                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">
+                          Dato
+                        </p>
+                        <p className="mt-1 text-xl font-black">{activeHotspot.metric}</p>
+                      </div>
+                    ) : null}
+                    {activeHotspot.type === 'cta' ? (
+                      <button
+                        type="button"
+                        onClick={handleLeadCtaOpen}
+                        className="mt-4 w-full rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90"
+                        style={{ backgroundColor: primaryColor }}
+                      >
+                        Solicitar información
+                      </button>
+                    ) : null}
+                    {/* Return to tour if guided tour is still active */}
+                    {isGuidedTour ? (
+                      <button
+                        type="button"
+                        onClick={() => setActiveHotspot(null)}
+                        className="mt-3 w-full rounded-2xl bg-white/10 px-4 py-2 text-xs font-black text-white/60 transition hover:bg-white/15"
+                      >
+                        ← Volver al tour
+                      </button>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="mt-4 text-sm leading-6 text-white/55">
+                    Haz clic en un hotspot dentro del visor para abrir información contextual, medición
+                    estimada o CTA comercial.
+                  </p>
+                )}
+              </div>
+            </>
+          )}
         </aside>
       </div>
     </section>

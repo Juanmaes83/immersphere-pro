@@ -28,7 +28,10 @@ export type ViewerEventType =
   | 'splat_error'
   | 'splat_editor_remove'
   | 'splat_editor_clip'
-  | 'viewer_whatsapp_click';
+  | 'viewer_whatsapp_click'
+  | 'tour_start'
+  | 'tour_step'
+  | 'tour_complete';
 
 export interface SpaceDimensions {
   width: number | null;
