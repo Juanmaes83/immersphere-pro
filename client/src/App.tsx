@@ -2926,9 +2926,22 @@ interface LeadWithProperty {
 }
 
 function LeadsPage(): JSX.Element {
-  const { bgStyle } = useBrand();
-  const token = useAuthStore((s) => s.accessToken);
+  const { bgStyle, color: brandColor } = useBrand();
   const [leads, setLeads] = useState<LeadWithProperty[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [exporting, setExporting] = useState(false);
+
+  // Server-side filters (sent to API)
+  const [filterProperty, setFilterProperty] = useState('');
+  const [filterFrom, setFilterFrom] = useState('');
+  const [filterTo, setFilterTo] = useState('');
+
+  // Client-side filters (instant, no API call)
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterSource, setFilterSource] = useState('');
+
+  const hasActiveFilters = filterProperty || filterFrom || filterTo || filterSearch || filterSource;
 
   useEffect(() => {
     api.get('/leads/count')
@@ -2938,12 +2951,6 @@ function LeadsPage(): JSX.Element {
       })
       .catch(() => {});
   }, []);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [filterProperty, setFilterProperty] = useState('');
-  const [filterFrom, setFilterFrom] = useState('');
-  const [filterTo, setFilterTo] = useState('');
-  const [filterSource, setFilterSource] = useState('');
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -2968,6 +2975,8 @@ function LeadsPage(): JSX.Element {
   useEffect(() => { void fetchLeads(); }, [fetchLeads]);
 
   async function handleExportCsv(): Promise<void> {
+    if (exporting) return;
+    setExporting(true);
     try {
       const params = new URLSearchParams();
       if (filterProperty) params.set('propertyId', filterProperty);
@@ -2983,123 +2992,313 @@ function LeadsPage(): JSX.Element {
       anchor.click();
       URL.revokeObjectURL(url);
     } catch {
-      // silent — user can retry
+      // silent
+    } finally {
+      setExporting(false);
     }
+  }
+
+  function handleClearFilters(): void {
+    setFilterProperty('');
+    setFilterFrom('');
+    setFilterTo('');
+    setFilterSearch('');
+    setFilterSource('');
   }
 
   const uniqueProperties = useMemo(() => {
     const map = new Map<string, string>();
     for (const l of leads) map.set(l.propertyId, l.propertyTitle || l.propertyId.slice(0, 8));
-    return [...map.entries()];
+    return [...map.entries()].sort((a, b) => a[1].localeCompare(b[1]));
   }, [leads]);
 
+  const uniqueSources = useMemo(() => [...new Set(leads.map((l) => l.source).filter(Boolean))].sort(), [leads]);
+
   const filtered = useMemo(() => {
+    const q = filterSearch.toLowerCase().trim();
     return leads.filter((l) => {
       if (filterSource && l.source !== filterSource) return false;
+      if (q) {
+        const hit =
+          l.email.toLowerCase().includes(q) ||
+          (l.phone || '').toLowerCase().includes(q) ||
+          (l.propertyTitle || '').toLowerCase().includes(q) ||
+          (l.notes || '').toLowerCase().includes(q);
+        if (!hit) return false;
+      }
       return true;
     });
-  }, [leads, filterSource]);
+  }, [leads, filterSource, filterSearch]);
 
-  const uniqueSources = useMemo(() => [...new Set(leads.map((l) => l.source).filter(Boolean))], [leads]);
+  // ── B5: Metrics ──────────────────────────────────────────────────
+  const metrics = useMemo(() => {
+    const now = new Date();
+    const weekAgo = new Date(now);
+    weekAgo.setDate(now.getDate() - 7);
+
+    const thisWeek = leads.filter((l) => new Date(l.createdAt) >= weekAgo).length;
+
+    const byProperty = new Map<string, { title: string; count: number }>();
+    for (const l of leads) {
+      const entry = byProperty.get(l.propertyId) ?? { title: l.propertyTitle || l.propertyId.slice(0, 8), count: 0 };
+      entry.count += 1;
+      byProperty.set(l.propertyId, entry);
+    }
+    const topProperty = [...byProperty.values()].sort((a, b) => b.count - a.count)[0] ?? null;
+
+    const bySource = new Map<string, number>();
+    for (const l of leads) {
+      bySource.set(l.source, (bySource.get(l.source) ?? 0) + 1);
+    }
+    const topSource = [...bySource.entries()].sort((a, b) => b[1] - a[1])[0] ?? null;
+
+    return { total: leads.length, thisWeek, topProperty, topSource };
+  }, [leads]);
 
   return (
     <main className="mx-auto max-w-6xl px-5 py-10">
-      <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
-        <h1 className="text-3xl font-black dark:text-white">Leads</h1>
+      <Helmet>
+        <title>Leads · Immersphere Pro</title>
+        <meta name="robots" content="noindex" />
+      </Helmet>
+
+      {/* ── Header ── */}
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
+        <div>
+          <p className="text-sm font-black uppercase tracking-[0.22em]" style={{ color: brandColor }}>CRM</p>
+          <h1 className="mt-1 text-4xl font-black tracking-tight dark:text-white">Leads</h1>
+          <p className="mt-1 text-sm text-slate-500">{metrics.total} en total · {metrics.thisWeek} esta semana</p>
+        </div>
         <button
+          type="button"
           onClick={() => void handleExportCsv()}
-          className="rounded-full px-5 py-2.5 text-sm font-black text-white transition hover:opacity-90"
+          disabled={exporting || leads.length === 0}
+          className="flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50"
           style={bgStyle}
+          title={filtered.length < leads.length ? `Exporta los ${filtered.length} leads con los filtros activos del servidor` : `Exporta todos los ${leads.length} leads`}
         >
-          Exportar CSV
+          {exporting ? (
+            <>
+              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              Exportando…
+            </>
+          ) : (
+            <>↓ CSV ({leads.length})</>
+          )}
         </button>
       </div>
 
-      {/* Filters */}
-      <div className="mb-6 flex flex-wrap gap-3">
-        <select
-          value={filterProperty}
-          onChange={(e) => setFilterProperty(e.target.value)}
-          className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-        >
-          <option value="">Todas las propiedades</option>
-          {uniqueProperties.map(([id, title]) => (
-            <option key={id} value={id}>{title}</option>
-          ))}
-        </select>
-        <select
-          value={filterSource}
-          onChange={(e) => setFilterSource(e.target.value)}
-          className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-        >
-          <option value="">Todos los orígenes</option>
-          {uniqueSources.map((s) => (
-            <option key={s} value={s}>{s}</option>
-          ))}
-        </select>
-        <input
-          type="date"
-          value={filterFrom}
-          onChange={(e) => setFilterFrom(e.target.value)}
-          className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          placeholder="Desde"
-        />
-        <input
-          type="date"
-          value={filterTo}
-          onChange={(e) => setFilterTo(e.target.value)}
-          className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold outline-none dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-          placeholder="Hasta"
-        />
-        <button
-          onClick={() => void fetchLeads()}
-          className="rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-black outline-none transition hover:bg-slate-50 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
-        >
-          Filtrar
-        </button>
+      {/* ── B5: Stats row ── */}
+      {!loading && leads.length > 0 ? (
+        <div className="mb-8 grid grid-cols-2 gap-3 md:grid-cols-4">
+          <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Total leads</p>
+            <p className="mt-1 text-3xl font-black dark:text-white">{metrics.total}</p>
+          </div>
+          <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Esta semana</p>
+            <p className="mt-1 text-3xl font-black dark:text-white">{metrics.thisWeek}</p>
+            <p className="mt-0.5 text-xs text-slate-400">últimos 7 días</p>
+          </div>
+          <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Propiedad top</p>
+            {metrics.topProperty ? (
+              <>
+                <p className="mt-1 truncate text-base font-black leading-tight dark:text-white">{metrics.topProperty.title}</p>
+                <p className="mt-0.5 text-xs text-slate-400">{metrics.topProperty.count} lead{metrics.topProperty.count !== 1 ? 's' : ''}</p>
+              </>
+            ) : (
+              <p className="mt-1 text-slate-400">—</p>
+            )}
+          </div>
+          <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+            <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Origen top</p>
+            {metrics.topSource ? (
+              <>
+                <p className="mt-1 text-base font-black dark:text-white">{metrics.topSource[0]}</p>
+                <p className="mt-0.5 text-xs text-slate-400">{metrics.topSource[1]} lead{metrics.topSource[1] !== 1 ? 's' : ''}</p>
+              </>
+            ) : (
+              <p className="mt-1 text-slate-400">—</p>
+            )}
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── B1: Filters ── */}
+      <div className="mb-5 rounded-[1.5rem] bg-white p-4 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Live search */}
+          <div className="relative min-w-[200px] flex-1">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">🔍</span>
+            <input
+              type="text"
+              value={filterSearch}
+              onChange={(e) => setFilterSearch(e.target.value)}
+              placeholder="Buscar email, teléfono, propiedad…"
+              className="w-full rounded-2xl border border-slate-200 bg-slate-50 py-2.5 pl-9 pr-4 text-sm font-semibold outline-none focus:border-violet-400 focus:bg-white dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+            />
+          </div>
+
+          <select
+            value={filterProperty}
+            onChange={(e) => setFilterProperty(e.target.value)}
+            className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+          >
+            <option value="">Todas las propiedades</option>
+            {uniqueProperties.map(([id, title]) => (
+              <option key={id} value={id}>{title}</option>
+            ))}
+          </select>
+
+          <select
+            value={filterSource}
+            onChange={(e) => setFilterSource(e.target.value)}
+            className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+          >
+            <option value="">Todos los orígenes</option>
+            {uniqueSources.map((s) => (
+              <option key={s} value={s}>{s}</option>
+            ))}
+          </select>
+
+          <input
+            type="date"
+            value={filterFrom}
+            onChange={(e) => setFilterFrom(e.target.value)}
+            title="Desde"
+            className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+          />
+          <input
+            type="date"
+            value={filterTo}
+            onChange={(e) => setFilterTo(e.target.value)}
+            title="Hasta"
+            className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+          />
+
+          {hasActiveFilters ? (
+            <button
+              type="button"
+              onClick={handleClearFilters}
+              className="rounded-2xl border border-slate-200 px-3 py-2.5 text-sm font-black text-slate-500 transition hover:border-red-300 hover:bg-red-50 hover:text-red-600"
+            >
+              ✕ Limpiar
+            </button>
+          ) : null}
+        </div>
+
+        {/* Active filter summary */}
+        {hasActiveFilters ? (
+          <div className="mt-3 flex flex-wrap gap-2">
+            {filterSearch ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-violet-50 px-3 py-1 text-xs font-black text-violet-700">
+                🔍 "{filterSearch}"
+              </span>
+            ) : null}
+            {filterProperty ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-black text-blue-700">
+                🏠 {uniqueProperties.find(([id]) => id === filterProperty)?.[1] ?? filterProperty.slice(0, 8)}
+              </span>
+            ) : null}
+            {filterSource ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
+                📍 {filterSource}
+              </span>
+            ) : null}
+            {filterFrom || filterTo ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700">
+                📅 {filterFrom || '…'} → {filterTo || '…'}
+              </span>
+            ) : null}
+          </div>
+        ) : null}
       </div>
 
-      {loading && <p className="text-slate-500">Cargando…</p>}
-      {error && <p className="text-red-500">{error}</p>}
-
-      {!loading && !error && (
-        <div className="overflow-x-auto rounded-[1.6rem] ring-1 ring-slate-200 dark:ring-slate-700">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-slate-50 dark:bg-slate-800">
-              <tr>
-                {['Propiedad', 'Email', 'Teléfono', 'Notas', 'Origen', 'Fecha'].map((h) => (
-                  <th key={h} className="px-4 py-3 font-black text-slate-600 dark:text-slate-300">{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
-              {filtered.length === 0 ? (
-                <tr>
-                  <td colSpan={6} className="px-4 py-8 text-center text-slate-400">Sin leads todavía.</td>
-                </tr>
-              ) : filtered.map((l) => (
-                <tr key={l.id} className="bg-white hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800">
-                  <td className="px-4 py-3 font-semibold dark:text-white">{l.propertyTitle || l.propertyId.slice(0, 8)}</td>
-                  <td className="px-4 py-3 dark:text-slate-300">{l.email}</td>
-                  <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{l.phone || '—'}</td>
-                  <td className="max-w-[200px] truncate px-4 py-3 text-slate-500 dark:text-slate-400">{l.notes || '—'}</td>
-                  <td className="px-4 py-3">
-                    <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-black text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                      {l.source}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                    {new Date(l.createdAt).toLocaleString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {loading && (
+        <div className="flex items-center gap-3 py-8 text-slate-400">
+          <span className="inline-block h-5 w-5 animate-spin rounded-full border-2 border-slate-200 border-t-slate-500" />
+          Cargando leads…
         </div>
       )}
+      {error ? <p className="rounded-2xl bg-red-50 p-4 font-bold text-red-700">{error}</p> : null}
 
-      {!loading && filtered.length > 0 && (
-        <p className="mt-3 text-xs text-slate-400">{filtered.length} lead{filtered.length !== 1 ? 's' : ''} mostrados</p>
+      {!loading && !error && (
+        <>
+          <div className="overflow-x-auto rounded-[1.6rem] ring-1 ring-slate-200 dark:ring-slate-700">
+            <table className="w-full text-left text-sm">
+              <thead className="bg-slate-50 dark:bg-slate-800">
+                <tr>
+                  {['Propiedad', 'Email', 'Teléfono', 'Notas del visitante', 'Origen', 'Fecha'].map((h) => (
+                    <th key={h} className="px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{h}</th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
+                {filtered.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-4 py-12 text-center">
+                      <p className="text-slate-400 font-semibold">
+                        {leads.length === 0 ? 'Aún no hay leads. Configura un hotspot CTA en el visor para capturarlos.' : 'Ningún lead coincide con los filtros activos.'}
+                      </p>
+                      {leads.length > 0 && hasActiveFilters ? (
+                        <button type="button" onClick={handleClearFilters} className="mt-3 text-sm font-black text-violet-600 hover:underline">
+                          Limpiar filtros
+                        </button>
+                      ) : null}
+                    </td>
+                  </tr>
+                ) : filtered.map((l) => (
+                  <tr key={l.id} className="bg-white transition hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800">
+                    <td className="max-w-[180px] truncate px-4 py-3 font-black dark:text-white" title={l.propertyTitle}>
+                      {l.propertyTitle || l.propertyId.slice(0, 8)}
+                    </td>
+                    <td className="px-4 py-3 dark:text-slate-300">
+                      <a href={`mailto:${l.email}`} className="font-semibold hover:underline" style={{ color: brandColor }}>
+                        {l.email}
+                      </a>
+                    </td>
+                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                      {l.phone ? (
+                        <a href={`tel:${l.phone}`} className="hover:underline">{l.phone}</a>
+                      ) : '—'}
+                    </td>
+                    <td className="max-w-[220px] px-4 py-3 text-slate-500 dark:text-slate-400">
+                      {l.notes ? (
+                        <span className="line-clamp-2 text-xs italic">"{l.notes}"</span>
+                      ) : <span className="text-slate-300">—</span>}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                        {l.source}
+                      </span>
+                    </td>
+                    <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+                      {new Date(l.createdAt).toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="mt-3 flex items-center justify-between">
+            <p className="text-xs text-slate-400">
+              {filtered.length !== leads.length
+                ? `${filtered.length} de ${leads.length} leads`
+                : `${leads.length} lead${leads.length !== 1 ? 's' : ''}`}
+            </p>
+            {filtered.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => void handleExportCsv()}
+                disabled={exporting}
+                className="text-xs font-black text-slate-400 transition hover:text-slate-700 disabled:opacity-50"
+              >
+                ↓ Exportar CSV
+              </button>
+            ) : null}
+          </div>
+        </>
       )}
     </main>
   );
