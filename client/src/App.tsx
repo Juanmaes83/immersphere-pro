@@ -381,15 +381,15 @@ function DashboardPage(): JSX.Element {
         <p className="text-ip-xs font-semibold uppercase tracking-[0.22em] text-ip-accent">
           {user?.tenant.name ?? 'Immersphere Pro'}
         </p>
-        <h1 className="mt-2 text-ip-2xl font-bold tracking-tight text-white">
+        <h1 className="mt-2 text-ip-2xl font-bold tracking-tight text-slate-900 dark:text-white">
           {user?.name ? `Hola, ${user.name.split(' ')[0]}` : 'Dashboard'}
         </h1>
       </div>
 
       {/* ── Help banner ── */}
       {showHelpBanner && (
-        <div className="mt-5 flex items-center justify-between gap-4 rounded-ip-card bg-ip-card px-5 py-4 ring-1 ring-ip-card-border">
-          <p className="text-ip-sm font-semibold text-white/50">
+        <div className="mt-5 flex items-center justify-between gap-4 rounded-ip-card bg-violet-50 px-5 py-4 ring-1 ring-violet-200 dark:bg-ip-card dark:ring-ip-card-border">
+          <p className="text-ip-sm font-semibold text-slate-600 dark:text-white/50">
             Primera vez?{' '}
             <Link
               to="/ayuda"
@@ -402,7 +402,7 @@ function DashboardPage(): JSX.Element {
             type="button"
             aria-label="Cerrar banner"
             onClick={() => { localStorage.setItem(HELP_BANNER_KEY, '1'); setShowHelpBanner(false); }}
-            className="shrink-0 text-white/25 transition hover:text-white/60"
+            className="shrink-0 text-slate-400 transition hover:text-slate-600 dark:text-white/25 dark:hover:text-white/60"
           >
             ✕
           </button>
@@ -416,18 +416,18 @@ function DashboardPage(): JSX.Element {
       ) : null}
 
       {/* ── Hero summary ── */}
-      <div className="mt-5 flex flex-col gap-5 rounded-ip-panel bg-ip-card px-7 py-6 ring-1 ring-ip-card-border md:flex-row md:items-center md:justify-between">
+      <div className="mt-5 flex flex-col gap-5 rounded-ip-panel bg-white px-7 py-6 ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-ip-xs font-semibold uppercase tracking-[0.14em] text-white/35">
+          <p className="text-ip-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">
             Resumen del día
           </p>
-          <p className="mt-2 max-w-lg text-ip-lg font-semibold leading-snug text-white">
+          <p className="mt-2 max-w-lg text-ip-lg font-semibold leading-snug text-slate-900 dark:text-white">
             {dashLeadsLoading ? (
-              <span className="text-white/25">Calculando resumen...</span>
+              <span className="text-slate-400 dark:text-white/25">Calculando resumen...</span>
             ) : (
               <>
                 Hoy tienes{' '}
-                <span className={metrics.pendingToday.length > 0 ? 'text-ip-warning' : 'text-white'}>
+                <span className={metrics.pendingToday.length > 0 ? 'text-ip-warning' : 'text-slate-900 dark:text-white'}>
                   {metrics.pendingToday.length}{' '}
                   {metrics.pendingToday.length === 1 ? 'seguimiento pendiente' : 'seguimientos pendientes'}
                 </span>
@@ -497,9 +497,9 @@ function DashboardPage(): JSX.Element {
       </div>
 
       {/* ── Actividad reciente ── */}
-      <div className="mt-4 rounded-ip-card bg-ip-card px-5 py-5 ring-1 ring-ip-card-border">
+      <div className="mt-4 rounded-ip-card bg-white px-5 py-5 ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border">
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-ip-xs font-semibold uppercase tracking-[0.14em] text-white/35">
+          <p className="text-ip-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">
             Actividad reciente
           </p>
           <button
@@ -513,7 +513,7 @@ function DashboardPage(): JSX.Element {
         {dashLeadsLoading ? (
           <div className="space-y-3">
             {[0, 1, 2].map((i) => (
-              <div key={i} className="h-10 animate-pulse rounded-lg bg-white/5" />
+              <div key={i} className="h-10 animate-pulse rounded-lg bg-slate-200 dark:bg-white/5" />
             ))}
           </div>
         ) : metrics.recentLeads.length === 0 ? (
@@ -523,16 +523,16 @@ function DashboardPage(): JSX.Element {
             body="Los interesados que lleguen desde tus tours aparecerán aquí."
           />
         ) : (
-          <ul className="divide-y divide-white/5">
+          <ul className="divide-y divide-slate-100 dark:divide-white/5">
             {metrics.recentLeads.map((l) => (
               <li key={l.id} className="flex items-center justify-between gap-4 py-3">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-ip-sm font-semibold text-white">{l.email}</p>
-                  <p className="truncate text-ip-xs text-white/35">
+                  <p className="truncate text-ip-sm font-semibold text-slate-900 dark:text-white">{l.email}</p>
+                  <p className="truncate text-ip-xs text-slate-500 dark:text-white/35">
                     {l.propertyTitle || l.propertyId.slice(0, 8)}
                   </p>
                 </div>
-                <span className="shrink-0 whitespace-nowrap text-ip-xs text-white/25">
+                <span className="shrink-0 whitespace-nowrap text-ip-xs text-slate-400 dark:text-white/25">
                   {new Date(l.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
                 </span>
               </li>
@@ -543,11 +543,11 @@ function DashboardPage(): JSX.Element {
 
       {/* ── Billing strip ── */}
       <div className="mt-4 flex flex-wrap gap-2">
-        <span className="rounded-ip-pill bg-white/5 px-4 py-1.5 text-ip-xs font-semibold text-white/35">
+        <span className="rounded-ip-pill bg-slate-100 px-4 py-1.5 text-ip-xs font-semibold text-slate-500 dark:bg-white/5 dark:text-white/35">
           Plan:{' '}
-          <span className="text-white/55">{subscription?.plan ?? user?.tenant.plan ?? 'STARTER'}</span>
+          <span className="text-slate-700 dark:text-white/55">{subscription?.plan ?? user?.tenant.plan ?? 'STARTER'}</span>
         </span>
-        <span className="rounded-ip-pill bg-white/5 px-4 py-1.5 text-ip-xs font-semibold text-white/35">
+        <span className="rounded-ip-pill bg-slate-100 px-4 py-1.5 text-ip-xs font-semibold text-slate-500 dark:bg-white/5 dark:text-white/35">
           {isLoading
             ? '…'
             : `${properties.length} propiedad${properties.length !== 1 ? 'es' : ''} en cartera`}
@@ -573,19 +573,19 @@ function CommercialCard({
   loading?: boolean;
 }): JSX.Element {
   return (
-    <article className="rounded-ip-card bg-ip-card px-5 py-5 ring-1 ring-ip-card-border">
-      <p className="text-ip-xs font-semibold uppercase tracking-[0.14em] text-white/35">{label}</p>
+    <article className="rounded-ip-card bg-white px-5 py-5 ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border">
+      <p className="text-ip-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">{label}</p>
       {loading ? (
-        <div className="mt-3 h-8 w-10 animate-pulse rounded-lg bg-white/5" />
+        <div className="mt-3 h-8 w-10 animate-pulse rounded-lg bg-slate-200 dark:bg-white/5" />
       ) : (
         <p className={`mt-3 text-ip-2xl font-bold tracking-tight ${
-          dim ? 'text-white/20' : accent ? 'text-ip-warning' : 'text-white'
+          dim ? 'text-slate-300 dark:text-white/20' : accent ? 'text-ip-warning' : 'text-slate-900 dark:text-white'
         }`}>
           {value}
         </p>
       )}
       {sub ? (
-        <p className={`mt-1 text-ip-xs ${dim ? 'text-white/20' : 'text-white/30'}`}>{sub}</p>
+        <p className={`mt-1 text-ip-xs ${dim ? 'text-slate-300 dark:text-white/20' : 'text-slate-500 dark:text-white/30'}`}>{sub}</p>
       ) : null}
     </article>
   );
@@ -982,11 +982,11 @@ function EmptyState({
 }): JSX.Element {
   return (
     <div className="flex flex-col items-center justify-center px-6 py-16 text-center">
-      <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-ip-card bg-ip-card text-ip-accent ring-1 ring-ip-card-border">
+      <div className="mb-5 flex h-16 w-16 items-center justify-center rounded-ip-card bg-slate-100 text-ip-accent ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border">
         {icon}
       </div>
-      <h3 className="text-ip-lg font-semibold text-white">{title}</h3>
-      <p className="mt-2 max-w-xs text-ip-sm text-white/40">{body}</p>
+      <h3 className="text-ip-lg font-semibold text-slate-900 dark:text-white">{title}</h3>
+      <p className="mt-2 max-w-xs text-ip-sm text-slate-500 dark:text-white/40">{body}</p>
       {action ? (
         <button
           type="button"
@@ -3611,13 +3611,13 @@ function LeadsPage(): JSX.Element {
 
       {/* ── Pendientes hoy ── */}
       {!loading && leads.length > 0 && pendingLeads.length === 0 ? (
-        <div className="mb-5 flex items-center gap-4 rounded-ip-card bg-ip-card px-5 py-4 ring-1 ring-ip-card-border">
+        <div className="mb-5 flex items-center gap-4 rounded-ip-card bg-white px-5 py-4 ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-ip-success/10 text-ip-success">
             {IcoCheckCircle}
           </span>
           <div>
-            <p className="text-ip-base font-semibold text-white">Todo al día</p>
-            <p className="text-ip-sm text-white/40">No tienes acciones pendientes para hoy.</p>
+            <p className="text-ip-base font-semibold text-slate-900 dark:text-white">Todo al día</p>
+            <p className="text-ip-sm text-slate-500 dark:text-white/40">No tienes acciones pendientes para hoy.</p>
           </div>
         </div>
       ) : null}
@@ -3917,7 +3917,7 @@ function LeadsPage(): JSX.Element {
                               title={copiedId === l.id && copiedType === 'email' ? '¡Copiado!' : 'Copiar email'}
                               aria-label="Copiar email al portapapeles"
                               onClick={() => void handleCopy(l.id, 'email', l.email)}
-                              className={`flex h-7 items-center justify-center gap-1.5 rounded-full px-2 text-xs font-semibold transition ${copiedId === l.id && copiedType === 'email' ? 'bg-ip-success/15 text-ip-success' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'}`}
+                              className={`flex h-7 items-center justify-center gap-1.5 rounded-full px-2 text-xs font-semibold transition ${copiedId === l.id && copiedType === 'email' ? 'bg-ip-success/15 text-ip-success' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:bg-white/5 dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white'}`}
                             >
                               {copiedId === l.id && copiedType === 'email' ? (
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0">
@@ -3939,7 +3939,7 @@ function LeadsPage(): JSX.Element {
                               title={copiedId === l.id && copiedType === 'link' ? '¡Link copiado!' : 'Copiar link de la propiedad'}
                               aria-label="Copiar link de la propiedad al portapapeles"
                               onClick={() => void handleCopy(l.id, 'link', `${window.location.origin}/property/${l.propertyId}`)}
-                              className={`flex h-7 items-center justify-center gap-1.5 rounded-full px-2 text-xs font-semibold transition ${copiedId === l.id && copiedType === 'link' ? 'bg-ip-success/15 text-ip-success' : 'bg-white/5 text-white/50 hover:bg-white/10 hover:text-white'}`}
+                              className={`flex h-7 items-center justify-center gap-1.5 rounded-full px-2 text-xs font-semibold transition ${copiedId === l.id && copiedType === 'link' ? 'bg-ip-success/15 text-ip-success' : 'bg-slate-100 text-slate-500 hover:bg-slate-200 hover:text-slate-900 dark:bg-white/5 dark:text-white/50 dark:hover:bg-white/10 dark:hover:text-white'}`}
                             >
                               {copiedId === l.id && copiedType === 'link' ? (
                                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0">
@@ -3960,7 +3960,7 @@ function LeadsPage(): JSX.Element {
                               type="button"
                               onClick={() => setExpandedLeadId(isExpanded ? null : l.id)}
                               aria-label={isExpanded ? 'Cerrar detalles' : 'Ver y editar detalles'}
-                              className="flex h-7 w-7 items-center justify-center rounded-full bg-white/5 text-xs font-black text-white/40 transition hover:bg-white/10 hover:text-white"
+                              className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-black text-slate-500 transition hover:bg-slate-200 hover:text-slate-900 dark:bg-white/5 dark:text-white/40 dark:hover:bg-white/10 dark:hover:text-white"
                             >
                               {isExpanded ? '▲' : '▼'}
                             </button>
