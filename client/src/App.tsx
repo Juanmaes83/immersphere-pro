@@ -2942,6 +2942,8 @@ const STATUS_META: Record<LeadStatus, { label: string; bg: string; text: string 
   descartado:  { label: 'Descartado',  bg: 'bg-red-50',      text: 'text-red-600'    },
 };
 
+const DONE_STATUSES = new Set<string>(['cerrado', 'descartado']);
+
 interface LeadDetailPanelProps {
   lead: LeadWithProperty;
   isSaving: boolean;
@@ -3173,29 +3175,57 @@ function LeadsPage(): JSX.Element {
 
   const filtered = useMemo(() => {
     const q = filterSearch.toLowerCase().trim();
-    return leads.filter((l) => {
-      if (filterSource && l.source !== filterSource) return false;
-      if (filterStatus && l.status !== filterStatus) return false;
-      if (q) {
-        const hit =
-          l.email.toLowerCase().includes(q) ||
-          (l.phone || '').toLowerCase().includes(q) ||
-          (l.propertyTitle || '').toLowerCase().includes(q) ||
-          (l.notes || '').toLowerCase().includes(q) ||
-          (l.internalNote || '').toLowerCase().includes(q);
-        if (!hit) return false;
-      }
-      return true;
-    });
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const isOverdue = (l: LeadWithProperty) =>
+      !!l.nextActionAt && new Date(l.nextActionAt) <= todayEnd && !DONE_STATUSES.has(l.status);
+
+    return leads
+      .filter((l) => {
+        if (filterSource && l.source !== filterSource) return false;
+        if (filterStatus && l.status !== filterStatus) return false;
+        if (q) {
+          const hit =
+            l.email.toLowerCase().includes(q) ||
+            (l.phone || '').toLowerCase().includes(q) ||
+            (l.propertyTitle || '').toLowerCase().includes(q) ||
+            (l.notes || '').toLowerCase().includes(q) ||
+            (l.internalNote || '').toLowerCase().includes(q);
+          if (!hit) return false;
+        }
+        return true;
+      })
+      .sort((a, b) => {
+        const aOver = isOverdue(a);
+        const bOver = isOverdue(b);
+        // Overdue first
+        if (aOver && !bOver) return -1;
+        if (!aOver && bOver) return 1;
+        // Both have nextActionAt — sort ascending (soonest first)
+        if (a.nextActionAt && b.nextActionAt)
+          return new Date(a.nextActionAt).getTime() - new Date(b.nextActionAt).getTime();
+        // One has nextActionAt, the other doesn't
+        if (a.nextActionAt && !b.nextActionAt) return -1;
+        if (!a.nextActionAt && b.nextActionAt) return 1;
+        // Neither has nextActionAt — newest first
+        return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      });
   }, [leads, filterSource, filterStatus, filterSearch]);
 
-  // ── B5: Metrics ──────────────────────────────────────────────────
+  // ── Metrics + pending today ───────────────────────────────────────
   const metrics = useMemo(() => {
     const now = new Date();
+    const todayEnd = new Date(now);
+    todayEnd.setHours(23, 59, 59, 999);
     const weekAgo = new Date(now);
     weekAgo.setDate(now.getDate() - 7);
 
     const thisWeek = leads.filter((l) => new Date(l.createdAt) >= weekAgo).length;
+
+    const pendingToday = leads.filter(
+      (l) => l.nextActionAt && new Date(l.nextActionAt) <= todayEnd && !DONE_STATUSES.has(l.status)
+    ).length;
 
     const byProperty = new Map<string, { title: string; count: number }>();
     for (const l of leads) {
@@ -3211,7 +3241,16 @@ function LeadsPage(): JSX.Element {
     }
     const topSource = [...bySource.entries()].sort((a, b) => b[1] - a[1])[0] ?? null;
 
-    return { total: leads.length, thisWeek, topProperty, topSource };
+    return { total: leads.length, thisWeek, pendingToday, topProperty, topSource };
+  }, [leads]);
+
+  // ── Pending-today list (sorted by urgency) ────────────────────────
+  const pendingLeads = useMemo(() => {
+    const todayEnd = new Date();
+    todayEnd.setHours(23, 59, 59, 999);
+    return leads
+      .filter((l) => l.nextActionAt && new Date(l.nextActionAt) <= todayEnd && !DONE_STATUSES.has(l.status))
+      .sort((a, b) => new Date(a.nextActionAt!).getTime() - new Date(b.nextActionAt!).getTime());
   }, [leads]);
 
   return (
@@ -3270,16 +3309,62 @@ function LeadsPage(): JSX.Element {
               <p className="mt-1 text-slate-400">—</p>
             )}
           </div>
-          <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
-            <p className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Origen top</p>
-            {metrics.topSource ? (
-              <>
-                <p className="mt-1 text-base font-black dark:text-white">{metrics.topSource[0]}</p>
-                <p className="mt-0.5 text-xs text-slate-400">{metrics.topSource[1]} lead{metrics.topSource[1] !== 1 ? 's' : ''}</p>
-              </>
-            ) : (
-              <p className="mt-1 text-slate-400">—</p>
-            )}
+          <div className={`rounded-2xl p-4 ring-1 ${metrics.pendingToday > 0 ? 'bg-red-50 ring-red-200 dark:bg-red-900/20 dark:ring-red-800' : 'bg-white ring-slate-200 dark:bg-slate-800 dark:ring-slate-700'}`}>
+            <p className={`text-xs font-bold uppercase tracking-[0.14em] ${metrics.pendingToday > 0 ? 'text-red-400' : 'text-slate-400'}`}>Pendientes hoy</p>
+            <p className={`mt-1 text-3xl font-black ${metrics.pendingToday > 0 ? 'text-red-600 dark:text-red-400' : 'dark:text-white'}`}>
+              {metrics.pendingToday}
+            </p>
+            <p className="mt-0.5 text-xs text-slate-400">
+              {metrics.pendingToday === 0 ? 'sin acciones pendientes' : metrics.pendingToday === 1 ? 'acción pendiente' : 'acciones pendientes'}
+            </p>
+          </div>
+        </div>
+      ) : null}
+
+      {/* ── Pendientes hoy ── */}
+      {!loading && pendingLeads.length > 0 ? (
+        <div className="mb-5 rounded-[1.5rem] border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+          <p className="mb-3 text-xs font-black uppercase tracking-[0.14em] text-red-500">
+            ⚠ Pendientes hoy — {pendingLeads.length} {pendingLeads.length === 1 ? 'lead requiere acción' : 'leads requieren acción'}
+          </p>
+          <div className="flex flex-col gap-2">
+            {pendingLeads.map((l) => {
+              const meta = STATUS_META[l.status as LeadStatus] ?? STATUS_META.nuevo;
+              const actionDate = l.nextActionAt
+                ? new Date(l.nextActionAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })
+                : '';
+              return (
+                <div
+                  key={l.id}
+                  className="flex items-center justify-between gap-3 rounded-xl bg-white px-4 py-2.5 ring-1 ring-red-100 dark:bg-slate-800 dark:ring-red-900"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-black dark:text-white">
+                      {l.email}
+                      <span className="ml-2 font-semibold text-slate-400">{l.propertyTitle}</span>
+                    </p>
+                    <p className="mt-0.5 text-xs text-red-500 font-semibold">
+                      {actionDate}{l.nextActionText ? ` · ${l.nextActionText}` : ''}
+                    </p>
+                  </div>
+                  <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-black ${meta.bg} ${meta.text}`}>
+                    {meta.label}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setExpandedLeadId(l.id);
+                      setTimeout(() => {
+                        document.getElementById(`lead-row-${l.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                      }, 60);
+                    }}
+                    className="shrink-0 rounded-full bg-red-100 px-3 py-1 text-xs font-black text-red-700 transition hover:bg-red-200 dark:bg-red-900/40 dark:text-red-300"
+                  >
+                    Ver →
+                  </button>
+                </div>
+              );
+            })}
           </div>
         </div>
       ) : null}
@@ -3427,9 +3512,14 @@ function LeadsPage(): JSX.Element {
                   const isExpanded = expandedLeadId === l.id;
                   const isSaving = savingLeadId === l.id;
                   const meta = STATUS_META[l.status as LeadStatus] ?? STATUS_META.nuevo;
+                  const todayEndRow = new Date(); todayEndRow.setHours(23, 59, 59, 999);
+                  const isOverdueRow = !!l.nextActionAt && new Date(l.nextActionAt) <= todayEndRow && !DONE_STATUSES.has(l.status);
                   return (
                     <Fragment key={l.id}>
-                      <tr className="bg-white transition hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800">
+                      <tr
+                        id={`lead-row-${l.id}`}
+                        className={`bg-white transition hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800 ${isOverdueRow ? 'border-l-2 border-red-400' : ''}`}
+                      >
                         {/* Propiedad */}
                         <td className="max-w-[160px] truncate px-4 py-3 font-black dark:text-white" title={l.propertyTitle}>
                           {l.propertyTitle || l.propertyId.slice(0, 8)}
@@ -3472,9 +3562,16 @@ function LeadsPage(): JSX.Element {
                             {l.source}
                           </span>
                         </td>
-                        {/* Fecha */}
+                        {/* Fecha + próxima acción */}
                         <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
-                          {new Date(l.createdAt).toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                          <span>{new Date(l.createdAt).toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
+                          {l.nextActionAt ? (
+                            <p className={`mt-0.5 font-semibold ${isOverdueRow ? 'text-red-500' : 'text-slate-400'}`}>
+                              {isOverdueRow ? '⚠ ' : ''}
+                              {new Date(l.nextActionAt).toLocaleDateString('es-ES', { day: '2-digit', month: 'short' })}
+                              {l.nextActionText ? ` · ${l.nextActionText}` : ''}
+                            </p>
+                          ) : null}
                         </td>
                         {/* Expand toggle */}
                         <td className="px-3 py-3 text-right">
