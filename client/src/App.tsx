@@ -1,4 +1,4 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from 'react';
+import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams, useMatch, useSearchParams } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
@@ -2922,7 +2922,131 @@ interface LeadWithProperty {
   phone: string;
   notes: string;
   source: string;
+  status: string;
+  internalNote: string;
+  nextActionAt: string | null;
+  nextActionText: string;
   createdAt: string;
+  updatedAt: string;
+}
+
+const LEAD_STATUSES = ['nuevo', 'contactado', 'visita', 'negociando', 'cerrado', 'descartado'] as const;
+type LeadStatus = (typeof LEAD_STATUSES)[number];
+
+const STATUS_META: Record<LeadStatus, { label: string; bg: string; text: string }> = {
+  nuevo:       { label: 'Nuevo',       bg: 'bg-slate-100',   text: 'text-slate-600'  },
+  contactado:  { label: 'Contactado',  bg: 'bg-blue-50',     text: 'text-blue-700'   },
+  visita:      { label: 'Visita',      bg: 'bg-violet-50',   text: 'text-violet-700' },
+  negociando:  { label: 'Negociando',  bg: 'bg-amber-50',    text: 'text-amber-700'  },
+  cerrado:     { label: 'Cerrado',     bg: 'bg-emerald-50',  text: 'text-emerald-700'},
+  descartado:  { label: 'Descartado',  bg: 'bg-red-50',      text: 'text-red-600'    },
+};
+
+interface LeadDetailPanelProps {
+  lead: LeadWithProperty;
+  isSaving: boolean;
+  saveError: string | null;
+  onSave: (patch: Partial<Pick<LeadWithProperty, 'internalNote' | 'nextActionAt' | 'nextActionText'>>) => void;
+}
+
+function LeadDetailPanel({ lead, isSaving, saveError, onSave }: LeadDetailPanelProps): JSX.Element {
+  const [note, setNote] = useState(lead.internalNote);
+  const [actionDate, setActionDate] = useState(
+    lead.nextActionAt ? lead.nextActionAt.slice(0, 10) : ''
+  );
+  const [actionText, setActionText] = useState(lead.nextActionText);
+  const isDirty =
+    note !== lead.internalNote ||
+    (actionDate ? `${actionDate}T00:00:00.000Z` : null) !== lead.nextActionAt ||
+    actionText !== lead.nextActionText;
+
+  // Keep local state in sync if parent lead changes (e.g., after save)
+  const prevLeadRef = useRef(lead.id);
+  useEffect(() => {
+    if (prevLeadRef.current !== lead.id) {
+      setNote(lead.internalNote);
+      setActionDate(lead.nextActionAt ? lead.nextActionAt.slice(0, 10) : '');
+      setActionText(lead.nextActionText);
+      prevLeadRef.current = lead.id;
+    }
+  }, [lead.id, lead.internalNote, lead.nextActionAt, lead.nextActionText]);
+
+  function handleSave(): void {
+    onSave({
+      internalNote: note,
+      nextActionAt: actionDate ? new Date(actionDate).toISOString() : null,
+      nextActionText: actionText,
+    });
+  }
+
+  return (
+    <div className="grid gap-4 md:grid-cols-2">
+      {/* Nota interna del agente */}
+      <div>
+        <label className="mb-1.5 block text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+          Nota interna (solo visible para el agente)
+        </label>
+        <textarea
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          rows={3}
+          placeholder="Ej: Muy interesado, llamar el lunes por la mañana…"
+          className="w-full resize-none rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-200"
+        />
+      </div>
+
+      {/* Próxima acción */}
+      <div className="flex flex-col gap-3">
+        <div>
+          <label className="mb-1.5 block text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+            Próxima acción — fecha
+          </label>
+          <input
+            type="date"
+            value={actionDate}
+            onChange={(e) => setActionDate(e.target.value)}
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+          />
+        </div>
+        <div>
+          <label className="mb-1.5 block text-xs font-black uppercase tracking-[0.12em] text-slate-400">
+            Próxima acción — descripción
+          </label>
+          <input
+            type="text"
+            value={actionText}
+            onChange={(e) => setActionText(e.target.value)}
+            placeholder="Ej: Llamar, enviar ficha, agendar visita…"
+            className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-violet-400 focus:ring-2 focus:ring-violet-100 dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+          />
+        </div>
+      </div>
+
+      {/* Footer: save + error */}
+      <div className="md:col-span-2 flex items-center justify-between gap-4">
+        {saveError ? (
+          <p className="text-xs font-semibold text-red-600">{saveError}</p>
+        ) : (
+          <span />
+        )}
+        <button
+          type="button"
+          onClick={handleSave}
+          disabled={isSaving || !isDirty}
+          className="flex items-center gap-2 rounded-full bg-violet-600 px-5 py-2 text-sm font-black text-white transition hover:bg-violet-700 disabled:opacity-50"
+        >
+          {isSaving ? (
+            <>
+              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              Guardando…
+            </>
+          ) : (
+            'Guardar cambios'
+          )}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 function LeadsPage(): JSX.Element {
@@ -2940,8 +3064,14 @@ function LeadsPage(): JSX.Element {
   // Client-side filters (instant, no API call)
   const [filterSearch, setFilterSearch] = useState('');
   const [filterSource, setFilterSource] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
-  const hasActiveFilters = filterProperty || filterFrom || filterTo || filterSearch || filterSource;
+  // Inline editing state
+  const [expandedLeadId, setExpandedLeadId] = useState<string | null>(null);
+  const [savingLeadId, setSavingLeadId] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const hasActiveFilters = filterProperty || filterFrom || filterTo || filterSearch || filterSource || filterStatus;
 
   useEffect(() => {
     api.get('/leads/count')
@@ -3004,6 +3134,33 @@ function LeadsPage(): JSX.Element {
     setFilterTo('');
     setFilterSearch('');
     setFilterSource('');
+    setFilterStatus('');
+  }
+
+  async function handleUpdateLead(
+    leadId: string,
+    patch: Partial<Pick<LeadWithProperty, 'status' | 'internalNote' | 'nextActionAt' | 'nextActionText'>>
+  ): Promise<void> {
+    setSavingLeadId(leadId);
+    setSaveError(null);
+    try {
+      await api.patch(`/leads/${leadId}`, patch);
+      setLeads((prev) =>
+        prev.map((l) =>
+          l.id === leadId
+            ? { ...l, ...patch, updatedAt: new Date().toISOString() }
+            : l
+        )
+      );
+    } catch (err) {
+      setSaveError(getApiErrorMessage(err));
+    } finally {
+      setSavingLeadId(null);
+    }
+  }
+
+  function handleStatusChange(leadId: string, newStatus: string): void {
+    void handleUpdateLead(leadId, { status: newStatus });
   }
 
   const uniqueProperties = useMemo(() => {
@@ -3018,17 +3175,19 @@ function LeadsPage(): JSX.Element {
     const q = filterSearch.toLowerCase().trim();
     return leads.filter((l) => {
       if (filterSource && l.source !== filterSource) return false;
+      if (filterStatus && l.status !== filterStatus) return false;
       if (q) {
         const hit =
           l.email.toLowerCase().includes(q) ||
           (l.phone || '').toLowerCase().includes(q) ||
           (l.propertyTitle || '').toLowerCase().includes(q) ||
-          (l.notes || '').toLowerCase().includes(q);
+          (l.notes || '').toLowerCase().includes(q) ||
+          (l.internalNote || '').toLowerCase().includes(q);
         if (!hit) return false;
       }
       return true;
     });
-  }, [leads, filterSource, filterSearch]);
+  }, [leads, filterSource, filterStatus, filterSearch]);
 
   // ── B5: Metrics ──────────────────────────────────────────────────
   const metrics = useMemo(() => {
@@ -3152,6 +3311,17 @@ function LeadsPage(): JSX.Element {
           </select>
 
           <select
+            value={filterStatus}
+            onChange={(e) => setFilterStatus(e.target.value)}
+            className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
+          >
+            <option value="">Todos los estados</option>
+            {LEAD_STATUSES.map((s) => (
+              <option key={s} value={s}>{STATUS_META[s].label}</option>
+            ))}
+          </select>
+
+          <select
             value={filterSource}
             onChange={(e) => setFilterSource(e.target.value)}
             className="rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-semibold outline-none dark:border-slate-600 dark:bg-slate-700 dark:text-white"
@@ -3201,6 +3371,11 @@ function LeadsPage(): JSX.Element {
                 🏠 {uniqueProperties.find(([id]) => id === filterProperty)?.[1] ?? filterProperty.slice(0, 8)}
               </span>
             ) : null}
+            {filterStatus ? (
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
+                ● {STATUS_META[filterStatus as LeadStatus]?.label ?? filterStatus}
+              </span>
+            ) : null}
             {filterSource ? (
               <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
                 📍 {filterSource}
@@ -3229,7 +3404,7 @@ function LeadsPage(): JSX.Element {
             <table className="w-full text-left text-sm">
               <thead className="bg-slate-50 dark:bg-slate-800">
                 <tr>
-                  {['Propiedad', 'Email', 'Teléfono', 'Notas del visitante', 'Origen', 'Fecha'].map((h) => (
+                  {['Propiedad', 'Email', 'Teléfono', 'Estado', 'Notas del visitante', 'Origen', 'Fecha', ''].map((h) => (
                     <th key={h} className="px-4 py-3 text-xs font-black uppercase tracking-[0.12em] text-slate-500 dark:text-slate-400">{h}</th>
                   ))}
                 </tr>
@@ -3237,7 +3412,7 @@ function LeadsPage(): JSX.Element {
               <tbody className="divide-y divide-slate-100 dark:divide-slate-700">
                 {filtered.length === 0 ? (
                   <tr>
-                    <td colSpan={6} className="px-4 py-12 text-center">
+                    <td colSpan={8} className="px-4 py-12 text-center">
                       <p className="text-slate-400 font-semibold">
                         {leads.length === 0 ? 'Aún no hay leads. Configura un hotspot CTA en el visor para capturarlos.' : 'Ningún lead coincide con los filtros activos.'}
                       </p>
@@ -3248,36 +3423,88 @@ function LeadsPage(): JSX.Element {
                       ) : null}
                     </td>
                   </tr>
-                ) : filtered.map((l) => (
-                  <tr key={l.id} className="bg-white transition hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800">
-                    <td className="max-w-[180px] truncate px-4 py-3 font-black dark:text-white" title={l.propertyTitle}>
-                      {l.propertyTitle || l.propertyId.slice(0, 8)}
-                    </td>
-                    <td className="px-4 py-3 dark:text-slate-300">
-                      <a href={`mailto:${l.email}`} className="font-semibold hover:underline" style={{ color: brandColor }}>
-                        {l.email}
-                      </a>
-                    </td>
-                    <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
-                      {l.phone ? (
-                        <a href={`tel:${l.phone}`} className="hover:underline">{l.phone}</a>
-                      ) : '—'}
-                    </td>
-                    <td className="max-w-[220px] px-4 py-3 text-slate-500 dark:text-slate-400">
-                      {l.notes ? (
-                        <span className="line-clamp-2 text-xs italic">"{l.notes}"</span>
-                      ) : <span className="text-slate-300">—</span>}
-                    </td>
-                    <td className="px-4 py-3">
-                      <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600 dark:bg-slate-700 dark:text-slate-300">
-                        {l.source}
-                      </span>
-                    </td>
-                    <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
-                      {new Date(l.createdAt).toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </td>
-                  </tr>
-                ))}
+                ) : filtered.map((l) => {
+                  const isExpanded = expandedLeadId === l.id;
+                  const isSaving = savingLeadId === l.id;
+                  const meta = STATUS_META[l.status as LeadStatus] ?? STATUS_META.nuevo;
+                  return (
+                    <Fragment key={l.id}>
+                      <tr className="bg-white transition hover:bg-slate-50 dark:bg-slate-900 dark:hover:bg-slate-800">
+                        {/* Propiedad */}
+                        <td className="max-w-[160px] truncate px-4 py-3 font-black dark:text-white" title={l.propertyTitle}>
+                          {l.propertyTitle || l.propertyId.slice(0, 8)}
+                        </td>
+                        {/* Email */}
+                        <td className="px-4 py-3 dark:text-slate-300">
+                          <a href={`mailto:${l.email}`} className="font-semibold hover:underline" style={{ color: brandColor }}>
+                            {l.email}
+                          </a>
+                        </td>
+                        {/* Teléfono */}
+                        <td className="px-4 py-3 text-slate-500 dark:text-slate-400">
+                          {l.phone ? (
+                            <a href={`tel:${l.phone}`} className="hover:underline">{l.phone}</a>
+                          ) : '—'}
+                        </td>
+                        {/* Estado — dropdown inline */}
+                        <td className="px-4 py-3">
+                          <select
+                            value={l.status}
+                            disabled={isSaving}
+                            onChange={(e) => handleStatusChange(l.id, e.target.value)}
+                            className={`rounded-full border-0 px-2.5 py-1 text-xs font-black outline-none ring-1 ring-transparent focus:ring-2 disabled:opacity-50 ${meta.bg} ${meta.text}`}
+                            style={{ cursor: 'pointer' }}
+                          >
+                            {LEAD_STATUSES.map((s) => (
+                              <option key={s} value={s}>{STATUS_META[s].label}</option>
+                            ))}
+                          </select>
+                        </td>
+                        {/* Notas del visitante */}
+                        <td className="max-w-[200px] px-4 py-3 text-slate-500 dark:text-slate-400">
+                          {l.notes ? (
+                            <span className="line-clamp-2 text-xs italic">"{l.notes}"</span>
+                          ) : <span className="text-slate-300">—</span>}
+                        </td>
+                        {/* Origen */}
+                        <td className="px-4 py-3">
+                          <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600 dark:bg-slate-700 dark:text-slate-300">
+                            {l.source}
+                          </span>
+                        </td>
+                        {/* Fecha */}
+                        <td className="whitespace-nowrap px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
+                          {new Date(l.createdAt).toLocaleString('es-ES', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                        </td>
+                        {/* Expand toggle */}
+                        <td className="px-3 py-3 text-right">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedLeadId(isExpanded ? null : l.id)}
+                            aria-label={isExpanded ? 'Cerrar detalles' : 'Ver y editar detalles'}
+                            className="flex h-7 w-7 items-center justify-center rounded-full bg-slate-100 text-xs font-black text-slate-500 transition hover:bg-slate-200 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
+                          >
+                            {isExpanded ? '▲' : '▼'}
+                          </button>
+                        </td>
+                      </tr>
+
+                      {/* Expanded detail panel */}
+                      {isExpanded ? (
+                        <tr className="bg-slate-50 dark:bg-slate-800/60">
+                          <td colSpan={8} className="px-6 py-5">
+                            <LeadDetailPanel
+                              lead={l}
+                              isSaving={isSaving}
+                              saveError={saveError}
+                              onSave={(patch) => void handleUpdateLead(l.id, patch)}
+                            />
+                          </td>
+                        </tr>
+                      ) : null}
+                    </Fragment>
+                  );
+                })}
               </tbody>
             </table>
           </div>
