@@ -1032,6 +1032,46 @@ const IcoCheckCircle = (
     <path d="m9 12 2 2 4-4" />
   </svg>
 );
+// Quick-action icons (h-5 w-5, used in property card footer)
+const IcoLink = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+    <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71" />
+    <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71" />
+  </svg>
+);
+const IcoWhatsApp = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.04-8.63A2 2 0 0 1 3.62 1h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.6a16 16 0 0 0 6.5 6.5l.96-.96a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+  </svg>
+);
+const IcoCode = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+    <polyline points="16 18 22 12 16 6" />
+    <polyline points="8 6 2 12 8 18" />
+  </svg>
+);
+const IcoFilePdf = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+    <path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" />
+    <polyline points="14 2 14 8 20 8" />
+    <line x1="16" y1="13" x2="8" y2="13" />
+    <line x1="16" y1="17" x2="8" y2="17" />
+    <line x1="10" y1="9" x2="8" y2="9" />
+  </svg>
+);
+const IcoUsers = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+    <circle cx="9" cy="7" r="4" />
+    <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+  </svg>
+);
+const IcoCheckSm = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+    <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
 // ──────────────────────────────────────────────────────────────────────────
 
 function PropertiesPage(): JSX.Element {
@@ -1101,6 +1141,17 @@ function PropertiesPage(): JSX.Element {
     label: '', type: 'info', x: 50, y: 50, body: '', metric: ''
   });
   const { bgStyle, colorStyle } = useBrand();
+
+  const [copiedPropId, setCopiedPropId] = useState<string>('');
+  const [copiedPropType, setCopiedPropType] = useState<string>('');
+
+  function handleCopyProp(id: string, type: string, text: string): void {
+    void navigator.clipboard.writeText(text).then(() => {
+      setCopiedPropId(id);
+      setCopiedPropType(type);
+      setTimeout(() => { setCopiedPropId(''); setCopiedPropType(''); }, 1800);
+    });
+  }
 
   useEffect(() => {
     void fetchProperties({ limit: 100 });
@@ -1835,6 +1886,64 @@ function PropertiesPage(): JSX.Element {
                     Eliminar
                   </button>
                 </div>
+              </div>
+
+              {/* ── Quick action footer ── */}
+              <div className="mt-3 flex items-center justify-end gap-1 border-t border-slate-100 pt-3 dark:border-white/5">
+                {/* Copy public link */}
+                <button
+                  type="button"
+                  title="Copiar link público"
+                  onClick={(e) => { e.stopPropagation(); handleCopyProp(property.id, 'link', `${window.location.origin}/property/${property.id}`); }}
+                  className="flex items-center gap-1.5 rounded-lg p-2 text-slate-400 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 dark:text-white/30 dark:hover:bg-white/5 dark:hover:text-white/80"
+                >
+                  {copiedPropId === property.id && copiedPropType === 'link' ? IcoCheckSm : IcoLink}
+                  <span className="hidden text-ip-xs font-medium lg:block">
+                    {copiedPropId === property.id && copiedPropType === 'link' ? 'Copiado' : 'Copiar link'}
+                  </span>
+                </button>
+                {/* WhatsApp share */}
+                <button
+                  type="button"
+                  title="Compartir por WhatsApp"
+                  onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(`Te comparto el tour inmersivo de ${property.title}: ${window.location.origin}/property/${property.id}`)}`, '_blank'); }}
+                  className="flex items-center gap-1.5 rounded-lg p-2 text-slate-400 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 dark:text-white/30 dark:hover:bg-white/5 dark:hover:text-white/80"
+                >
+                  {IcoWhatsApp}
+                  <span className="hidden text-ip-xs font-medium lg:block">WhatsApp</span>
+                </button>
+                {/* Copy embed */}
+                <button
+                  type="button"
+                  title="Copiar código embed"
+                  onClick={(e) => { e.stopPropagation(); handleCopyProp(property.id, 'embed', `<iframe src="${window.location.origin}/embed/${property.id}" width="100%" height="600" frameborder="0" allowfullscreen></iframe>`); }}
+                  className="flex items-center gap-1.5 rounded-lg p-2 text-slate-400 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 dark:text-white/30 dark:hover:bg-white/5 dark:hover:text-white/80"
+                >
+                  {copiedPropId === property.id && copiedPropType === 'embed' ? IcoCheckSm : IcoCode}
+                  <span className="hidden text-ip-xs font-medium lg:block">
+                    {copiedPropId === property.id && copiedPropType === 'embed' ? 'Copiado' : 'Embed'}
+                  </span>
+                </button>
+                {/* PDF download */}
+                <button
+                  type="button"
+                  title="Descargar PDF"
+                  onClick={(e) => { e.stopPropagation(); window.open(`/api/properties/${property.id}/report.pdf`, '_blank'); }}
+                  className="flex items-center gap-1.5 rounded-lg p-2 text-slate-400 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 dark:text-white/30 dark:hover:bg-white/5 dark:hover:text-white/80"
+                >
+                  {IcoFilePdf}
+                  <span className="hidden text-ip-xs font-medium lg:block">PDF</span>
+                </button>
+                {/* Ver leads */}
+                <button
+                  type="button"
+                  title="Ver leads de esta propiedad"
+                  onClick={(e) => { e.stopPropagation(); navigate(`/leads?propertyId=${property.id}`); }}
+                  className="flex items-center gap-1.5 rounded-lg p-2 text-slate-400 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 dark:text-white/30 dark:hover:bg-white/5 dark:hover:text-white/80"
+                >
+                  {IcoUsers}
+                  <span className="hidden text-ip-xs font-medium lg:block">Leads</span>
+                </button>
               </div>
 
               {expandedPropertyId === property.id ? (
@@ -3326,13 +3435,15 @@ function LeadDetailPanel({ lead, isSaving, saveError, onSave }: LeadDetailPanelP
 
 function LeadsPage(): JSX.Element {
   const { bgStyle, color: brandColor } = useBrand();
+  const [searchParams] = useSearchParams();
   const [leads, setLeads] = useState<LeadWithProperty[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [exporting, setExporting] = useState(false);
 
   // Server-side filters (sent to API)
-  const [filterProperty, setFilterProperty] = useState('');
+  // Seed filterProperty from ?propertyId= URL param (set by property quick actions)
+  const [filterProperty, setFilterProperty] = useState<string>(() => searchParams.get('propertyId') ?? '');
   const [filterFrom, setFilterFrom] = useState('');
   const [filterTo, setFilterTo] = useState('');
 
