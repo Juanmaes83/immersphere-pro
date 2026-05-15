@@ -1,6 +1,6 @@
 import { Fragment, lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Helmet, HelmetProvider } from 'react-helmet-async';
-import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams, useMatch, useSearchParams } from 'react-router-dom';
+import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useParams, useMatch, useSearchParams, useLocation } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
 import { useLeadsBadge, markLeadsAsSeen } from '@/hooks/useLeadsBadge';
 import LoginForm from '@/components/auth/LoginForm';
@@ -104,11 +104,117 @@ function useDarkMode(): [boolean, () => void] {
   return [dark, toggle];
 }
 
+// ── Mobile bottom navigation ────────────────────────────────────────────────
+
+function MobileNavItem({
+  to,
+  label,
+  icon,
+  badge,
+}: {
+  to: string;
+  label: string;
+  icon: React.ReactNode;
+  badge?: number;
+}): JSX.Element {
+  const match = useMatch(to);
+  const { color } = useBrand();
+  const isActive = !!match;
+  return (
+    <Link
+      to={to}
+      aria-current={isActive ? 'page' : undefined}
+      className="relative flex flex-1 flex-col items-center justify-center gap-0.5 text-slate-400 transition-colors dark:text-slate-500"
+      style={isActive ? { color } : undefined}
+    >
+      {badge && badge > 0 ? (
+        <span className="absolute right-[calc(50%-14px)] top-2 flex min-h-[1rem] min-w-[1rem] items-center justify-center rounded-full bg-red-500 px-1 text-[9px] font-black leading-none text-white">
+          {badge > 99 ? '99+' : badge}
+        </span>
+      ) : null}
+      {icon}
+      <span className="text-[10px] font-black uppercase tracking-[0.08em]">{label}</span>
+    </Link>
+  );
+}
+
+function MobileBottomNav(): JSX.Element | null {
+  const { isAuthenticated } = useAuthStore();
+  const { unreadCount } = useLeadsBadge(isAuthenticated);
+  const location = useLocation();
+
+  // Hide on public viewer and embed routes
+  const isViewerRoute =
+    /^\/property\/[^/]+$/.test(location.pathname) ||
+    location.pathname.startsWith('/embed/');
+
+  if (!isAuthenticated || isViewerRoute) return null;
+
+  const IcoDashboard = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <rect width="7" height="7" x="3" y="3" rx="1" /><rect width="7" height="7" x="14" y="3" rx="1" />
+      <rect width="7" height="7" x="14" y="14" rx="1" /><rect width="7" height="7" x="3" y="14" rx="1" />
+    </svg>
+  );
+  const IcoHome = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z" />
+      <polyline points="9 22 9 12 15 12 15 22" />
+    </svg>
+  );
+  const IcoUsers = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" />
+      <circle cx="9" cy="7" r="4" />
+      <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+      <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+    </svg>
+  );
+  const IcoHelp = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <circle cx="12" cy="12" r="10" />
+      <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
+      <path d="M12 17h.01" />
+    </svg>
+  );
+  const IcoSettings = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+
+  return (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-950/95 md:hidden"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      aria-label="Navegación principal"
+    >
+      <div className="mx-auto flex h-14 max-w-lg items-stretch">
+        <MobileNavItem to="/dashboard" label="Dashboard" icon={IcoDashboard} />
+        <MobileNavItem to="/properties" label="Propiedades" icon={IcoHome} />
+        <MobileNavItem to="/leads" label="Leads" icon={IcoUsers} badge={unreadCount} />
+        <MobileNavItem to="/ayuda" label="Ayuda" icon={IcoHelp} />
+        <MobileNavItem to="/settings" label="Ajustes" icon={IcoSettings} />
+      </div>
+    </nav>
+  );
+}
+
+// ── AppLayout ────────────────────────────────────────────────────────────────
+
 function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
   const { user, isAuthenticated, logout } = useAuthStore();
   const { bgStyle, colorStyle } = useBrand();
   const [dark, toggleDark] = useDarkMode();
   const { unreadCount } = useLeadsBadge(isAuthenticated);
+  const location = useLocation();
+
+  const isViewerRoute =
+    /^\/property\/[^/]+$/.test(location.pathname) ||
+    location.pathname.startsWith('/embed/');
+
+  const showMobileNav = isAuthenticated && !isViewerRoute;
 
   const logoText = user?.tenant.logoText ?? '✦';
   const logoUrl = user?.tenant.logoUrl ?? '';
@@ -116,7 +222,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
   const brandSub = isAuthenticated ? (user?.tenant.plan ?? 'STARTER') : 'Pro SaaS';
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-950 dark:bg-slate-900 dark:text-slate-100">
+    <div className={`min-h-screen bg-[#F8FAFC] text-slate-950 dark:bg-slate-900 dark:text-slate-100${showMobileNav ? ' pb-20 md:pb-0' : ''}`}>
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/90">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
           <Link to="/" className="flex items-center gap-3">
@@ -207,6 +313,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
         </div>
       </header>
       {children}
+      <MobileBottomNav />
       <footer className="border-t border-slate-200 bg-white py-6 dark:border-slate-700 dark:bg-slate-900">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-5 sm:flex-row">
           <p className="text-xs font-bold text-slate-400">
