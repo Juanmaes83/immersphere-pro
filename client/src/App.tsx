@@ -1137,8 +1137,8 @@ function PropertiesPage(): JSX.Element {
   const [leadsLoading, setLeadsLoading] = useState(false);
   const [leadsError, setLeadsError] = useState<string | null>(null);
   const [showHotspotForm, setShowHotspotForm] = useState(false);
-  const [hotspotDraft, setHotspotDraft] = useState<{ label: string; type: Hotspot['type']; x: number; y: number; body: string; metric: string }>({
-    label: '', type: 'info', x: 50, y: 50, body: '', metric: ''
+  const [hotspotDraft, setHotspotDraft] = useState<{ label: string; type: Hotspot['type']; x: number; y: number; body: string; metric: string; targetSpaceId: string }>({
+    label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: ''
   });
   const { bgStyle, colorStyle } = useBrand();
 
@@ -1213,7 +1213,7 @@ function PropertiesPage(): JSX.Element {
     setEditingAsset(null);
     setSelectedAssetFileName(null);
     setShowHotspotForm(false);
-    setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '' });
+    setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: '' });
   }
 
   function closeAssetForm(): void {
@@ -1348,16 +1348,18 @@ function PropertiesPage(): JSX.Element {
 
   function handleAddHotspot(): void {
     if (!hotspotDraft.label.trim()) return;
+    if (hotspotDraft.type === 'navigation' && !hotspotDraft.targetSpaceId) return;
     const newHotspot: Hotspot = {
       id: `draft-${Date.now()}`,
       label: hotspotDraft.label.trim(),
       type: hotspotDraft.type,
       position: { x: hotspotDraft.x, y: hotspotDraft.y },
       body: hotspotDraft.body.trim(),
-      metric: hotspotDraft.metric.trim()
+      metric: hotspotDraft.metric.trim(),
+      ...(hotspotDraft.targetSpaceId ? { targetSpaceId: hotspotDraft.targetSpaceId } : {})
     };
     setAssetForm((current) => ({ ...current, hotspots: [...(current.hotspots ?? []), newHotspot] }));
-    setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '' });
+    setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: '' });
     setShowHotspotForm(false);
   }
 
@@ -2196,7 +2198,15 @@ function PropertiesPage(): JSX.Element {
                                         <span className="mb-1 block text-xs font-black text-slate-700">Tipo</span>
                                         <select
                                           value={hotspotDraft.type}
-                                          onChange={(e) => setHotspotDraft((d) => ({ ...d, type: e.target.value as Hotspot['type'] }))}
+                                          onChange={(e) => {
+                                            const newType = e.target.value as Hotspot['type'];
+                                            setHotspotDraft((d) => ({
+                                              ...d,
+                                              type: newType,
+                                              // clear targetSpaceId when leaving navigation type
+                                              targetSpaceId: newType === 'navigation' ? d.targetSpaceId : ''
+                                            }));
+                                          }}
                                           className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
                                         >
                                           <option value="info">Info</option>
@@ -2205,6 +2215,39 @@ function PropertiesPage(): JSX.Element {
                                           <option value="measurement">Medición</option>
                                         </select>
                                       </label>
+
+                                      {hotspotDraft.type === 'navigation' ? (
+                                        <label className="col-span-2 block">
+                                          <span className="mb-1 block text-xs font-black text-slate-700">Conectar con estancia</span>
+                                          <select
+                                            value={hotspotDraft.targetSpaceId}
+                                            onChange={(e) => {
+                                              const targetId = e.target.value;
+                                              const targetName = property.spaces.find((s) => s.id === targetId)?.name ?? '';
+                                              setHotspotDraft((d) => ({
+                                                ...d,
+                                                targetSpaceId: targetId,
+                                                // auto-label only if label is empty or a previous auto-suggestion
+                                                label: (d.label === '' || d.label.startsWith('Ir a '))
+                                                  ? (targetName ? `Ir a ${targetName}` : d.label)
+                                                  : d.label
+                                              }));
+                                            }}
+                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
+                                          >
+                                            <option value="">— Selecciona una estancia —</option>
+                                            {property.spaces
+                                              .filter((s) => s.id !== space.id)
+                                              .sort((a, b) => a.order - b.order)
+                                              .map((s) => (
+                                                <option key={s.id} value={s.id}>{s.name}</option>
+                                              ))
+                                            }
+                                          </select>
+                                          <p className="mt-1 text-xs text-slate-400">El visitante irá a esta estancia al pulsar el hotspot.</p>
+                                        </label>
+                                      ) : null}
+
                                       <label className="block">
                                         <span className="mb-1 block text-xs font-black text-slate-700">Descripción</span>
                                         <input
@@ -2249,7 +2292,10 @@ function PropertiesPage(): JSX.Element {
                                     <button
                                       type="button"
                                       onClick={handleAddHotspot}
-                                      disabled={!hotspotDraft.label.trim()}
+                                      disabled={
+                                        !hotspotDraft.label.trim() ||
+                                        (hotspotDraft.type === 'navigation' && !hotspotDraft.targetSpaceId)
+                                      }
                                       className="mt-3 rounded-xl bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-violet-700 disabled:opacity-50"
                                     >
                                       Añadir hotspot

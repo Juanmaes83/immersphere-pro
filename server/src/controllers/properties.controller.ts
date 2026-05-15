@@ -28,7 +28,8 @@ const hotspotSchema = z.object({
   type: z.string(),
   position: z.record(z.unknown()),
   body: z.string().optional(),
-  metric: z.string().optional()
+  metric: z.string().optional(),
+  targetSpaceId: z.string().optional()
 });
 
 const assetSchema = z.object({

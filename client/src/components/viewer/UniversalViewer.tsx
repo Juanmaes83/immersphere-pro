@@ -194,13 +194,12 @@ export default function UniversalViewer({
 
   function handleHotspotClick(hotspot: Hotspot): void {
     setIsTourActive(false);
-    setActiveHotspot(hotspot);
 
     const event = createViewerEvent('hotspot_click', {
       spaceId: activeSpace?.id,
       assetId: activeAsset?.id,
       hotspotId: hotspot.id,
-      data: { propertyId, hotspotLabel: hotspot.label }
+      data: { propertyId, hotspotLabel: hotspot.label, hotspotType: hotspot.type, targetSpaceId: hotspot.targetSpaceId }
     });
     onAnalyticsEvent(event);
     trackToBackend({
@@ -209,12 +208,17 @@ export default function UniversalViewer({
       assetId: activeAsset?.id,
       type: 'hotspot_click',
       label: hotspot.label,
+      payload: hotspot.targetSpaceId ? JSON.stringify({ hotspotType: hotspot.type, targetSpaceId: hotspot.targetSpaceId }) : undefined,
       sessionId: sessionId.current
     });
 
+    // Navigation hotspots: switch space directly — do not open info panel
     if (hotspot.type === 'navigation' && hotspot.targetSpaceId) {
       handleSpaceChange(hotspot.targetSpaceId);
+      return;
     }
+
+    setActiveHotspot(hotspot);
   }
 
   function handleLeadCtaOpen(): void {

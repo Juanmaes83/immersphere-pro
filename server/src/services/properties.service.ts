@@ -69,6 +69,7 @@ interface HotspotInput {
   position: unknown;
   body?: string;
   metric?: string;
+  targetSpaceId?: string;
 }
 
 interface AssetInput {
@@ -532,13 +533,32 @@ export async function deleteProperty(tenantId: string, propertyId: string) {
 
 
 
+async function assertTargetSpaceInProperty(propertyId: string, targetSpaceId: string): Promise<void> {
+  const space = await prisma.space.findFirst({
+    where: { id: targetSpaceId, propertyId },
+    select: { id: true }
+  });
+  if (!space) {
+    throw new AppError(400, 'La estancia de destino no pertenece a esta propiedad.');
+  }
+}
+
+async function validateNavigationHotspots(propertyId: string, hotspots: HotspotInput[] | undefined): Promise<void> {
+  for (const hotspot of hotspots ?? []) {
+    if (hotspot.type.toLowerCase() === 'navigation' && hotspot.targetSpaceId) {
+      await assertTargetSpaceInProperty(propertyId, hotspot.targetSpaceId);
+    }
+  }
+}
+
 function buildHotspotsCreate(hotspots: HotspotInput[] | undefined) {
   return (hotspots ?? []).map((hotspot) => ({
     label: hotspot.label,
     type: hotspot.type,
     position: JSON.stringify(hotspot.position ?? { x: 50, y: 50 }),
     body: hotspot.body ?? '',
-    metric: hotspot.metric ?? ''
+    metric: hotspot.metric ?? '',
+    targetSpaceId: hotspot.targetSpaceId ?? null
   }));
 }
 
@@ -578,6 +598,7 @@ export async function listAssets(tenantId: string, propertyId: string, spaceId: 
 
 export async function createAsset(tenantId: string, propertyId: string, spaceId: string, input: AssetInput) {
   await assertTenantSpace(tenantId, propertyId, spaceId);
+  await validateNavigationHotspots(propertyId, input.hotspots);
 
   return prisma.asset.create({
     data: {
@@ -605,6 +626,9 @@ export async function updateAsset(
   input: Partial<AssetInput>
 ) {
   await assertTenantAsset(tenantId, propertyId, spaceId, assetId);
+  if (input.hotspots !== undefined) {
+    await validateNavigationHotspots(propertyId, input.hotspots);
+  }
 
   return prisma.$transaction(async (transaction: any) => {
     const data: any = {};
