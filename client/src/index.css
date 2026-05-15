@@ -15,6 +15,11 @@
   --brand: #7C3AED;
   --brand-dark: #5B21B6;
 
+  /* Immersphere design system tokens */
+  --ip-card:        rgba(255, 255, 255, 0.05);
+  --ip-card-border: rgba(255, 255, 255, 0.08);
+  --ip-card-hover:  rgba(255, 255, 255, 0.08);
+
   /* Dark mode variables */
   --bg: #F8FAFC;
   --text: #0f172a;
