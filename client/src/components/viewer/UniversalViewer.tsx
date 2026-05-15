@@ -353,11 +353,14 @@ export default function UniversalViewer({
       {/* ── Header ─────────────────────────────────────────────────────────── */}
       <div className="flex flex-col gap-4 border-b border-white/10 p-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          {!removeBranding ? (
+          {/* Tour counter always visible — it's UX, not branding */}
+          {isGuidedTour ? (
             <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
-              {isGuidedTour
-                ? `Tour guiado · ${guidedTourIdx + 1} / ${sortedSpaces.length}`
-                : 'Visor inmersivo'}
+              Tour guiado · {guidedTourIdx + 1} / {sortedSpaces.length}
+            </p>
+          ) : !removeBranding ? (
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
+              Visor inmersivo
             </p>
           ) : null}
           <h2 className="mt-2 text-3xl font-black">{activeSpace.name}</h2>
