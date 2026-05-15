@@ -7,6 +7,7 @@ import ChatbotWidget from '@/components/ChatbotWidget';
 
 const PropertyMap = lazy(() => import('@/components/PropertyMap'));
 import UniversalViewer from '@/components/viewer/UniversalViewer';
+import LeadCaptureModal from '@/components/viewer/LeadCaptureModal';
 import { AUTH_STORAGE_KEYS, api, unwrapApiResponse } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type ImmersiveProperty } from '@/store/propertyStore';
@@ -427,18 +428,30 @@ function PropertyQRCode({ propertyId, primaryColor }: { propertyId: string; prim
   }
 
   return (
-    <div className="mt-4 flex flex-col items-center gap-3 rounded-2xl border border-slate-200 bg-white p-5">
-      <p className="text-xs font-black uppercase tracking-[0.16em]" style={{ color: primaryColor }}>
-        QR del tour
-      </p>
-      <canvas ref={canvasRef} className={ready ? '' : 'opacity-0'} />
-      <button
-        type="button"
-        onClick={handleDownload}
-        className="w-full rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-700 transition hover:bg-slate-50"
-      >
-        ↓ Descargar QR PNG
-      </button>
+    <div className="mt-5 overflow-hidden rounded-[1.4rem] bg-slate-950">
+      <div className="flex items-center justify-between px-5 pt-4 pb-1">
+        <p className="text-[10px] font-black uppercase tracking-[0.22em]" style={{ color: primaryColor }}>
+          QR · Tour inmersivo
+        </p>
+        <span className="rounded-full px-2.5 py-0.5 text-[10px] font-black text-black" style={{ backgroundColor: primaryColor }}>
+          SCAN
+        </span>
+      </div>
+      <div className="flex justify-center px-5 py-4">
+        <div className="rounded-xl bg-white p-3 shadow-lg">
+          <canvas ref={canvasRef} className={ready ? '' : 'opacity-0'} />
+        </div>
+      </div>
+      <div className="px-5 pb-4">
+        <p className="mb-2.5 text-center text-[10px] text-white/40">Escanea para abrir el tour</p>
+        <button
+          type="button"
+          onClick={handleDownload}
+          className="w-full rounded-xl border border-white/10 px-4 py-2.5 text-xs font-black text-white/70 transition hover:border-white/25 hover:text-white"
+        >
+          ↓ Descargar PNG
+        </button>
+      </div>
     </div>
   );
 }
@@ -454,6 +467,16 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   const [downloadingTour, setDownloadingTour] = useState(false);
   const [tourErrorMsg, setTourErrorMsg] = useState<string | null>(null);
   const [iframeCopied, setIframeCopied] = useState(false);
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
+
+  function handleCopyLink(): void {
+    const url = `${window.location.origin}/property/${propertyId}`;
+    void navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 1800);
+    });
+  }
 
   function handleCopyIframe(): void {
     const embedUrl = `${window.location.origin}/embed/${propertyId}`;
@@ -624,7 +647,13 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   const primaryColor = property.tenantPrimaryColor || '#7C3AED';
 
   const ogTitle = property.title;
-  const ogDescription = (property.description ?? '').replace(/\s+/g, ' ').trim().slice(0, 150);
+  const rawDesc = (property.description ?? '').replace(/\s+/g, ' ').trim();
+  const ogDescription = rawDesc.slice(0, 150) || [
+    'Tour inmersivo 360°',
+    property.area ? `${property.area} m²` : '',
+    property.rooms ? `${property.rooms} hab.` : '',
+    property.type
+  ].filter(Boolean).join(' · ');
   const ogImage = property.coverImage ?? '';
   const ogUrl = `${window.location.origin}/property/${property.id}`;
 
@@ -639,7 +668,12 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
     ...(property.area ? { floorSize: { '@type': 'QuantitativeValue', value: property.area, unitCode: 'MTK' } } : {}),
     numberOfRooms: property.rooms,
     numberOfBathroomsTotal: property.bathrooms,
-    additionalType: property.type
+    additionalType: property.type,
+    provider: {
+      '@type': 'Organization',
+      name: property.removeBranding ? `Agencia (${property.tenantId.slice(0, 8)})` : 'Immersphere Pro',
+      ...(property.removeBranding ? {} : { url: 'https://immersphere.pro' })
+    }
   };
 
   return (
@@ -734,7 +768,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
               </div>
               {property.tenantWhatsapp ? (
                 <a
-                  href={`https://wa.me/${property.tenantWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, me interesa la propiedad "${property.title}". ¿Podría darme más información?`)}`}
+                  href={`https://wa.me/${property.tenantWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`${property.title} — Tour inmersivo 360° · Ver tour: ${ogUrl}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90"
@@ -746,12 +780,20 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
               ) : (
                 <button
                   type="button"
+                  onClick={() => setShowContactModal(true)}
                   className="mt-6 w-full rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90"
                   style={{ backgroundColor: primaryColor }}
                 >
                   Contactar agente
                 </button>
               )}
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
+              >
+                {linkCopied ? '✓ Link copiado' : '🔗 Copiar link del tour'}
+              </button>
               {isAuthenticated ? (
                 <>
                   <button
@@ -791,7 +833,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
               >
                 📱 Ver en móvil
               </button>
-              {isAuthenticated && !embed ? (
+              {!embed ? (
                 <PropertyQRCode propertyId={property.id} primaryColor={primaryColor} />
               ) : null}
             </aside>
@@ -806,9 +848,18 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
           primaryColor={primaryColor}
         />
       ) : null}
+      {showContactModal ? (
+        <LeadCaptureModal
+          propertyId={property.id}
+          hotspotLabel="Contactar agente"
+          primaryColor={primaryColor}
+          onClose={() => setShowContactModal(false)}
+          onSubmitted={() => setShowContactModal(false)}
+        />
+      ) : null}
       {property.tenantWhatsapp && !embed ? (
         <a
-          href={`https://wa.me/${property.tenantWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, estoy viendo la propiedad "${property.title}" en el tour virtual. ¿Podría darme más información?`)}`}
+          href={`https://wa.me/${property.tenantWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`${property.title} — Tour inmersivo 360° · Ver tour: ${ogUrl}`)}`}
           target="_blank"
           rel="noopener noreferrer"
           aria-label="Contactar por WhatsApp"
