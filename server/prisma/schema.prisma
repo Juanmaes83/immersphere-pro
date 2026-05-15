@@ -129,17 +129,23 @@ model Hotspot {
 }
 
 model Lead {
-  id         String   @id @default(uuid())
-  propertyId String
-  property   Property @relation(fields: [propertyId], references: [id], onDelete: Cascade)
-  email      String
-  phone      String   @default("")
-  notes      String   @default("")
-  source     String   @default("viewer")
-  createdAt  DateTime @default(now())
+  id             String    @id @default(uuid())
+  propertyId     String
+  property       Property  @relation(fields: [propertyId], references: [id], onDelete: Cascade)
+  email          String
+  phone          String    @default("")
+  notes          String    @default("")
+  source         String    @default("viewer")
+  createdAt      DateTime  @default(now())
+  status         String    @default("nuevo")
+  internalNote   String    @default("")
+  nextActionAt   DateTime?
+  nextActionText String    @default("")
+  updatedAt      DateTime  @updatedAt
 
   @@index([propertyId])
   @@index([email])
+  @@index([status])
 }
 
 model Subscription {

@@ -11,6 +11,17 @@ export interface CreateLeadInput {
   source?: string;
 }
 
+export const LEAD_STATUSES = [
+  'nuevo',
+  'contactado',
+  'visita',
+  'negociando',
+  'cerrado',
+  'descartado'
+] as const;
+
+export type LeadStatus = (typeof LEAD_STATUSES)[number];
+
 export interface LeadRecord {
   id: string;
   propertyId: string;
@@ -18,7 +29,19 @@ export interface LeadRecord {
   phone: string;
   notes: string;
   source: string;
+  status: string;
+  internalNote: string;
+  nextActionAt: Date | null;
+  nextActionText: string;
   createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface UpdateLeadInput {
+  status?: string;
+  internalNote?: string;
+  nextActionAt?: string | null; // ISO string or null from request body
+  nextActionText?: string;
 }
 
 export async function createLead(input: CreateLeadInput): Promise<LeadRecord> {
@@ -66,6 +89,41 @@ export async function getPropertyLeads(
   });
 }
 
+export async function updateLead(
+  leadId: string,
+  tenantId: string,
+  input: UpdateLeadInput
+): Promise<LeadRecord> {
+  // Verify the lead belongs to this tenant before mutating
+  const existing = await prisma.lead.findUnique({
+    where: { id: leadId },
+    select: { property: { select: { tenantId: true } } }
+  });
+
+  if (!existing) {
+    throw new AppError(404, 'Lead no encontrado.');
+  }
+
+  if (existing.property.tenantId !== tenantId) {
+    throw new AppError(403, 'No tienes acceso a este lead.');
+  }
+
+  if (input.status !== undefined && !LEAD_STATUSES.includes(input.status as LeadStatus)) {
+    throw new AppError(400, `Estado inválido: ${input.status}. Valores permitidos: ${LEAD_STATUSES.join(', ')}.`);
+  }
+
+  const data: Record<string, unknown> = {};
+  if (input.status !== undefined)       data.status         = input.status;
+  if (input.internalNote !== undefined) data.internalNote   = input.internalNote.trim();
+  if ('nextActionAt' in input)          data.nextActionAt   = input.nextActionAt ? new Date(input.nextActionAt) : null;
+  if (input.nextActionText !== undefined) data.nextActionText = input.nextActionText.trim();
+
+  return prisma.lead.update({
+    where: { id: leadId },
+    data
+  });
+}
+
 function csvEscape(value: string): string {
   const s = String(value ?? '');
   if (s.includes('"') || s.includes(',') || s.includes('\n') || s.includes('\r')) {
@@ -96,16 +154,21 @@ export async function exportPropertyLeadsCsv(
     orderBy: { createdAt: 'desc' }
   });
 
-  const header = ['id', 'email', 'phone', 'notes', 'source', 'createdAt'].map(csvEscape).join(',');
+  const header = ['id', 'email', 'phone', 'notes', 'source', 'status', 'internalNote', 'nextActionAt', 'nextActionText', 'createdAt', 'updatedAt'].map(csvEscape).join(',');
 
-  const rows = leads.map((l: { id: string; email: string; phone: string; notes: string; source: string; createdAt: Date }) =>
+  const rows = leads.map((l: { id: string; email: string; phone: string; notes: string; source: string; status: string; internalNote: string; nextActionAt: Date | null; nextActionText: string; createdAt: Date; updatedAt: Date }) =>
     [
       l.id,
       l.email,
       l.phone,
       l.notes,
       l.source,
-      l.createdAt.toISOString()
+      l.status,
+      l.internalNote,
+      l.nextActionAt ? l.nextActionAt.toISOString() : '',
+      l.nextActionText,
+      l.createdAt.toISOString(),
+      l.updatedAt.toISOString()
     ]
       .map(csvEscape)
       .join(',')
@@ -156,7 +219,7 @@ export async function getAllTenantLeads(
     }
   });
 
-  return leads.map((l: any) => ({
+  return leads.map((l) => ({
     id: l.id,
     propertyId: l.propertyId,
     propertyTitle: l.property?.title ?? '',
@@ -164,7 +227,12 @@ export async function getAllTenantLeads(
     phone: l.phone,
     notes: l.notes,
     source: l.source,
-    createdAt: l.createdAt
+    status: l.status,
+    internalNote: l.internalNote,
+    nextActionAt: l.nextActionAt,
+    nextActionText: l.nextActionText,
+    createdAt: l.createdAt,
+    updatedAt: l.updatedAt
   }));
 }
 
@@ -174,9 +242,22 @@ export async function exportAllTenantLeadsCsv(
 ): Promise<string> {
   const leads = await getAllTenantLeads(tenantId, filters);
 
-  const header = ['id', 'propertyTitle', 'email', 'phone', 'notes', 'source', 'createdAt'].map(csvEscape).join(',');
+  const header = ['id', 'propertyTitle', 'email', 'phone', 'notes', 'source', 'status', 'internalNote', 'nextActionAt', 'nextActionText', 'createdAt', 'updatedAt'].map(csvEscape).join(',');
   const rows = leads.map((l) =>
-    [l.id, l.propertyTitle, l.email, l.phone, l.notes, l.source, new Date(l.createdAt).toISOString()]
+    [
+      l.id,
+      l.propertyTitle,
+      l.email,
+      l.phone,
+      l.notes,
+      l.source,
+      l.status,
+      l.internalNote,
+      l.nextActionAt ? new Date(l.nextActionAt).toISOString() : '',
+      l.nextActionText,
+      new Date(l.createdAt).toISOString(),
+      new Date(l.updatedAt).toISOString()
+    ]
       .map(csvEscape)
       .join(',')
   );

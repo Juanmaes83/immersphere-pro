@@ -5,7 +5,8 @@ import {
   getPropertyLeadsController,
   getAllLeadsController,
   exportAllLeadsCsvController,
-  getLeadsCountController
+  getLeadsCountController,
+  updateLeadController
 } from '../controllers/leads.controller.js';
 import { requireAuth } from '../middleware/auth.js';
 import { leadRateLimit } from '../middleware/rateLimit.js';
@@ -18,3 +19,4 @@ leadsRoutes.get('/', requireAuth, getAllLeadsController);
 leadsRoutes.get('/export.csv', requireAuth, exportAllLeadsCsvController);
 leadsRoutes.get('/properties/:propertyId', requireAuth, getPropertyLeadsController);
 leadsRoutes.get('/properties/:propertyId/export.csv', requireAuth, exportPropertyLeadsCsvController);
+leadsRoutes.patch('/:id', requireAuth, updateLeadController);
