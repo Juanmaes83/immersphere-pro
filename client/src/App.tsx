@@ -133,7 +133,7 @@ function MobileNavItem({
         </span>
       ) : null}
       {icon}
-      <span className="text-[10px] font-black uppercase tracking-[0.08em]">{label}</span>
+      <span className="w-full truncate text-center text-[10px] font-black uppercase tracking-[0.08em]">{label}</span>
     </Link>
   );
 }
@@ -225,19 +225,19 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
     <div className={`min-h-screen bg-[#F8FAFC] text-slate-950 dark:bg-slate-900 dark:text-slate-100${showMobileNav ? ' pb-20 md:pb-0' : ''}`}>
       <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/90">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
-          <Link to="/" className="flex items-center gap-3">
+          <Link to="/" className="flex min-w-0 items-center gap-3">
             {logoUrl ? (
-              <img src={logoUrl} alt={brandName} className="h-10 w-10 rounded-2xl object-cover" />
+              <img src={logoUrl} alt={brandName} className="h-10 w-10 shrink-0 rounded-2xl object-cover" />
             ) : (
               <span
-                className="flex h-10 w-10 items-center justify-center rounded-2xl text-sm font-black text-white"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl text-sm font-black text-white"
                 style={bgStyle}
               >
                 {logoText}
               </span>
             )}
-            <span>
-              <span className="block text-sm font-black uppercase tracking-[0.24em]">{brandName}</span>
+            <span className="min-w-0 overflow-hidden">
+              <span className="block truncate text-sm font-black uppercase tracking-[0.24em]">{brandName}</span>
               <span className="block text-xs font-bold uppercase tracking-[0.2em]" style={colorStyle}>{brandSub}</span>
             </span>
           </Link>
