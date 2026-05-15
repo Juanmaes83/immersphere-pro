@@ -141,7 +141,7 @@ model Lead {
   internalNote   String    @default("")
   nextActionAt   DateTime?
   nextActionText String    @default("")
-  updatedAt      DateTime  @updatedAt
+  updatedAt      DateTime  @default(now()) @updatedAt
 
   @@index([propertyId])
   @@index([email])
