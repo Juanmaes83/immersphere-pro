@@ -13,6 +13,8 @@ import { usePropertyStore, type CreateAssetPayload, type CreatePropertyPayload, 
 import type { Hotspot, Space } from '@/types/viewer';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import HelpPage from '@/pages/HelpPage';
+import { LEAD_STATUSES, type LeadStatus, STATUS_META, DONE_STATUSES } from '@/constants/leads';
+import type { LeadWithProperty, LeadDetailPanelProps } from '@/types/leads';
 const PanoramaViewer = lazy(() => import('@/components/viewer/PanoramaViewer'));
 const PropertyDetailPage = lazy(() => import('@/pages/PropertyDetailPage'));
 const TenantAnalyticsDashboard = lazy(() => import('@/pages/TenantAnalyticsDashboard'));
@@ -3798,43 +3800,6 @@ function formatCurrency(value: number): string {
     currency: 'EUR',
     maximumFractionDigits: 0
   }).format(value);
-}
-
-interface LeadWithProperty {
-  id: string;
-  propertyId: string;
-  propertyTitle: string;
-  email: string;
-  phone: string;
-  notes: string;
-  source: string;
-  status: string;
-  internalNote: string;
-  nextActionAt: string | null;
-  nextActionText: string;
-  createdAt: string;
-  updatedAt: string;
-}
-
-const LEAD_STATUSES = ['nuevo', 'contactado', 'visita', 'negociando', 'cerrado', 'descartado'] as const;
-type LeadStatus = (typeof LEAD_STATUSES)[number];
-
-const STATUS_META: Record<LeadStatus, { label: string; bg: string; text: string }> = {
-  nuevo:       { label: 'Nuevo',       bg: 'bg-slate-100',   text: 'text-slate-600'  },
-  contactado:  { label: 'Contactado',  bg: 'bg-blue-50',     text: 'text-blue-700'   },
-  visita:      { label: 'Visita',      bg: 'bg-violet-50',   text: 'text-violet-700' },
-  negociando:  { label: 'Negociando',  bg: 'bg-amber-50',    text: 'text-amber-700'  },
-  cerrado:     { label: 'Cerrado',     bg: 'bg-emerald-50',  text: 'text-emerald-700'},
-  descartado:  { label: 'Descartado',  bg: 'bg-red-50',      text: 'text-red-600'    },
-};
-
-const DONE_STATUSES = new Set<string>(['cerrado', 'descartado']);
-
-interface LeadDetailPanelProps {
-  lead: LeadWithProperty;
-  isSaving: boolean;
-  saveError: string | null;
-  onSave: (patch: Partial<Pick<LeadWithProperty, 'internalNote' | 'nextActionAt' | 'nextActionText'>>) => void;
 }
 
 function LeadDetailPanel({ lead, isSaving, saveError, onSave }: LeadDetailPanelProps): JSX.Element {
