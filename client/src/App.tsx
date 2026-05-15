@@ -1144,6 +1144,9 @@ function PropertiesPage(): JSX.Element {
 
   const [copiedPropId, setCopiedPropId] = useState<string>('');
   const [copiedPropType, setCopiedPropType] = useState<string>('');
+  // Visual hotspot editor: -1 = dragging draft pin, 0+ = dragging existing hotspot
+  const [draggingHotspotIdx, setDraggingHotspotIdx] = useState<number | null>(null);
+  const hotspotPreviewRef = useRef<HTMLDivElement>(null);
 
   function handleCopyProp(id: string, type: string, text: string): void {
     void navigator.clipboard.writeText(text).then(() => {
@@ -2141,6 +2144,111 @@ function PropertiesPage(): JSX.Element {
                                 />
                               </label>
 
+                              {/* ── Visual hotspot placement editor (panorama_360 only) ── */}
+                              {assetForm.type === 'panorama_360' && assetForm.url.trim() ? (
+                                <div
+                                  ref={hotspotPreviewRef}
+                                  className={`relative md:col-span-2 overflow-hidden rounded-2xl bg-slate-900 select-none ${showHotspotForm ? 'cursor-crosshair' : 'cursor-default'}`}
+                                  style={{ aspectRatio: '16/9' }}
+                                  onClick={(e) => {
+                                    if (!showHotspotForm || draggingHotspotIdx !== null) return;
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const x = Math.max(0, Math.min(100, Math.round(((e.clientX - rect.left) / rect.width) * 100)));
+                                    const y = Math.max(0, Math.min(100, Math.round(((e.clientY - rect.top) / rect.height) * 100)));
+                                    setHotspotDraft((d) => ({ ...d, x, y }));
+                                  }}
+                                  onPointerMove={(e) => {
+                                    if (draggingHotspotIdx === null) return;
+                                    const rect = e.currentTarget.getBoundingClientRect();
+                                    const x = Math.max(0, Math.min(100, Math.round(((e.clientX - rect.left) / rect.width) * 100)));
+                                    const y = Math.max(0, Math.min(100, Math.round(((e.clientY - rect.top) / rect.height) * 100)));
+                                    if (draggingHotspotIdx === -1) {
+                                      setHotspotDraft((d) => ({ ...d, x, y }));
+                                    } else {
+                                      setAssetForm((curr) => ({
+                                        ...curr,
+                                        hotspots: (curr.hotspots ?? []).map((h, i) =>
+                                          i === draggingHotspotIdx ? { ...h, position: { x, y } } : h
+                                        )
+                                      }));
+                                    }
+                                  }}
+                                  onPointerUp={() => setDraggingHotspotIdx(null)}
+                                  onPointerLeave={() => setDraggingHotspotIdx(null)}
+                                >
+                                  <img
+                                    src={assetForm.url}
+                                    alt="Vista previa 360"
+                                    className="pointer-events-none h-full w-full object-cover"
+                                    draggable={false}
+                                    onError={(e) => { e.currentTarget.style.display = 'none'; }}
+                                  />
+
+                                  {/* Existing hotspot pins */}
+                                  {(assetForm.hotspots ?? []).map((hotspot, idx) => (
+                                    <div
+                                      key={hotspot.id}
+                                      className="absolute -translate-x-1/2 -translate-y-1/2 flex touch-none flex-col items-center gap-0.5"
+                                      style={{
+                                        left: `${hotspot.position.x}%`,
+                                        top: `${hotspot.position.y}%`,
+                                        zIndex: draggingHotspotIdx === idx ? 20 : 10,
+                                        cursor: draggingHotspotIdx === idx ? 'grabbing' : 'grab'
+                                      }}
+                                      onPointerDown={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setDraggingHotspotIdx(idx);
+                                      }}
+                                    >
+                                      <div className={`h-5 w-5 rounded-full border-2 border-white shadow-lg ring-1 ring-black/20 ${
+                                        hotspot.type === 'navigation' ? 'bg-blue-500' :
+                                        hotspot.type === 'cta' ? 'bg-emerald-500' :
+                                        hotspot.type === 'measurement' ? 'bg-amber-500' :
+                                        'bg-violet-500'
+                                      }`} />
+                                      <div className="max-w-[96px] truncate rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold leading-tight text-white">
+                                        {hotspot.label}
+                                      </div>
+                                    </div>
+                                  ))}
+
+                                  {/* Draft pin — shown while hotspot form is open */}
+                                  {showHotspotForm ? (
+                                    <div
+                                      className="absolute -translate-x-1/2 -translate-y-1/2 flex touch-none flex-col items-center gap-0.5"
+                                      style={{
+                                        left: `${hotspotDraft.x}%`,
+                                        top: `${hotspotDraft.y}%`,
+                                        zIndex: 15,
+                                        cursor: draggingHotspotIdx === -1 ? 'grabbing' : 'grab'
+                                      }}
+                                      onPointerDown={(e) => {
+                                        e.preventDefault();
+                                        e.stopPropagation();
+                                        setDraggingHotspotIdx(-1);
+                                      }}
+                                    >
+                                      <div className="h-5 w-5 animate-pulse rounded-full border-2 border-white bg-violet-400 shadow-lg ring-2 ring-violet-300/50" />
+                                      <div className="max-w-[96px] truncate rounded-full bg-violet-700/80 px-2 py-0.5 text-[10px] font-bold leading-tight text-white">
+                                        {hotspotDraft.label || 'nuevo'}
+                                      </div>
+                                    </div>
+                                  ) : null}
+
+                                  {/* Status bar */}
+                                  {showHotspotForm ? (
+                                    <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white">
+                                      Haz clic para colocar · Arrastra para mover
+                                    </div>
+                                  ) : (assetForm.hotspots ?? []).length > 0 ? (
+                                    <div className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-black/50 px-3 py-1 text-xs font-semibold text-white">
+                                      {(assetForm.hotspots ?? []).length} hotspot{(assetForm.hotspots ?? []).length !== 1 ? 's' : ''}
+                                    </div>
+                                  ) : null}
+                                </div>
+                              ) : null}
+
                               <div className="md:col-span-2">
                                 <div className="mb-3 flex items-center justify-between">
                                   <p className="text-sm font-black text-slate-950">
@@ -2159,20 +2267,23 @@ function PropertiesPage(): JSX.Element {
                                   <div className="mb-3 space-y-2">
                                     {(assetForm.hotspots ?? []).map((hotspot, index) => (
                                       <div key={hotspot.id} className="flex items-center justify-between rounded-xl bg-white px-4 py-2 ring-1 ring-slate-200">
-                                        <div className="flex items-center gap-3">
-                                          <span className={`rounded-full px-2 py-0.5 text-xs font-black ${
+                                        <div className="flex min-w-0 items-center gap-2">
+                                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-black ${
                                             hotspot.type === 'cta' ? 'bg-emerald-50 text-emerald-700' :
                                             hotspot.type === 'navigation' ? 'bg-blue-50 text-blue-700' :
                                             hotspot.type === 'measurement' ? 'bg-amber-50 text-amber-700' :
                                             'bg-slate-100 text-slate-700'
                                           }`}>{hotspot.type}</span>
-                                          <span className="text-sm font-bold text-slate-800">{hotspot.label}</span>
-                                          <span className="text-xs text-slate-400">({hotspot.position.x},{hotspot.position.y})</span>
+                                          <span className="truncate text-sm font-bold text-slate-800">{hotspot.label}</span>
+                                          {hotspot.type === 'navigation' && hotspot.targetSpaceId ? (
+                                            <span className="shrink-0 text-xs text-blue-500">→ {property.spaces.find((s) => s.id === hotspot.targetSpaceId)?.name ?? '?'}</span>
+                                          ) : null}
+                                          <span className="shrink-0 text-xs text-slate-400">({hotspot.position.x},{hotspot.position.y})</span>
                                         </div>
                                         <button
                                           type="button"
                                           onClick={() => handleRemoveHotspot(index)}
-                                          className="rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-700 hover:bg-red-100"
+                                          className="ml-2 shrink-0 rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-700 hover:bg-red-100"
                                         >
                                           Eliminar
                                         </button>
