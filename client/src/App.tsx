@@ -266,7 +266,7 @@ function LandingPage(): JSX.Element {
 
         <div className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-5 shadow-2xl shadow-violet-950/30">
           <div className="rounded-[1.6rem] bg-gradient-to-br from-cyan-500/20 via-violet-700/20 to-slate-950 p-6">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">Fase 5.3</p>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">Plataforma</p>
             <h2 className="mt-5 text-4xl font-black">Frontend conectado a backend real.</h2>
             <div className="mt-10 grid grid-cols-2 gap-3">
               {['JWT', 'API real', 'Stripe', 'Deploy'].map((item) => (
@@ -2915,13 +2915,13 @@ function SettingsPage(): JSX.Element {
   return (
     <main className="mx-auto max-w-7xl px-5 py-10">
       <Helmet>
-        <title>Planes y facturación · Immersphere Pro</title>
+        <title>Ajustes · Immersphere Pro</title>
         <meta name="robots" content="noindex" />
       </Helmet>
       <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Billing</p>
-          <h1 className="mt-3 text-5xl font-black tracking-tight">Planes y límites</h1>
+          <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Configuración</p>
+          <h1 className="mt-3 text-5xl font-black tracking-tight">Planes y ajustes</h1>
           <p className="mt-3 text-slate-500">Plan actual: <strong>{currentPlan}</strong>. Propiedades usadas: {usage?.propertiesUsed ?? 0}.</p>
         </div>
         <button

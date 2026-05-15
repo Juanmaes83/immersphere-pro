@@ -94,7 +94,7 @@ const SECTORS: Array<{
     label: 'Museos',
     benefits: [
       'Visitas virtuales con textos históricos en cada obra.',
-      'Tour guiado automático por todas las salas.',
+      'Tour guiado manual por todas las salas.',
       'QR en la entrada física para que los visitantes profundicen.',
       'Analytics: qué obras generan más interés y tiempo de atención.',
     ],
@@ -102,7 +102,7 @@ const SECTORS: Array<{
       'Haz una foto 360° en cada sala (trípode recomendado)',
       'Súbelas como espacios independientes',
       'Añade hotspots tipo INFO con texto histórico',
-      'Activa el Tour guiado automático',
+      'Activa el Tour guiado manual',
       'Publica y comparte el QR en la entrada',
     ],
   },

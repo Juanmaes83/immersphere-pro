@@ -61,9 +61,9 @@ function formatNumber(value: number): string {
 
 function DetailStat({ label, value }: { label: string; value: string | number }): JSX.Element {
   return (
-    <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200">
-      <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400">{label}</p>
-      <p className="mt-2 text-xl font-black text-slate-950">{value}</p>
+    <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+      <p className="text-xs font-bold uppercase tracking-[0.16em] text-slate-400 dark:text-slate-500">{label}</p>
+      <p className="mt-2 text-xl font-black text-slate-950 dark:text-white">{value}</p>
     </div>
   );
 }
@@ -100,7 +100,10 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
   viewer_drag: 'Navegación',
   lead_cta: 'Lead CTA',
   asset_load_error: 'Error carga',
-  viewer_whatsapp_click: 'WhatsApp'
+  viewer_whatsapp_click: 'WhatsApp',
+  tour_start: 'Tour iniciado',
+  tour_step: 'Paso de tour',
+  tour_complete: 'Tour completado'
 };
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
@@ -109,7 +112,11 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   hotspot_click: 'text-violet-400',
   viewer_drag: 'text-sky-400',
   lead_cta: 'text-emerald-400',
-  asset_load_error: 'text-red-400'
+  asset_load_error: 'text-red-400',
+  viewer_whatsapp_click: 'text-green-400',
+  tour_start: 'text-amber-400',
+  tour_step: 'text-amber-300',
+  tour_complete: 'text-emerald-300'
 };
 
 function ScoreBadge({ score }: { score: number }): JSX.Element {
