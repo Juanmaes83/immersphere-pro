@@ -10,6 +10,7 @@ interface ApiHotspot {
   position: { x: number; y: number; z?: number } | string;
   body?: string;
   metric?: string;
+  targetSpaceId?: string;
 }
 
 interface ApiAsset {
@@ -207,7 +208,8 @@ function normalizeAsset(asset: ApiAsset): ViewerAsset {
         return (hotspot.position as { x: number; y: number; z?: number }) ?? { x: 50, y: 50 };
       })(),
       body: hotspot.body,
-      metric: hotspot.metric
+      metric: hotspot.metric,
+      ...(hotspot.targetSpaceId ? { targetSpaceId: hotspot.targetSpaceId } : {})
     }))
   };
 }
@@ -250,7 +252,8 @@ function buildAssetApiPayload(payload: CreateAssetPayload | UpdateAssetPayload):
       type: toApiHotspotType(hotspot.type),
       position: hotspot.position,
       body: hotspot.body,
-      metric: hotspot.metric
+      metric: hotspot.metric,
+      ...(hotspot.targetSpaceId ? { targetSpaceId: hotspot.targetSpaceId } : {})
     }));
   }
 

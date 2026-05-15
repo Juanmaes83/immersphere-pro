@@ -1146,6 +1146,10 @@ function PropertiesPage(): JSX.Element {
   const [copiedPropType, setCopiedPropType] = useState<string>('');
   // Visual hotspot editor: -1 = dragging draft pin, 0+ = dragging existing hotspot
   const [draggingHotspotIdx, setDraggingHotspotIdx] = useState<number | null>(null);
+  // Index of the hotspot being edited (null = adding new); null | number
+  const [editingHotspotIndex, setEditingHotspotIndex] = useState<number | null>(null);
+  // Used to detect click vs drag on existing pins
+  const pinPointerStart = useRef<{ x: number; y: number; idx: number } | null>(null);
   const hotspotPreviewRef = useRef<HTMLDivElement>(null);
 
   function handleCopyProp(id: string, type: string, text: string): void {
@@ -1217,6 +1221,7 @@ function PropertiesPage(): JSX.Element {
     setSelectedAssetFileName(null);
     setShowHotspotForm(false);
     setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: '' });
+    setEditingHotspotIndex(null);
   }
 
   function closeAssetForm(): void {
@@ -1371,6 +1376,53 @@ function PropertiesPage(): JSX.Element {
       ...current,
       hotspots: (current.hotspots ?? []).filter((_, i) => i !== index)
     }));
+    // If editing this hotspot, cancel edit mode too
+    if (editingHotspotIndex === index) {
+      setEditingHotspotIndex(null);
+      setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: '' });
+      setShowHotspotForm(false);
+    }
+  }
+
+  function handleEditHotspot(index: number): void {
+    const hotspot = (assetForm.hotspots ?? [])[index];
+    if (!hotspot) return;
+    setHotspotDraft({
+      label: hotspot.label,
+      type: hotspot.type,
+      x: hotspot.position.x,
+      y: hotspot.position.y,
+      body: hotspot.body ?? '',
+      metric: hotspot.metric ?? '',
+      targetSpaceId: hotspot.targetSpaceId ?? ''
+    });
+    setEditingHotspotIndex(index);
+    setShowHotspotForm(true);
+  }
+
+  function handleSaveHotspotEdit(): void {
+    if (editingHotspotIndex === null) return;
+    if (!hotspotDraft.label.trim()) return;
+    if (hotspotDraft.type === 'navigation' && !hotspotDraft.targetSpaceId) return;
+    setAssetForm((current) => ({
+      ...current,
+      hotspots: (current.hotspots ?? []).map((h, i) =>
+        i === editingHotspotIndex
+          ? {
+              ...h,
+              label: hotspotDraft.label.trim(),
+              type: hotspotDraft.type,
+              position: { x: hotspotDraft.x, y: hotspotDraft.y },
+              body: hotspotDraft.body.trim(),
+              metric: hotspotDraft.metric.trim(),
+              targetSpaceId: hotspotDraft.targetSpaceId || undefined
+            }
+          : h
+      )
+    }));
+    setEditingHotspotIndex(null);
+    setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: '' });
+    setShowHotspotForm(false);
   }
 
   function buildPayload(): CreatePropertyPayload {
@@ -2164,6 +2216,9 @@ function PropertiesPage(): JSX.Element {
                                     const y = Math.max(0, Math.min(100, Math.round(((e.clientY - rect.top) / rect.height) * 100)));
                                     if (draggingHotspotIdx === -1) {
                                       setHotspotDraft((d) => ({ ...d, x, y }));
+                                    } else if (editingHotspotIndex === draggingHotspotIdx) {
+                                      // Dragging an editing pin → update draft position
+                                      setHotspotDraft((d) => ({ ...d, x, y }));
                                     } else {
                                       setAssetForm((curr) => ({
                                         ...curr,
@@ -2173,8 +2228,21 @@ function PropertiesPage(): JSX.Element {
                                       }));
                                     }
                                   }}
-                                  onPointerUp={() => setDraggingHotspotIdx(null)}
-                                  onPointerLeave={() => setDraggingHotspotIdx(null)}
+                                  onPointerUp={() => {
+                                    // Detect click (< 5px movement) on an existing pin → open edit form
+                                    if (pinPointerStart.current !== null && draggingHotspotIdx !== null && draggingHotspotIdx >= 0) {
+                                      const dx = pinPointerStart.current.x;
+                                      const dy = pinPointerStart.current.y;
+                                      // dx/dy were stored as clientX/Y at start; compare via ref
+                                      void dx; void dy; // already consumed via pinPointerStart
+                                    }
+                                    pinPointerStart.current = null;
+                                    setDraggingHotspotIdx(null);
+                                  }}
+                                  onPointerLeave={() => {
+                                    pinPointerStart.current = null;
+                                    setDraggingHotspotIdx(null);
+                                  }}
                                 >
                                   <img
                                     src={assetForm.url}
@@ -2184,36 +2252,52 @@ function PropertiesPage(): JSX.Element {
                                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                   />
 
-                                  {/* Existing hotspot pins */}
-                                  {(assetForm.hotspots ?? []).map((hotspot, idx) => (
-                                    <div
-                                      key={hotspot.id}
-                                      className="absolute -translate-x-1/2 -translate-y-1/2 flex touch-none flex-col items-center gap-0.5"
-                                      style={{
-                                        left: `${hotspot.position.x}%`,
-                                        top: `${hotspot.position.y}%`,
-                                        zIndex: draggingHotspotIdx === idx ? 20 : 10,
-                                        cursor: draggingHotspotIdx === idx ? 'grabbing' : 'grab'
-                                      }}
-                                      onPointerDown={(e) => {
-                                        e.preventDefault();
-                                        e.stopPropagation();
-                                        setDraggingHotspotIdx(idx);
-                                      }}
-                                    >
-                                      <div className={`h-5 w-5 rounded-full border-2 border-white shadow-lg ring-1 ring-black/20 ${
-                                        hotspot.type === 'navigation' ? 'bg-blue-500' :
-                                        hotspot.type === 'cta' ? 'bg-emerald-500' :
-                                        hotspot.type === 'measurement' ? 'bg-amber-500' :
-                                        'bg-violet-500'
-                                      }`} />
-                                      <div className="max-w-[96px] truncate rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold leading-tight text-white">
-                                        {hotspot.label}
+                                  {/* Existing hotspot pins — skip the one currently being edited (shown by draft pin) */}
+                                  {(assetForm.hotspots ?? []).map((hotspot, idx) => {
+                                    if (editingHotspotIndex === idx) return null;
+                                    return (
+                                      <div
+                                        key={hotspot.id}
+                                        className="absolute -translate-x-1/2 -translate-y-1/2 flex touch-none flex-col items-center gap-0.5"
+                                        style={{
+                                          left: `${hotspot.position.x}%`,
+                                          top: `${hotspot.position.y}%`,
+                                          zIndex: draggingHotspotIdx === idx ? 20 : 10,
+                                          cursor: draggingHotspotIdx === idx ? 'grabbing' : (showHotspotForm ? 'grab' : 'pointer')
+                                        }}
+                                        onPointerDown={(e) => {
+                                          e.preventDefault();
+                                          e.stopPropagation();
+                                          pinPointerStart.current = { x: e.clientX, y: e.clientY, idx };
+                                          setDraggingHotspotIdx(idx);
+                                        }}
+                                        onPointerUp={(e) => {
+                                          e.stopPropagation();
+                                          if (pinPointerStart.current !== null) {
+                                            const moved = Math.abs(e.clientX - pinPointerStart.current.x) + Math.abs(e.clientY - pinPointerStart.current.y);
+                                            if (moved < 5 && !showHotspotForm) {
+                                              // Click: open edit form for this pin
+                                              handleEditHotspot(idx);
+                                            }
+                                          }
+                                          pinPointerStart.current = null;
+                                          setDraggingHotspotIdx(null);
+                                        }}
+                                      >
+                                        <div className={`h-5 w-5 rounded-full border-2 border-white shadow-lg ring-1 ring-black/20 ${
+                                          hotspot.type === 'navigation' ? 'bg-blue-500' :
+                                          hotspot.type === 'cta' ? 'bg-emerald-500' :
+                                          hotspot.type === 'measurement' ? 'bg-amber-500' :
+                                          'bg-violet-500'
+                                        }`} />
+                                        <div className="max-w-[96px] truncate rounded-full bg-black/70 px-2 py-0.5 text-[10px] font-bold leading-tight text-white">
+                                          {hotspot.label}
+                                        </div>
                                       </div>
-                                    </div>
-                                  ))}
+                                    );
+                                  })}
 
-                                  {/* Draft pin — shown while hotspot form is open */}
+                                  {/* Draft pin — shown while hotspot form is open (adding new OR editing existing) */}
                                   {showHotspotForm ? (
                                     <div
                                       className="absolute -translate-x-1/2 -translate-y-1/2 flex touch-none flex-col items-center gap-0.5"
@@ -2226,12 +2310,18 @@ function PropertiesPage(): JSX.Element {
                                       onPointerDown={(e) => {
                                         e.preventDefault();
                                         e.stopPropagation();
-                                        setDraggingHotspotIdx(-1);
+                                        setDraggingHotspotIdx(editingHotspotIndex !== null ? editingHotspotIndex : -1);
                                       }}
                                     >
-                                      <div className="h-5 w-5 animate-pulse rounded-full border-2 border-white bg-violet-400 shadow-lg ring-2 ring-violet-300/50" />
-                                      <div className="max-w-[96px] truncate rounded-full bg-violet-700/80 px-2 py-0.5 text-[10px] font-bold leading-tight text-white">
-                                        {hotspotDraft.label || 'nuevo'}
+                                      <div className={`h-5 w-5 rounded-full border-2 border-white shadow-lg ${
+                                        editingHotspotIndex !== null
+                                          ? 'bg-orange-400 ring-2 ring-orange-300/60'
+                                          : 'animate-pulse bg-violet-400 ring-2 ring-violet-300/50'
+                                      }`} />
+                                      <div className={`max-w-[96px] truncate rounded-full px-2 py-0.5 text-[10px] font-bold leading-tight text-white ${
+                                        editingHotspotIndex !== null ? 'bg-orange-700/80' : 'bg-violet-700/80'
+                                      }`}>
+                                        {hotspotDraft.label || (editingHotspotIndex !== null ? 'editando' : 'nuevo')}
                                       </div>
                                     </div>
                                   ) : null}
@@ -2239,11 +2329,13 @@ function PropertiesPage(): JSX.Element {
                                   {/* Status bar */}
                                   {showHotspotForm ? (
                                     <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white">
-                                      Haz clic para colocar · Arrastra para mover
+                                      {editingHotspotIndex !== null
+                                        ? 'Editando hotspot · Arrastra para mover'
+                                        : 'Haz clic para colocar · Arrastra para mover'}
                                     </div>
                                   ) : (assetForm.hotspots ?? []).length > 0 ? (
                                     <div className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-black/50 px-3 py-1 text-xs font-semibold text-white">
-                                      {(assetForm.hotspots ?? []).length} hotspot{(assetForm.hotspots ?? []).length !== 1 ? 's' : ''}
+                                      {(assetForm.hotspots ?? []).length} hotspot{(assetForm.hotspots ?? []).length !== 1 ? 's' : ''} · Pulsa un pin para editar
                                     </div>
                                   ) : null}
                                 </div>
@@ -2256,7 +2348,15 @@ function PropertiesPage(): JSX.Element {
                                   </p>
                                   <button
                                     type="button"
-                                    onClick={() => setShowHotspotForm((v) => !v)}
+                                    onClick={() => {
+                                      if (showHotspotForm) {
+                                        setShowHotspotForm(false);
+                                        setEditingHotspotIndex(null);
+                                        setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: '' });
+                                      } else {
+                                        setShowHotspotForm(true);
+                                      }
+                                    }}
                                     className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-violet-700"
                                   >
                                     {showHotspotForm ? 'Cancelar' : '+ Añadir hotspot'}
@@ -2280,13 +2380,22 @@ function PropertiesPage(): JSX.Element {
                                           ) : null}
                                           <span className="shrink-0 text-xs text-slate-400">({hotspot.position.x},{hotspot.position.y})</span>
                                         </div>
-                                        <button
-                                          type="button"
-                                          onClick={() => handleRemoveHotspot(index)}
-                                          className="ml-2 shrink-0 rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-700 hover:bg-red-100"
-                                        >
-                                          Eliminar
-                                        </button>
+                                        <div className="ml-2 flex shrink-0 gap-1">
+                                          <button
+                                            type="button"
+                                            onClick={() => handleEditHotspot(index)}
+                                            className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700 hover:bg-violet-100 hover:text-violet-700"
+                                          >
+                                            Editar
+                                          </button>
+                                          <button
+                                            type="button"
+                                            onClick={() => handleRemoveHotspot(index)}
+                                            className="rounded-full bg-red-50 px-3 py-1 text-xs font-black text-red-700 hover:bg-red-100"
+                                          >
+                                            Eliminar
+                                          </button>
+                                        </div>
                                       </div>
                                     ))}
                                   </div>
@@ -2402,14 +2511,18 @@ function PropertiesPage(): JSX.Element {
                                     </div>
                                     <button
                                       type="button"
-                                      onClick={handleAddHotspot}
+                                      onClick={editingHotspotIndex !== null ? handleSaveHotspotEdit : handleAddHotspot}
                                       disabled={
                                         !hotspotDraft.label.trim() ||
                                         (hotspotDraft.type === 'navigation' && !hotspotDraft.targetSpaceId)
                                       }
-                                      className="mt-3 rounded-xl bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-violet-700 disabled:opacity-50"
+                                      className={`mt-3 rounded-xl px-4 py-2 text-xs font-black text-white disabled:opacity-50 ${
+                                        editingHotspotIndex !== null
+                                          ? 'bg-orange-500 hover:bg-orange-600'
+                                          : 'bg-slate-950 hover:bg-violet-700'
+                                      }`}
                                     >
-                                      Añadir hotspot
+                                      {editingHotspotIndex !== null ? 'Guardar cambios' : 'Añadir hotspot'}
                                     </button>
                                   </div>
                                 ) : null}
