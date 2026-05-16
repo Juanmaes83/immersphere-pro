@@ -15,6 +15,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import HelpPage from '@/pages/HelpPage';
 import { LEAD_STATUSES, type LeadStatus, STATUS_META, DONE_STATUSES } from '@/constants/leads';
 import type { LeadWithProperty, LeadDetailPanelProps } from '@/types/leads';
+import { formatCurrency } from '@/utils/format';
 const PanoramaViewer = lazy(() => import('@/components/viewer/PanoramaViewer'));
 const PropertyDetailPage = lazy(() => import('@/pages/PropertyDetailPage'));
 const TenantAnalyticsDashboard = lazy(() => import('@/pages/TenantAnalyticsDashboard'));
@@ -3792,15 +3793,6 @@ function ComparePage(): JSX.Element {
   );
 }
 
-function formatCurrency(value: number): string {
-  if (!value) return 'Consultar';
-
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 0
-  }).format(value);
-}
 
 function LeadDetailPanel({ lead, isSaving, saveError, onSave }: LeadDetailPanelProps): JSX.Element {
   const [note, setNote] = useState(lead.internalNote);

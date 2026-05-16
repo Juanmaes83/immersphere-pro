@@ -12,6 +12,7 @@ import { AUTH_STORAGE_KEYS, api, unwrapApiResponse } from '@/services/api';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type ImmersiveProperty } from '@/store/propertyStore';
 import type { Space, ViewerEvent } from '@/types/viewer';
+import { formatCurrency } from '@/utils/format';
 
 interface AnalyticsCountByKey {
   key: string;
@@ -46,15 +47,6 @@ interface PropertyDetailPageProps {
   embed?: boolean;
 }
 
-function formatCurrency(value: number): string {
-  if (!value) return 'Consultar';
-
-  return new Intl.NumberFormat('es-ES', {
-    style: 'currency',
-    currency: 'EUR',
-    maximumFractionDigits: 0
-  }).format(value);
-}
 
 function formatNumber(value: number): string {
   return new Intl.NumberFormat('es-ES').format(value);
