@@ -18,6 +18,7 @@ import type { LeadWithProperty, LeadDetailPanelProps } from '@/types/leads';
 import { formatCurrency } from '@/utils/format';
 import type { CompareData } from '@/types/compare';
 import { getCompareThumbnail, toCompareData } from '@/utils/compare';
+import type { PropertyStatItem, PublicTenantProfile } from '@/types/gallery';
 const PanoramaViewer = lazy(() => import('@/components/viewer/PanoramaViewer'));
 const PropertyDetailPage = lazy(() => import('@/pages/PropertyDetailPage'));
 const TenantAnalyticsDashboard = lazy(() => import('@/pages/TenantAnalyticsDashboard'));
@@ -916,38 +917,6 @@ function PropertyCard({
   );
 }
 
-interface PropertyStatItem {
-  id: string;
-  title: string;
-  coverImage: string;
-  type: string;
-  price: number;
-  area: number;
-  rooms: number;
-  views: number;
-}
-
-interface PublicProperty {
-  id: string;
-  title: string;
-  description: string;
-  type: string;
-  price: number;
-  area: number;
-  rooms: number;
-  bathrooms: number;
-  coverImage: string;
-  address: string;
-}
-
-interface PublicTenantProfile {
-  name: string;
-  slug: string;
-  logoText: string;
-  logoUrl: string;
-  primaryColor: string;
-  properties: PublicProperty[];
-}
 
 function AgencyPage(): JSX.Element {
   const { slug } = useParams<{ slug: string }>();
