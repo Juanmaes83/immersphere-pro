@@ -19,69 +19,12 @@ import { formatCurrency } from '@/utils/format';
 import type { CompareData } from '@/types/compare';
 import { getCompareThumbnail, toCompareData } from '@/utils/compare';
 import type { PropertyStatItem, PublicTenantProfile } from '@/types/gallery';
+import type { SubscriptionResponse, TenantUsageResponse, StorageUsageResponse, LeadRecord, UploadAssetResponse, DashLead } from '@/types/api';
 const PanoramaViewer = lazy(() => import('@/components/viewer/PanoramaViewer'));
 const PropertyDetailPage = lazy(() => import('@/pages/PropertyDetailPage'));
 const TenantAnalyticsDashboard = lazy(() => import('@/pages/TenantAnalyticsDashboard'));
 const GlbViewer = lazy(() => import('@/components/viewer/GlbViewer'));
 
-interface SubscriptionResponse {
-  tenantId: string;
-  plan: string;
-  subscription: {
-    id: string;
-    stripeCustomerId: string;
-    stripeSubscriptionId: string;
-    plan: string;
-    status: string;
-    createdAt: string;
-    updatedAt: string;
-  } | null;
-}
-
-interface TenantUsageResponse {
-  plan: string;
-  propertiesUsed: number;
-  propertyLimit: number | null;
-  remaining: number | null;
-  canCreateMore: boolean;
-}
-
-interface StorageUsageResponse {
-  plan: string;
-  usedMb: number;
-  limitMb: number | null;
-  remainingMb: number | null;
-  percentageUsed: number;
-  isUnlimited: boolean;
-}
-
-interface LeadRecord {
-  id: string;
-  email: string;
-  phone: string;
-  notes: string;
-  source: string;
-  createdAt: string;
-}
-
-interface UploadAssetResponse {
-  provider: string;
-  id: string;
-  originalName: string;
-  filename: string;
-  mimeType: string;
-  size: number;
-  bytes: number;
-  url: string;
-  path: string;
-  thumbnailUrl: string;
-  resourceType: string;
-  publicId: string | null;
-  storageKey: string | null;
-  width: number | null;
-  height: number | null;
-  format: string;
-}
 
 function useDarkMode(): [boolean, () => void] {
   const [dark, setDark] = useState<boolean>(() => {
@@ -421,15 +364,6 @@ function RegisterPage(): JSX.Element {
 
 const HELP_BANNER_KEY = 'immersphere_help_banner_dismissed';
 
-interface DashLead {
-  id: string;
-  propertyId: string;
-  propertyTitle: string;
-  email: string;
-  status: string;
-  nextActionAt: string | null;
-  createdAt: string;
-}
 
 function DashboardPage(): JSX.Element {
   const navigate = useNavigate();
