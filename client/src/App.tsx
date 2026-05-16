@@ -12,6 +12,14 @@ import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type CreateAssetPayload, type CreatePropertyPayload, type CreateSpacePayload, type ImmersiveProperty } from '@/store/propertyStore';
 import type { Hotspot, Space } from '@/types/viewer';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import LandingPage from '@/pages/LandingPage';
+import LoginPage from '@/pages/LoginPage';
+import RegisterPage from '@/pages/RegisterPage';
+import BillingSuccessPage from '@/pages/BillingSuccessPage';
+import BillingCancelledPage from '@/pages/BillingCancelledPage';
+import PropertyRoutePage from '@/pages/PropertyRoutePage';
+import EmbedRoutePage from '@/pages/EmbedRoutePage';
+import MobileViewerRoutePage from '@/pages/MobileViewerRoutePage';
 import { CommercialCard } from '@/components/ui/CommercialCard';
 import { Kpi } from '@/components/ui/Kpi';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -26,7 +34,6 @@ import { getCompareThumbnail, toCompareData } from '@/utils/compare';
 import type { PropertyStatItem, PublicTenantProfile } from '@/types/gallery';
 import type { SubscriptionResponse, TenantUsageResponse, StorageUsageResponse, LeadRecord, UploadAssetResponse, DashLead } from '@/types/api';
 const PanoramaViewer = lazy(() => import('@/components/viewer/PanoramaViewer'));
-const PropertyDetailPage = lazy(() => import('@/pages/PropertyDetailPage'));
 const TenantAnalyticsDashboard = lazy(() => import('@/pages/TenantAnalyticsDashboard'));
 const GlbViewer = lazy(() => import('@/components/viewer/GlbViewer'));
 
@@ -299,73 +306,6 @@ function BrandNavLink({ to, children }: { to: string; children: React.ReactNode 
   );
 }
 
-function LandingPage(): JSX.Element {
-  return (
-    <main className="bg-[#050712] text-white">
-      <Helmet>
-        <title>Immersphere Pro · Tours inmersivos para inmobiliarias</title>
-        <meta name="description" content="Plataforma SaaS de tours virtuales 360° y Gaussian Splats para inmobiliarias, constructoras y decoradores. White label, analytics y leads integrados." />
-      </Helmet>
-      <section className="mx-auto grid min-h-[calc(100vh-73px)] max-w-7xl grid-cols-1 gap-12 px-5 py-20 lg:grid-cols-[1.05fr_0.95fr] lg:items-center">
-        <div>
-          <p className="text-sm font-black uppercase tracking-[0.25em] text-cyan-300">SaaS inmersivo B2B</p>
-          <h1 className="mt-6 max-w-5xl text-5xl font-black leading-[0.95] tracking-[-0.06em] md:text-7xl">
-            Convierte espacios en decisiones de compra.
-          </h1>
-          <p className="mt-7 max-w-2xl text-lg leading-8 text-white/65">
-            Plataforma multi-tenant con 360°, Gaussian Splats, white label, analytics comercial y suscripciones Stripe.
-          </p>
-          <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-            <Link to="/register" className="rounded-full bg-white px-7 py-4 text-center text-sm font-black text-slate-950 hover:bg-cyan-300">
-              Crear tenant demo
-            </Link>
-            <Link to="/gallery" className="rounded-full border border-white/15 px-7 py-4 text-center text-sm font-black text-white hover:bg-white/10">
-              Ver galería
-            </Link>
-          </div>
-        </div>
-
-        <div className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-5 shadow-2xl shadow-violet-950/30">
-          <div className="rounded-[1.6rem] bg-gradient-to-br from-cyan-500/20 via-violet-700/20 to-slate-950 p-6">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">Plataforma</p>
-            <h2 className="mt-5 text-4xl font-black">Frontend conectado a backend real.</h2>
-            <div className="mt-10 grid grid-cols-2 gap-3">
-              {['JWT', 'API real', 'Stripe', 'Deploy'].map((item) => (
-                <div key={item} className="rounded-2xl border border-white/10 bg-black/25 p-4 font-black">
-                  ✓ {item}
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-    </main>
-  );
-}
-
-function LoginPage(): JSX.Element {
-  return (
-    <main className="flex min-h-[calc(100vh-73px)] items-center justify-center px-5 py-12">
-      <Helmet>
-        <title>Entrar · Immersphere Pro</title>
-        <meta name="description" content="Accede a tu cuenta de Immersphere Pro para gestionar tus propiedades y tours virtuales." />
-      </Helmet>
-      <LoginForm />
-    </main>
-  );
-}
-
-function RegisterPage(): JSX.Element {
-  return (
-    <main className="flex min-h-[calc(100vh-73px)] items-center justify-center px-5 py-12">
-      <Helmet>
-        <title>Crear cuenta · Immersphere Pro</title>
-        <meta name="description" content="Crea tu tenant en Immersphere Pro y empieza a publicar tours virtuales inmersivos para tus propiedades." />
-      </Helmet>
-      <RegisterForm />
-    </main>
-  );
-}
 
 const HELP_BANNER_KEY = 'immersphere_help_banner_dismissed';
 
@@ -909,40 +849,6 @@ function AgencyPage(): JSX.Element {
         </div>
       ) : null}
     </main>
-  );
-}
-
-function PropertyRoutePage(): JSX.Element {
-  const { id } = useParams();
-
-  if (!id) {
-    return <Navigate to="/gallery" replace />;
-  }
-
-  return (
-    <ErrorBoundary fallback={<div className="flex min-h-screen items-center justify-center text-slate-500">Error al cargar la propiedad.</div>}>
-      <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" /></div>}>
-        <PropertyDetailPage propertyId={id} />
-      </Suspense>
-    </ErrorBoundary>
-  );
-}
-
-function EmbedRoutePage(): JSX.Element {
-  const { id } = useParams();
-
-  if (!id) {
-    return <div style={{ padding: '2rem', fontFamily: 'sans-serif' }}>Tour no encontrado.</div>;
-  }
-
-  return (
-    <ErrorBoundary fallback={<div className="flex min-h-screen items-center justify-center text-slate-500">Error al cargar el tour.</div>}>
-      <Suspense fallback={<div className="flex min-h-screen items-center justify-center"><div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" /></div>}>
-        <div className="bg-[#F8FAFC] text-slate-950">
-          <PropertyDetailPage propertyId={id} embed />
-        </div>
-      </Suspense>
-    </ErrorBoundary>
   );
 }
 
@@ -3233,31 +3139,6 @@ function SettingsPage(): JSX.Element {
   );
 }
 
-function BillingSuccessPage(): JSX.Element {
-  const { bgStyle } = useBrand();
-  return (
-    <main className="mx-auto max-w-3xl px-5 py-20 text-center">
-      <h1 className="text-5xl font-black">Suscripción actualizada</h1>
-      <p className="mt-4 text-slate-500">Stripe ha procesado el checkout. El webhook actualizará tu plan en el backend.</p>
-      <Link to="/settings" className="mt-8 inline-flex rounded-full px-6 py-3 text-sm font-black text-white transition hover:opacity-90" style={bgStyle}>
-        Ver mi plan
-      </Link>
-    </main>
-  );
-}
-
-function BillingCancelledPage(): JSX.Element {
-  const { bgStyle } = useBrand();
-  return (
-    <main className="mx-auto max-w-3xl px-5 py-20 text-center">
-      <h1 className="text-5xl font-black">Checkout cancelado</h1>
-      <p className="mt-4 text-slate-500">No se ha cambiado tu plan.</p>
-      <Link to="/settings" className="mt-8 inline-flex rounded-full px-6 py-3 text-sm font-black text-white transition hover:opacity-90" style={bgStyle}>
-        Volver a planes
-      </Link>
-    </main>
-  );
-}
 
 
 function CompareColumn({ propertyId }: { propertyId: string }): JSX.Element {
@@ -4269,19 +4150,6 @@ function LeadsPage(): JSX.Element {
   );
 }
 
-const MobileViewerPage = lazy(() => import('@/pages/MobileViewerPage'));
-
-function MobileViewerRoutePage(): JSX.Element {
-  const { id } = useParams();
-  if (!id) return <Navigate to="/gallery" replace />;
-  return (
-    <ErrorBoundary fallback={<div className="fixed inset-0 flex items-center justify-center bg-slate-950 text-white">Error al cargar el visor móvil.</div>}>
-      <Suspense fallback={<div className="fixed inset-0 flex items-center justify-center bg-slate-950"><div className="h-8 w-8 animate-spin rounded-full border-4 border-violet-500 border-t-transparent" /></div>}>
-        <MobileViewerPage />
-      </Suspense>
-    </ErrorBoundary>
-  );
-}
 
 function AppRoutes(): JSX.Element {
   const hydrateFromStorage = useAuthStore((state) => state.hydrateFromStorage);
