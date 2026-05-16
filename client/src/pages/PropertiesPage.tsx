@@ -790,7 +790,7 @@ export default function PropertiesPage(): JSX.Element {
 
           <label className="mt-4 block">
             <span className="mb-2 block text-sm font-black text-slate-700">
-              DirecciÃ³n <span className="font-semibold text-slate-400">(opcional)</span>
+              Dirección <span className="font-semibold text-slate-400">(opcional)</span>
             </span>
             <input
               type="text"
@@ -832,13 +832,13 @@ export default function PropertiesPage(): JSX.Element {
 
           <label className="mt-4 block">
             <span className="mb-2 block text-sm font-black text-slate-700">
-              ContraseÃ±a del tour <span className="font-semibold text-slate-400">(opcional â€” deja vacÃ­o para acceso libre)</span>
+              Contraseña del tour <span className="font-semibold text-slate-400">(opcional – deja vacío para acceso libre)</span>
             </span>
             <input
               type="password"
               value={form.password ?? ''}
               onChange={(event) => setForm((current) => ({ ...current, password: event.target.value }))}
-              placeholder="ContraseÃ±a para proteger el tour"
+              placeholder="Contraseña para proteger el tour"
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
             />
           </label>
@@ -928,7 +928,7 @@ export default function PropertiesPage(): JSX.Element {
                 {/* Copy public link */}
                 <button
                   type="button"
-                  title="Copiar link pÃºblico"
+                  title="Copiar link público"
                   onClick={(e) => { e.stopPropagation(); handleCopyProp(property.id, 'link', `${window.location.origin}/property/${property.id}`); }}
                   className="flex items-center gap-1.5 rounded-lg p-2 text-slate-400 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 dark:text-white/30 dark:hover:bg-white/5 dark:hover:text-white/80"
                 >
@@ -950,7 +950,7 @@ export default function PropertiesPage(): JSX.Element {
                 {/* Copy embed */}
                 <button
                   type="button"
-                  title="Copiar cÃ³digo embed"
+                  title="Copiar código embed"
                   onClick={(e) => { e.stopPropagation(); handleCopyProp(property.id, 'embed', `<iframe src="${window.location.origin}/embed/${property.id}" width="100%" height="600" frameborder="0" allowfullscreen></iframe>`); }}
                   className="flex items-center gap-1.5 rounded-lg p-2 text-slate-400 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 dark:text-white/30 dark:hover:bg-white/5 dark:hover:text-white/80"
                 >
@@ -1056,10 +1056,10 @@ export default function PropertiesPage(): JSX.Element {
                             <form onSubmit={(event) => void handleSubmitAsset(event, property.id, space.id)} className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-violet-100 bg-violet-50/70 p-4 md:grid-cols-2">
                               <div className="md:col-span-2">
                                 <p className="text-sm font-black text-slate-950">
-                                  {editingAsset?.propertyId === property.id && editingAsset?.spaceId === space.id ? 'Editar asset inmersivo' : 'AÃ±adir asset inmersivo'}
+                                  {editingAsset?.propertyId === property.id && editingAsset?.spaceId === space.id ? 'Editar asset inmersivo' : 'Añadir asset inmersivo'}
                                 </p>
                                 <p className="mt-1 text-xs font-semibold text-slate-500">
-                                  Sube una imagen 360Â°, un modelo 3D o un Gaussian Splat para esta estancia
+                                  Sube una imagen 360°, un modelo 3D o un Gaussian Splat para esta estancia
                                 </p>
                               </div>
 
@@ -1068,7 +1068,7 @@ export default function PropertiesPage(): JSX.Element {
                                 <span className="mb-2 block text-sm font-black text-slate-700">Tipo de asset</span>
                                 <div className="flex gap-2">
                                   {([
-                                    { value: 'panorama_360', label: 'ðŸŒ Panorama 360Â°', hint: 'JPG / WebP' },
+                                    { value: 'panorama_360', label: 'ðŸŒ Panorama 360°', hint: 'JPG / WebP' },
                                     { value: 'gaussian_splat', label: 'âœ¨ Gaussian Splat', hint: 'SPZ / SPLAT / PLY' },
                                     { value: 'mesh', label: 'ðŸ“¦ Modelo 3D', hint: 'GLB' }
                                   ] as const).map(({ value, label, hint }) => (
@@ -1089,7 +1089,7 @@ export default function PropertiesPage(): JSX.Element {
                                 </div>
                               </div>
 
-                              {/* Format selector â€” compact, inline */}
+                              {/* Format selector – compact, inline */}
                               <div className="md:col-span-2">
                                 <label className="block">
                                   <span className="mb-2 block text-sm font-black text-slate-700">Formato detectado <span className="font-semibold text-slate-400">(se autodetecta al subir)</span></span>
@@ -1154,18 +1154,18 @@ export default function PropertiesPage(): JSX.Element {
                                   {/* Label */}
                                   <span className={`text-sm font-black ${uploadPhase === 'done' ? 'text-emerald-700' : 'text-violet-700'}`}>
                                     {isUploadingAsset
-                                      ? (uploadPhase === 'processing' ? 'Procesando en Cloudinaryâ€¦' : `Subiendoâ€¦ ${uploadProgress}%`)
+                                      ? (uploadPhase === 'processing' ? 'Procesando en Cloudinary…' : `Subiendo… ${uploadProgress}%`)
                                       : isDragOver
-                                        ? 'Suelta el archivo aquÃ­'
+                                        ? 'Suelta el archivo aquí'
                                         : uploadPhase === 'done'
                                           ? `âœ“ ${selectedAssetFileName ?? 'Archivo subido'}`
-                                          : 'Arrastra tu archivo aquÃ­ o haz clic para seleccionar'}
+                                          : 'Arrastra tu archivo aquí o haz clic para seleccionar'}
                                   </span>
 
                                   {/* Hint */}
                                   {!isUploadingAsset && uploadPhase !== 'done' ? (
                                     <span className="text-xs font-semibold text-slate-400">
-                                      JPG / WebP para 360Â° Â· GLB para modelos 3D Â· SPZ / SPLAT / PLY para Gaussian Splats Â· MÃ¡x. 100 MB
+                                      JPG / WebP para 360° · GLB para modelos 3D · SPZ / SPLAT / PLY para Gaussian Splats · Máx. 100 MB
                                     </span>
                                   ) : null}
 
@@ -1180,7 +1180,7 @@ export default function PropertiesPage(): JSX.Element {
                                   ) : null}
                                 </label>
 
-                                {/* Preview section â€” shown after upload */}
+                                {/* Preview section – shown after upload */}
                                 {uploadPhase === 'done' && assetPreviewUrl ? (
                                   <div className="mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white">
                                     {assetPreviewType === 'panorama_360' ? (
@@ -1192,7 +1192,7 @@ export default function PropertiesPage(): JSX.Element {
                                           onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                         />
                                         <span className="absolute bottom-2 left-2 rounded-full bg-black/60 px-2 py-0.5 text-[10px] font-bold text-white">
-                                          Vista previa Â· Panorama 360Â°
+                                          Vista previa · Panorama 360°
                                         </span>
                                       </div>
                                     ) : (
@@ -1204,8 +1204,8 @@ export default function PropertiesPage(): JSX.Element {
                                         <div className="min-w-0 flex-1">
                                           <p className="truncate text-sm font-black text-slate-900">{selectedAssetFileName}</p>
                                           <p className="text-xs font-semibold text-slate-400">
-                                            {assetPreviewType === 'gaussian_splat' ? 'Gaussian Splat' : 'Modelo 3D Â· GLB'}
-                                            {(assetForm.size ?? 0) > 0 ? ` Â· ${assetForm.size} MB` : ''}
+                                            {assetPreviewType === 'gaussian_splat' ? 'Gaussian Splat' : 'Modelo 3D · GLB'}
+                                            {(assetForm.size ?? 0) > 0 ? ` · ${assetForm.size} MB` : ''}
                                           </p>
                                         </div>
                                         <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[10px] font-black text-emerald-700">
@@ -1220,13 +1220,13 @@ export default function PropertiesPage(): JSX.Element {
                               <div className="md:col-span-2">
                                 <label className="block">
                                   <span className="mb-2 block text-sm font-black text-slate-700">
-                                    URL del asset <span className="font-semibold text-slate-400">(se rellena automÃ¡ticamente al subir Â· o pega una URL directamente)</span>
+                                    URL del asset <span className="font-semibold text-slate-400">(se rellena automáticamente al subir · o pega una URL directamente)</span>
                                   </span>
                                   <input
                                     type="url"
                                     value={assetForm.url ?? ''}
                                     onChange={(event) => setAssetForm((current) => ({ ...current, url: event.target.value }))}
-                                    placeholder="https://res.cloudinary.com/â€¦"
+                                    placeholder="https://res.cloudinary.com/…"
                                     className={`w-full rounded-2xl border px-4 py-3 text-sm font-semibold outline-none transition ${
                                       assetForm.url && !assetForm.url.startsWith('http')
                                         ? 'border-amber-400 bg-amber-50 focus:border-amber-500'
@@ -1239,20 +1239,20 @@ export default function PropertiesPage(): JSX.Element {
                                 </label>
                               </div>
 
-                              {/* Thumbnail + Size â€” secondary, collapsible feel */}
+                              {/* Thumbnail + Size – secondary, collapsible feel */}
                               <label className="block">
                                 <span className="mb-2 block text-sm font-black text-slate-700">Thumbnail <span className="font-semibold text-slate-400">(auto)</span></span>
                                 <input
                                   type="url"
                                   value={assetForm.thumbnail ?? ''}
                                   onChange={(event) => setAssetForm((current) => ({ ...current, thumbnail: event.target.value }))}
-                                  placeholder="https://â€¦"
+                                  placeholder="https://…"
                                   className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
                                 />
                               </label>
 
                               <label className="block">
-                                <span className="mb-2 block text-sm font-black text-slate-700">TamaÃ±o <span className="font-semibold text-slate-400">(MB Â· auto)</span></span>
+                                <span className="mb-2 block text-sm font-black text-slate-700">Tamaño <span className="font-semibold text-slate-400">(MB · auto)</span></span>
                                 <input
                                   type="number"
                                   min="0"
@@ -1319,7 +1319,7 @@ export default function PropertiesPage(): JSX.Element {
                                     onError={(e) => { e.currentTarget.style.display = 'none'; }}
                                   />
 
-                                  {/* Existing hotspot pins â€” skip the one currently being edited (shown by draft pin) */}
+                                  {/* Existing hotspot pins – skip the one currently being edited (shown by draft pin) */}
                                   {(assetForm.hotspots ?? []).map((hotspot, idx) => {
                                     if (editingHotspotIndex === idx) return null;
                                     return (
@@ -1364,7 +1364,7 @@ export default function PropertiesPage(): JSX.Element {
                                     );
                                   })}
 
-                                  {/* Draft pin â€” shown while hotspot form is open (adding new OR editing existing) */}
+                                  {/* Draft pin – shown while hotspot form is open (adding new OR editing existing) */}
                                   {showHotspotForm ? (
                                     <div
                                       className="absolute -translate-x-1/2 -translate-y-1/2 flex touch-none flex-col items-center gap-0.5"
@@ -1397,12 +1397,12 @@ export default function PropertiesPage(): JSX.Element {
                                   {showHotspotForm ? (
                                     <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white">
                                       {editingHotspotIndex !== null
-                                        ? 'Editando hotspot Â· Arrastra para mover'
-                                        : 'Haz clic para colocar Â· Arrastra para mover'}
+                                        ? 'Editando hotspot · Arrastra para mover'
+                                        : 'Haz clic para colocar · Arrastra para mover'}
                                     </div>
                                   ) : (assetForm.hotspots ?? []).length > 0 ? (
                                     <div className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-black/50 px-3 py-1 text-xs font-semibold text-white">
-                                      {(assetForm.hotspots ?? []).length} hotspot{(assetForm.hotspots ?? []).length !== 1 ? 's' : ''} Â· Pulsa un pin para editar
+                                      {(assetForm.hotspots ?? []).length} hotspot{(assetForm.hotspots ?? []).length !== 1 ? 's' : ''} · Pulsa un pin para editar
                                     </div>
                                   ) : null}
                                 </div>
@@ -1426,7 +1426,7 @@ export default function PropertiesPage(): JSX.Element {
                                     }}
                                     className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-violet-700"
                                   >
-                                    {showHotspotForm ? 'Cancelar' : '+ AÃ±adir hotspot'}
+                                    {showHotspotForm ? 'Cancelar' : '+ Añadir hotspot'}
                                   </button>
                                 </div>
 
@@ -1477,7 +1477,7 @@ export default function PropertiesPage(): JSX.Element {
                                           type="text"
                                           value={hotspotDraft.label}
                                           onChange={(e) => setHotspotDraft((d) => ({ ...d, label: e.target.value }))}
-                                          placeholder="Ej: SalÃ³n principal"
+                                          placeholder="Ej: Salón principal"
                                           className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
                                         />
                                       </label>
@@ -1498,8 +1498,8 @@ export default function PropertiesPage(): JSX.Element {
                                         >
                                           <option value="info">Info</option>
                                           <option value="cta">CTA</option>
-                                          <option value="navigation">NavegaciÃ³n</option>
-                                          <option value="measurement">MediciÃ³n</option>
+                                          <option value="navigation">Navegación</option>
+                                          <option value="measurement">Medición</option>
                                         </select>
                                       </label>
 
@@ -1522,7 +1522,7 @@ export default function PropertiesPage(): JSX.Element {
                                             }}
                                             className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
                                           >
-                                            <option value="">â€” Selecciona una estancia â€”</option>
+                                            <option value="">– Selecciona una estancia –</option>
                                             {property.spaces
                                               .filter((s) => s.id !== space.id)
                                               .sort((a, b) => a.order - b.order)
@@ -1531,12 +1531,12 @@ export default function PropertiesPage(): JSX.Element {
                                               ))
                                             }
                                           </select>
-                                          <p className="mt-1 text-xs text-slate-400">El visitante irÃ¡ a esta estancia al pulsar el hotspot.</p>
+                                          <p className="mt-1 text-xs text-slate-400">El visitante irá a esta estancia al pulsar el hotspot.</p>
                                         </label>
                                       ) : null}
 
                                       <label className="block">
-                                        <span className="mb-1 block text-xs font-black text-slate-700">DescripciÃ³n</span>
+                                        <span className="mb-1 block text-xs font-black text-slate-700">Descripción</span>
                                         <input
                                           type="text"
                                           value={hotspotDraft.body}
@@ -1546,7 +1546,7 @@ export default function PropertiesPage(): JSX.Element {
                                         />
                                       </label>
                                       <label className="block">
-                                        <span className="mb-1 block text-xs font-black text-slate-700">MÃ©trica</span>
+                                        <span className="mb-1 block text-xs font-black text-slate-700">Métrica</span>
                                         <input
                                           type="text"
                                           value={hotspotDraft.metric}
@@ -1556,7 +1556,7 @@ export default function PropertiesPage(): JSX.Element {
                                         />
                                       </label>
                                       <label className="block">
-                                        <span className="mb-1 block text-xs font-black text-slate-700">PosiciÃ³n X (0â€“100)</span>
+                                        <span className="mb-1 block text-xs font-black text-slate-700">Posición X (0–100)</span>
                                         <input
                                           type="number"
                                           min="0" max="100"
@@ -1566,7 +1566,7 @@ export default function PropertiesPage(): JSX.Element {
                                         />
                                       </label>
                                       <label className="block">
-                                        <span className="mb-1 block text-xs font-black text-slate-700">PosiciÃ³n Y (0â€“100)</span>
+                                        <span className="mb-1 block text-xs font-black text-slate-700">Posición Y (0–100)</span>
                                         <input
                                           type="number"
                                           min="0" max="100"
@@ -1589,7 +1589,7 @@ export default function PropertiesPage(): JSX.Element {
                                           : 'bg-slate-950 hover:bg-violet-700'
                                       }`}
                                     >
-                                      {editingHotspotIndex !== null ? 'Guardar cambios' : 'AÃ±adir hotspot'}
+                                      {editingHotspotIndex !== null ? 'Guardar cambios' : 'Añadir hotspot'}
                                     </button>
                                   </div>
                                 ) : null}
@@ -1724,7 +1724,7 @@ export default function PropertiesPage(): JSX.Element {
                     <div className="rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{leadsError}</div>
                   ) : leads.length === 0 ? (
                     <div className="rounded-2xl bg-white p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">
-                      Esta propiedad aÃºn no tiene leads capturados.
+                      Esta propiedad aún no tiene leads capturados.
                     </div>
                   ) : (
                     <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200">
@@ -1732,7 +1732,7 @@ export default function PropertiesPage(): JSX.Element {
                         <thead>
                           <tr className="border-b border-slate-100">
                             <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400">Email</th>
-                            <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400">TelÃ©fono</th>
+                            <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400">Teléfono</th>
                             <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400">Notas</th>
                             <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400">Fuente</th>
                             <th className="px-4 py-3 text-left text-xs font-black uppercase tracking-widest text-slate-400">Fecha</th>
@@ -1742,9 +1742,9 @@ export default function PropertiesPage(): JSX.Element {
                           {leads.map((lead, index) => (
                             <tr key={lead.id} className={index % 2 === 0 ? 'bg-white' : 'bg-slate-50'}>
                               <td className="px-4 py-3 font-semibold text-slate-800">{lead.email}</td>
-                              <td className="px-4 py-3 text-slate-600">{lead.phone || 'â€”'}</td>
+                              <td className="px-4 py-3 text-slate-600">{lead.phone || '–'}</td>
                               <td className="max-w-xs px-4 py-3 text-slate-600">
-                                <span className="line-clamp-1">{lead.notes || 'â€”'}</span>
+                                <span className="line-clamp-1">{lead.notes || '–'}</span>
                               </td>
                               <td className="px-4 py-3">
                                 <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-black text-cyan-700">{lead.source}</span>

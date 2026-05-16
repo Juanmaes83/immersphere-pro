@@ -333,6 +333,11 @@ export default function UniversalViewer({
     : 0;
   const leadModalLabel  = activeHotspot?.label ?? 'Tour guiado';
 
+  // ── Nav overlay prev/next (always visible with 2+ spaces) ───────────────────
+  const currentSpaceIdx = sortedSpaces.findIndex((s) => s.id === activeSpace.id);
+  const prevSpace = currentSpaceIdx > 0 ? sortedSpaces[currentSpaceIdx - 1] : null;
+  const nextSpace = currentSpaceIdx < sortedSpaces.length - 1 ? sortedSpaces[currentSpaceIdx + 1] : null;
+
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
@@ -459,7 +464,7 @@ export default function UniversalViewer({
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px]">
 
         {/* Viewer area */}
-        <div className="p-5">
+        <div className="relative p-5">
           {showDollhouse ? (
             <DollhouseViewer
               spaces={sortedSpaces}
@@ -507,6 +512,36 @@ export default function UniversalViewer({
               />
             </Suspense>
           )}
+          {/* ── Prev / Next overlay navigation ─────────────────────────────── */}
+          {sortedSpaces.length >= 2 && !showDollhouse ? (
+            <div className="pointer-events-none absolute inset-x-5 bottom-8 flex items-end justify-between gap-3">
+              {prevSpace ? (
+                <button
+                  type="button"
+                  onClick={() => handleSpaceChange(prevSpace.id)}
+                  className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-slate-950/70 px-4 py-3 text-sm font-black text-white backdrop-blur-sm transition hover:bg-slate-950/90 active:scale-95"
+                >
+                  <span className="text-lg leading-none">←</span>
+                  <span className="max-w-[120px] truncate">{prevSpace.name}</span>
+                </button>
+              ) : (
+                <div />
+              )}
+              {nextSpace ? (
+                <button
+                  type="button"
+                  onClick={() => handleSpaceChange(nextSpace.id)}
+                  className="pointer-events-auto flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-black text-white backdrop-blur-sm transition hover:opacity-90 active:scale-95"
+                  style={{ backgroundColor: primaryColor + 'cc' }}
+                >
+                  <span className="max-w-[120px] truncate">{nextSpace.name}</span>
+                  <span className="text-lg leading-none">→</span>
+                </button>
+              ) : (
+                <div />
+              )}
+            </div>
+          ) : null}
         </div>
 
         {/* ── Aside panel ──────────────────────────────────────────────────── */}

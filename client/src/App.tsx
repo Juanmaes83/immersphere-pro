@@ -133,7 +133,7 @@ function MobileBottomNav(): JSX.Element | null {
     <nav
       className="fixed bottom-0 left-0 right-0 z-50 border-t border-slate-200 bg-white/95 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-950/95 md:hidden"
       style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      aria-label="NavegaciÃ³n principal"
+      aria-label="Navegación principal"
     >
       <div className="mx-auto flex h-14 max-w-lg items-stretch">
         <MobileNavItem to="/dashboard" label="Dashboard" icon={IcoDashboard} />
@@ -188,7 +188,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
           </Link>
 
           <nav className="hidden items-center gap-2 lg:flex">
-            <BrandNavLink to="/gallery">GalerÃ­a</BrandNavLink>
+            <BrandNavLink to="/gallery">Galería</BrandNavLink>
             {isAuthenticated ? (
               <>
                 <BrandNavLink to="/dashboard">Dashboard</BrandNavLink>
@@ -209,7 +209,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
           <div className="flex items-center gap-2">
             <Link
               to="/ayuda"
-              title="Ayuda y guÃ­a rÃ¡pida"
+              title="Ayuda y guía rápida"
               aria-label="Ayuda"
               className="rounded-full border border-slate-200 px-3 py-2 text-sm font-black text-slate-500 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-400 dark:hover:bg-slate-800"
             >
@@ -230,7 +230,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
                   className="hidden rounded-full px-4 py-2 text-xs font-black text-white md:inline-flex"
                   style={bgStyle}
                 >
-                  {user?.tenant.name ?? 'Tenant'} Â· {user?.tenant.plan ?? 'STARTER'}
+                  {user?.tenant.name ?? 'Tenant'} · {user?.tenant.plan ?? 'STARTER'}
                 </span>
                 <button
                   type="button"
@@ -263,7 +263,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-5 sm:flex-row">
           <p className="text-xs font-bold text-slate-400">
             Powered by <span className="font-black text-slate-600 dark:text-slate-300">Immersphere Pro</span>
-            <span className="mx-2 text-slate-200 dark:text-slate-700">Â·</span>
+            <span className="mx-2 text-slate-200 dark:text-slate-700">·</span>
             <Link to="/ayuda" className="font-black text-slate-500 hover:underline dark:text-slate-400">Ayuda</Link>
           </p>
           <p className="text-xs font-bold text-slate-400">
