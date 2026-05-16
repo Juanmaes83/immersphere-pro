@@ -1,6 +1,6 @@
 ﻿import { useCallback, useEffect, useState } from 'react';
-import { Helmet, HelmetProvider } from 'react-helmet-async';
-import { BrowserRouter, Link, Navigate, Route, Routes, useNavigate, useMatch, useLocation } from 'react-router-dom';
+import { HelmetProvider } from 'react-helmet-async';
+import { BrowserRouter, Link, Navigate, Route, Routes, useMatch, useLocation } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
 import { useLeadsBadge } from '@/hooks/useLeadsBadge';
 import ProtectedRoute from '@/components/layout/ProtectedRoute';
