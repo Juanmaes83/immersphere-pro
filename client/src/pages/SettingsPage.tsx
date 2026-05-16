@@ -1,0 +1,538 @@
+import { useState, useEffect } from 'react';
+import type { ChangeEvent } from 'react';
+import { Helmet } from 'react-helmet-async';
+import { useBrand } from '@/hooks/useBrand';
+import { useAuthStore } from '@/store/authStore';
+import { api, unwrapApiResponse, getApiErrorMessage } from '@/services/api';
+import type { SubscriptionResponse, TenantUsageResponse, StorageUsageResponse, UploadAssetResponse } from '@/types/api';
+import PlanCard from '@/components/billing/PlanCard';
+
+export default function SettingsPage(): JSX.Element {
+  const { user, hydrateFromStorage } = useAuthStore();
+  const [usage, setUsage] = useState<TenantUsageResponse | null>(null);
+  const [storage, setStorage] = useState<StorageUsageResponse | null>(null);
+  const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [portalLoading, setPortalLoading] = useState(false);
+  const [logoUploading, setLogoUploading] = useState(false);
+  const [settingsMsg, setSettingsMsg] = useState<string | null>(null);
+  const [webhookInput, setWebhookInput] = useState(user?.tenant.webhookUrl ?? '');
+  const [webhookSaving, setWebhookSaving] = useState(false);
+  const [phoneInput, setPhoneInput] = useState(user?.tenant.phone ?? '');
+  const [phoneSaving, setPhoneSaving] = useState(false);
+  const [removeBranding, setRemoveBranding] = useState(user?.tenant.removeBranding ?? false);
+  const [brandingSaving, setBrandingSaving] = useState(false);
+  const [whatsappInput, setWhatsappInput] = useState(user?.tenant.whatsappNumber ?? '');
+  const [whatsappSaving, setWhatsappSaving] = useState(false);
+  const [primaryColorInput, setPrimaryColorInput] = useState(user?.tenant.primaryColor ?? '#7C3AED');
+  const [colorSaving, setColorSaving] = useState(false);
+  const [logoTextInput, setLogoTextInput] = useState(user?.tenant.logoText ?? '');
+
+  useEffect(() => {
+    void loadBillingState();
+  }, []);
+
+  async function loadBillingState(): Promise<void> {
+    try {
+      const [usageResponse, subscriptionResponse, storageResponse] = await Promise.all([
+        unwrapApiResponse<TenantUsageResponse>(api.get('/tenants/usage')),
+        unwrapApiResponse<SubscriptionResponse>(api.get('/subscriptions/current')),
+        unwrapApiResponse<StorageUsageResponse>(api.get('/tenants/storage'))
+      ]);
+      setUsage(usageResponse);
+      setSubscription(subscriptionResponse);
+      setStorage(storageResponse);
+      hydrateFromStorage();
+      setError(null);
+    } catch (error) {
+      setError(getApiErrorMessage(error));
+    }
+  }
+
+  async function handleLogoUpload(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setLogoUploading(true);
+    setSettingsMsg(null);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const upload = await unwrapApiResponse<UploadAssetResponse>(
+        api.post('/uploads', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      );
+      await unwrapApiResponse(api.put('/tenants/settings', { logoUrl: upload.url }));
+      hydrateFromStorage();
+      setSettingsMsg('Logo actualizado correctamente.');
+      // Reload user from API to reflect change in header
+      const settings = await unwrapApiResponse<{ id: string; logoUrl: string }>(api.get('/tenants/settings'));
+      const stored = window.localStorage.getItem('user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        parsed.tenant.logoUrl = settings.logoUrl;
+        window.localStorage.setItem('user', JSON.stringify(parsed));
+        hydrateFromStorage();
+      }
+    } catch {
+      setSettingsMsg('Error al subir el logo.');
+    } finally {
+      setLogoUploading(false);
+      event.target.value = '';
+    }
+  }
+
+  async function handleSaveWebhook(): Promise<void> {
+    const url = webhookInput.trim();
+    if (url && !url.startsWith('https://')) {
+      setSettingsMsg('La URL del webhook debe empezar por https://');
+      return;
+    }
+    setWebhookSaving(true);
+    setSettingsMsg(null);
+    try {
+      await unwrapApiResponse(api.put('/tenants/settings', { webhookUrl: url }));
+      setSettingsMsg('Webhook guardado correctamente.');
+    } catch {
+      setSettingsMsg('Error al guardar el webhook.');
+    } finally {
+      setWebhookSaving(false);
+    }
+  }
+
+  async function handleSavePhone(): Promise<void> {
+    setPhoneSaving(true);
+    setSettingsMsg(null);
+    try {
+      await unwrapApiResponse(api.put('/tenants/settings', { phone: phoneInput.trim() }));
+      setSettingsMsg('Teléfono guardado correctamente.');
+    } catch {
+      setSettingsMsg('Error al guardar el teléfono.');
+    } finally {
+      setPhoneSaving(false);
+    }
+  }
+
+  async function handleToggleRemoveBranding(value: boolean): Promise<void> {
+    setRemoveBranding(value);
+    setBrandingSaving(true);
+    setSettingsMsg(null);
+    try {
+      await unwrapApiResponse(api.put('/tenants/settings', { removeBranding: value }));
+      setSettingsMsg(value ? 'Marca "Powered by" eliminada del tour.' : 'Marca "Powered by" activada en el tour.');
+    } catch {
+      setRemoveBranding(!value);
+      setSettingsMsg('Error al guardar la configuración.');
+    } finally {
+      setBrandingSaving(false);
+    }
+  }
+
+  async function handleSaveWhatsapp(): Promise<void> {
+    setWhatsappSaving(true);
+    setSettingsMsg(null);
+    try {
+      await unwrapApiResponse(api.put('/tenants/settings', { whatsappNumber: whatsappInput.trim() }));
+      setSettingsMsg('Número de WhatsApp guardado correctamente.');
+    } catch {
+      setSettingsMsg('Error al guardar el número de WhatsApp.');
+    } finally {
+      setWhatsappSaving(false);
+    }
+  }
+
+  function patchStoredUser(patch: Record<string, unknown>): void {
+    const stored = window.localStorage.getItem('user');
+    if (!stored) return;
+    try {
+      const parsed = JSON.parse(stored);
+      Object.assign(parsed.tenant, patch);
+      window.localStorage.setItem('user', JSON.stringify(parsed));
+      hydrateFromStorage();
+    } catch { /* ignore */ }
+  }
+
+  async function handleSaveColor(): Promise<void> {
+    if (!/^#[0-9A-Fa-f]{6}$/.test(primaryColorInput)) {
+      setSettingsMsg('Color inválido. Usa formato #RRGGBB (ej. #7C3AED).');
+      return;
+    }
+    setColorSaving(true);
+    setSettingsMsg(null);
+    try {
+      await unwrapApiResponse(api.put('/tenants/settings', { primaryColor: primaryColorInput }));
+      patchStoredUser({ primaryColor: primaryColorInput });
+      setSettingsMsg('Color de marca guardado.');
+    } catch {
+      setSettingsMsg('Error al guardar el color.');
+    } finally {
+      setColorSaving(false);
+    }
+  }
+
+  async function handleSaveLogoText(): Promise<void> {
+    const val = logoTextInput.trim().slice(0, 3).toUpperCase();
+    if (!val) {
+      setSettingsMsg('Las iniciales no pueden estar vacías.');
+      return;
+    }
+    try {
+      await unwrapApiResponse(api.put('/tenants/settings', { logoText: val }));
+      patchStoredUser({ logoText: val });
+      setLogoTextInput(val);
+      setSettingsMsg('Iniciales del logo guardadas.');
+    } catch {
+      setSettingsMsg('Error al guardar las iniciales.');
+    }
+  }
+
+  async function openPortal(): Promise<void> {
+    setPortalLoading(true);
+    setError(null);
+
+    try {
+      const response = await unwrapApiResponse<{ url: string }>(api.post('/subscriptions/portal'));
+      window.location.href = response.url;
+    } catch (error) {
+      setError(getApiErrorMessage(error));
+      setPortalLoading(false);
+    }
+  }
+
+  const currentPlan = subscription?.plan ?? user?.tenant.plan ?? 'STARTER';
+  const { bgStyle, colorStyle } = useBrand();
+
+  return (
+    <main className="mx-auto max-w-7xl px-5 py-10">
+      <Helmet>
+        <title>Ajustes · Immersphere Pro</title>
+        <meta name="robots" content="noindex" />
+      </Helmet>
+      <div className="flex flex-col gap-5 md:flex-row md:items-end md:justify-between">
+        <div>
+          <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Configuración</p>
+          <h1 className="mt-3 text-5xl font-black tracking-tight">Planes y ajustes</h1>
+          <p className="mt-3 text-slate-500">Plan actual: <strong>{currentPlan}</strong>. Propiedades usadas: {usage?.propertiesUsed ?? 0}.</p>
+        </div>
+        <button
+          type="button"
+          disabled={portalLoading}
+          onClick={openPortal}
+          className="rounded-full px-6 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-60"
+          style={bgStyle}
+        >
+          {portalLoading ? 'Abriendo portal...' : 'Gestionar facturación'}
+        </button>
+      </div>
+
+      {error ? <div className="mt-6 rounded-2xl bg-red-50 p-4 font-bold text-red-700">{error}</div> : null}
+      {settingsMsg ? <div className="mt-4 rounded-2xl bg-emerald-50 p-4 font-bold text-emerald-700">{settingsMsg}</div> : null}
+
+      <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Logo de la agencia</p>
+        <div className="mt-4 flex items-center gap-5">
+          {user?.tenant.logoUrl ? (
+            <img src={user.tenant.logoUrl} alt="Logo" className="h-16 w-16 rounded-2xl object-cover ring-1 ring-slate-200" />
+          ) : (
+            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl text-xl font-black text-white" style={bgStyle}>
+              {logoTextInput.trim().slice(0,3).toUpperCase() || user?.tenant.logoText || '✦'}
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <label className={`flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50 ${logoUploading ? 'cursor-not-allowed opacity-50' : ''}`}>
+              <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" onChange={(e) => { void handleLogoUpload(e); }} disabled={logoUploading} className="sr-only" />
+              {logoUploading ? 'Subiendo...' : '↑ Subir imagen'}
+            </label>
+            <p className="mt-1.5 text-xs text-slate-400">PNG, JPG, WEBP o SVG · 400×400 px recomendado.</p>
+            {!user?.tenant.logoUrl ? (
+              <div className="mt-3 flex items-center gap-2">
+                <input
+                  type="text"
+                  value={logoTextInput}
+                  onChange={(e) => setLogoTextInput(e.target.value.slice(0, 3))}
+                  maxLength={3}
+                  placeholder="IP"
+                  className="w-16 rounded-xl border border-slate-200 px-2 py-1.5 text-center text-sm font-black uppercase tracking-widest outline-none focus:border-violet-400"
+                />
+                <button
+                  type="button"
+                  onClick={() => { void handleSaveLogoText(); }}
+                  className="rounded-full border border-slate-200 px-3 py-1.5 text-xs font-black text-slate-600 transition hover:border-violet-400 hover:text-violet-700"
+                >
+                  Guardar iniciales
+                </button>
+              </div>
+            ) : null}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Color de marca ─────────────────────────────────────────── */}
+      <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Color de marca</p>
+        <p className="mt-1 text-sm text-slate-500">Se aplica a botones, hotspots y CTAs del visor público.</p>
+        <div className="mt-4 flex items-center gap-3">
+          <div className="relative flex items-center">
+            <input
+              type="color"
+              value={primaryColorInput}
+              onChange={(e) => setPrimaryColorInput(e.target.value)}
+              className="h-11 w-11 cursor-pointer rounded-xl border border-slate-200 p-1 outline-none"
+              title="Seleccionar color"
+            />
+          </div>
+          <input
+            type="text"
+            value={primaryColorInput}
+            onChange={(e) => {
+              const v = e.target.value;
+              setPrimaryColorInput(v);
+            }}
+            onBlur={(e) => {
+              if (!/^#[0-9A-Fa-f]{6}$/.test(e.target.value)) {
+                setPrimaryColorInput(user?.tenant.primaryColor ?? '#7C3AED');
+              }
+            }}
+            placeholder="#7C3AED"
+            maxLength={7}
+            className="w-28 rounded-2xl border border-slate-200 px-3 py-2.5 text-sm font-black uppercase tracking-widest outline-none focus:border-violet-400"
+          />
+          <button
+            type="button"
+            disabled={colorSaving}
+            onClick={() => { void handleSaveColor(); }}
+            className="rounded-2xl px-5 py-2.5 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50"
+            style={{ backgroundColor: primaryColorInput }}
+          >
+            {colorSaving ? 'Guardando...' : 'Guardar color'}
+          </button>
+        </div>
+        <div className="mt-4 flex flex-wrap gap-2">
+          {['#7C3AED', '#2563EB', '#059669', '#DC2626', '#D97706', '#0F172A', '#DB2777', '#0891B2'].map((c) => (
+            <button
+              key={c}
+              type="button"
+              title={c}
+              onClick={() => setPrimaryColorInput(c)}
+              className="h-8 w-8 rounded-full border-2 transition hover:scale-110"
+              style={{ backgroundColor: c, borderColor: primaryColorInput === c ? '#0f172a' : 'transparent' }}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* ── Preview live ────────────────────────────────────────────── */}
+      <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Preview de marca</p>
+        <p className="mt-1 text-sm text-slate-500">Vista previa en tiempo real de cómo verán tu marca los visitantes.</p>
+        <div className="mt-4 overflow-hidden rounded-2xl bg-slate-950 text-white">
+          {/* mini viewer header */}
+          <div className="flex items-center gap-3 border-b border-white/10 px-5 py-4">
+            {user?.tenant.logoUrl ? (
+              <img src={user.tenant.logoUrl} alt="Logo" className="h-9 w-9 rounded-xl object-cover" />
+            ) : (
+              <span
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-black text-white"
+                style={{ backgroundColor: primaryColorInput }}
+              >
+                {logoTextInput.trim().slice(0, 3).toUpperCase() || user?.tenant.logoText || 'IP'}
+              </span>
+            )}
+            <div className="min-w-0">
+              <p className="text-sm font-black leading-tight">{user?.tenant.name || 'Tu Agencia'}</p>
+              <p className="text-xs font-semibold leading-tight" style={{ color: primaryColorInput }}>
+                Visor inmersivo
+              </p>
+            </div>
+          </div>
+          {/* mini property preview */}
+          <div className="px-5 py-5">
+            <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-white/35">Propiedad ejemplo</p>
+            <p className="mt-1.5 text-lg font-black leading-tight">Apartamento en el centro</p>
+            <p className="mt-1 text-sm text-white/50">Tour virtual inmersivo · 4 estancias</p>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <button
+                type="button"
+                className="rounded-full px-5 py-2 text-xs font-black text-white"
+                style={{ backgroundColor: primaryColorInput }}
+              >
+                Contactar agente
+              </button>
+              <button
+                type="button"
+                className="rounded-full bg-white/10 px-5 py-2 text-xs font-black text-white/70"
+              >
+                ▶ Tour guiado
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Webhook de leads</p>
+        <p className="mt-1 text-sm text-slate-500">Cada nuevo lead enviará un POST JSON a esta URL. Debe ser <code className="rounded bg-slate-100 px-1 text-xs">https://</code>.</p>
+        <div className="mt-4 flex gap-3">
+          <input
+            type="url"
+            value={webhookInput}
+            onChange={(e) => setWebhookInput(e.target.value)}
+            placeholder="https://tu-crm.com/webhook/leads"
+            className="brand-focus flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none"
+          />
+          <button
+            type="button"
+            disabled={webhookSaving}
+            onClick={() => { void handleSaveWebhook(); }}
+            className="rounded-2xl px-5 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50"
+            style={bgStyle}
+          >
+            {webhookSaving ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Teléfono de contacto</p>
+        <p className="mt-1 text-sm text-slate-500">Número que se mostrará en el chatbot del visor para que los visitantes puedan llamar directamente.</p>
+        <div className="mt-4 flex gap-3">
+          <input
+            type="tel"
+            value={phoneInput}
+            onChange={(e) => setPhoneInput(e.target.value)}
+            placeholder="+34 600 000 000"
+            className="brand-focus flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none"
+          />
+          <button
+            type="button"
+            disabled={phoneSaving}
+            onClick={() => { void handleSavePhone(); }}
+            className="rounded-2xl px-5 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50"
+            style={bgStyle}
+          >
+            {phoneSaving ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Eliminar marca "Powered by"</p>
+            <p className="mt-1 text-sm text-slate-500">Cuando está activo, elimina la marca "Immersphere Pro" del visor público, del título de la página y del tour ZIP. El tour aparece completamente bajo tu marca.</p>
+          </div>
+          <button
+            type="button"
+            disabled={brandingSaving}
+            onClick={() => { void handleToggleRemoveBranding(!removeBranding); }}
+            className={`relative shrink-0 inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 ${removeBranding ? 'bg-violet-600' : 'bg-slate-200'}`}
+          >
+            <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${removeBranding ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">WhatsApp de contacto</p>
+        <p className="mt-1 text-sm text-slate-500">Número con prefijo internacional (ej. <code className="rounded bg-slate-100 px-1 text-xs">+34612345678</code>). Aparecerá como botón de WhatsApp en la ficha de propiedad.</p>
+        <div className="mt-4 flex gap-3">
+          <input
+            type="tel"
+            value={whatsappInput}
+            onChange={(e) => setWhatsappInput(e.target.value)}
+            placeholder="+34612345678"
+            className="brand-focus flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none"
+          />
+          <button
+            type="button"
+            disabled={whatsappSaving}
+            onClick={() => { void handleSaveWhatsapp(); }}
+            className="rounded-2xl px-5 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50"
+            style={bgStyle}
+          >
+            {whatsappSaving ? 'Guardando...' : 'Guardar'}
+          </button>
+        </div>
+      </div>
+
+      {storage ? (
+        <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Almacenamiento</p>
+              <p className="mt-2 text-2xl font-black text-slate-950">
+                {storage.isUnlimited
+                  ? 'Ilimitado'
+                  : `${storage.usedMb} MB / ${storage.limitMb} MB`}
+              </p>
+              {!storage.isUnlimited && storage.remainingMb !== null ? (
+                <p className="mt-1 text-sm font-semibold text-slate-500">
+                  {storage.remainingMb} MB disponibles
+                </p>
+              ) : null}
+            </div>
+            <div className="flex items-center gap-3">
+              {storage.isUnlimited ? (
+                <span className="rounded-full bg-violet-100 px-4 py-2 text-xs font-black text-violet-700">
+                  Enterprise — sin limite
+                </span>
+              ) : (
+                <span className={`rounded-full px-4 py-2 text-xs font-black ${
+                  storage.percentageUsed >= 90
+                    ? 'bg-red-100 text-red-700'
+                    : storage.percentageUsed >= 70
+                      ? 'bg-amber-100 text-amber-700'
+                      : 'bg-emerald-100 text-emerald-700'
+                }`}>
+                  {storage.percentageUsed}% usado
+                </span>
+              )}
+            </div>
+          </div>
+          {!storage.isUnlimited && storage.limitMb !== null ? (
+            <div className="mt-4 h-2 overflow-hidden rounded-full bg-slate-100">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  storage.percentageUsed >= 90
+                    ? 'bg-red-500'
+                    : storage.percentageUsed >= 70
+                      ? 'bg-amber-500'
+                      : 'bg-emerald-500'
+                }`}
+                style={{ width: `${storage.percentageUsed}%` }}
+              />
+            </div>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+        <PlanCard
+          plan="STARTER"
+          title="Starter"
+          price="0 €/mes"
+          description="Para validar el flujo con pocas propiedades y visor básico."
+          currentPlan={currentPlan}
+          onPlanChanged={loadBillingState}
+          features={['10 propiedades', 'Visor 360° básico', 'Sin white label completo']}
+        />
+        <PlanCard
+          plan="PROFESSIONAL"
+          title="Professional"
+          price="49 €/mes"
+          description="Para inmobiliarias y estudios que necesitan analítica y marca propia."
+          currentPlan={currentPlan}
+          onPlanChanged={loadBillingState}
+          features={['50 propiedades', 'Hotspots avanzados', 'Analytics', 'White label parcial']}
+        />
+        <PlanCard
+          plan="ENTERPRISE"
+          title="Enterprise"
+          price="199 €/mes"
+          description="Para promotoras, museos, mobiliario y experiencias volumétricas."
+          currentPlan={currentPlan}
+          onPlanChanged={loadBillingState}
+          features={['Propiedades ilimitadas', 'Gaussian Splats', 'API', 'Soporte prioritario']}
+        />
+      </div>
+    </main>
+  );
+}
