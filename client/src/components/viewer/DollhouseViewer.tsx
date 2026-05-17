@@ -272,12 +272,12 @@ export default function DollhouseViewer({
 
       <div className="absolute left-5 top-5 z-10 rounded-2xl border border-white/10 bg-black/55 px-4 py-3 text-white backdrop-blur">
         <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">
-          Vista Dollhouse · Fase 1
+          Planta interactiva
         </p>
         <p className="mt-1 text-sm font-bold">Haz clic en una estancia para entrar</p>
         {!hasDimensions ? (
           <p className="mt-2 text-xs text-amber-300/80">
-            * Dimensiones estimadas ({DEFAULT_W}m × {DEFAULT_W}m × {DEFAULT_H}m)
+            * Dimensiones aproximadas
           </p>
         ) : (
           <p className="mt-2 text-xs text-white/45">Arrastra para orbitar · Scroll para zoom</p>
@@ -295,13 +295,13 @@ export default function DollhouseViewer({
         </span>
         <span className="flex items-center gap-2">
           <span className="h-2.5 w-2.5 rounded-sm bg-cyan-500" />
-          Gaussian Splat
+          Vista inmersiva
         </span>
         <span className="mt-1 border-t border-white/10 pt-1 font-black uppercase tracking-wider text-white/40">
-          Hotspots
+          Puntos de interés
         </span>
         <span className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-green-400" /> CTA
+          <span className="h-2 w-2 rounded-full bg-green-400" /> Solicitud
         </span>
         <span className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-amber-400" /> Navegación

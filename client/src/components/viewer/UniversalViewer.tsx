@@ -550,7 +550,7 @@ export default function UniversalViewer({
             </p>
           ) : !removeBranding ? (
             <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
-              Visor inmersivo
+              Recorrido inmersivo
             </p>
           ) : null}
           <h2 className="mt-2 text-3xl font-black">{activeSpace.name}</h2>
@@ -559,7 +559,7 @@ export default function UniversalViewer({
               {activeAsset.type === 'panorama_360'
                 ? 'Panorama 360°'
                 : activeAsset.type === 'gaussian_splat'
-                  ? 'Gaussian Splat 3D'
+                  ? 'Vista inmersiva'
                   : 'Modelo 3D'}
             </p>
           ) : null}
@@ -630,7 +630,7 @@ export default function UniversalViewer({
                 : 'bg-white/10 text-white/70 hover:bg-white/15'
             }`}
           >
-            {showDollhouse ? '🏠 Salir Dollhouse' : '🏠 Dollhouse'}
+            {showDollhouse ? '← Volver al recorrido' : '🏠 Planta'}
           </button>
           {document.fullscreenEnabled ? (
             <button
@@ -824,14 +824,20 @@ export default function UniversalViewer({
                 </p>
                 <h3 className="mt-3 text-2xl font-black">{activeSpace.name}</h3>
                 <p className="mt-2 text-sm text-white/55">
-                  Asset: {activeAsset.format.toUpperCase()} · {activeAsset.size} MB · order{' '}
-                  {activeSpace.order}
+                  {activeAsset.type === 'panorama_360'
+                    ? 'Panorama 360°'
+                    : activeAsset.type === 'gaussian_splat'
+                      ? 'Vista inmersiva'
+                      : 'Modelo 3D'}
+                  {activeSpace.dimensions?.width != null && activeSpace.dimensions?.depth != null
+                    ? ` · ${activeSpace.dimensions.width} × ${activeSpace.dimensions.depth} m`
+                    : ''}
                 </p>
               </div>
 
               <div className="mt-5 rounded-2xl bg-white/10 p-4">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">
-                  Hotspot activo
+                  Información
                 </p>
 
                 {activeHotspot ? (
@@ -871,8 +877,8 @@ export default function UniversalViewer({
                   </div>
                 ) : (
                   <p className="mt-4 text-sm leading-6 text-white/55">
-                    Haz clic en un hotspot dentro del visor para abrir información contextual, medición
-                    estimada o CTA comercial.
+                    Haz clic sobre cualquier punto destacado del espacio para ver detalles, medidas
+                    o solicitar información.
                   </p>
                 )}
               </div>

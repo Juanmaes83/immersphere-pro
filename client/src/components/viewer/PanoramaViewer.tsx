@@ -98,6 +98,21 @@ function getRuntimePanoramaUrl(asset: ViewerAsset, propertyId: string): string {
   return createRuntimeFallbackPanoramaUrl(asset.id || propertyId);
 }
 
+// ── Hotspot visual helpers ───────────────────────────────────────────────────
+
+function getHotspotDotColor(type: Hotspot['type'], primaryColor: string): string {
+  if (type === 'info') return 'rgba(255,255,255,0.85)';
+  if (type === 'measurement') return '#38BDF8';
+  return primaryColor; // navigation + cta = brand color
+}
+
+function getHotspotGlow(type: Hotspot['type'], primaryColor: string): string {
+  if (type === 'navigation') return `0 0 14px ${primaryColor}55, 0 0 28px ${primaryColor}22`;
+  if (type === 'cta')        return `0 0 10px ${primaryColor}44, 0 0 20px ${primaryColor}18`;
+  if (type === 'info')       return '0 0 8px rgba(255,255,255,0.10)';
+  return '0 0 6px rgba(56,189,248,0.22)'; // measurement
+}
+
 export default function PanoramaViewer({
   propertyId,
   spaceId,
@@ -331,6 +346,15 @@ export default function PanoramaViewer({
 
   return (
     <div className="relative min-h-[520px] overflow-hidden rounded-[1.5rem] bg-slate-950">
+      {/* Pulse animation for premium hotspots — very subtle breath, not gaming */}
+      <style>{`
+        @keyframes hs-breathe {
+          0%, 100% { opacity: 0.18; transform: scale(1); }
+          50%       { opacity: 0.32; transform: scale(1.08); }
+        }
+        .hs-ring { animation: hs-breathe 3.2s ease-in-out infinite; }
+        @media (prefers-reduced-motion: reduce) { .hs-ring { animation: none; opacity: 0.18; } }
+      `}</style>
       <div ref={containerRef} className="absolute inset-0" />
 
       {!isReady && !errorMessage ? (
@@ -344,33 +368,53 @@ export default function PanoramaViewer({
       {errorMessage ? (
         <div className="absolute inset-0 flex items-center justify-center bg-slate-950 p-6 text-center text-white">
           <div className="max-w-md rounded-3xl border border-white/10 bg-white/10 p-6 backdrop-blur">
-            <p className="text-lg font-black">Fallback del visor</p>
-            <p className="mt-3 text-sm leading-6 text-white/65">{errorMessage}</p>
+            <p className="text-lg font-black">Vista no disponible</p>
+            <p className="mt-3 text-sm leading-6 text-white/65">
+              Esta vista no pudo cargarse. Por favor, inténtalo de nuevo.
+            </p>
           </div>
         </div>
       ) : null}
 
-      {asset.hotspots.map((hotspot) => (
-        <button
-          key={hotspot.id}
-          type="button"
-          onClick={() => handleHotspotClick(hotspot)}
-          className="absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full border border-white/30 bg-black/45 px-3 py-2 text-xs font-black text-white shadow-2xl ring-4 ring-white/10 backdrop-blur transition hover:scale-105"
-          style={{
-            left: `${hotspot.position.x}%`,
-            top: `${hotspot.position.y}%`
-          }}
-        >
-          <span className="h-3 w-3 rounded-full" style={{ backgroundColor: primaryColor }} />
-          {hotspot.type === 'cta'
-            ? 'CTA'
-            : hotspot.type === 'measurement'
-              ? 'Medir'
-              : hotspot.type === 'navigation'
-                ? 'Ir'
-                : 'Info'}
-        </button>
-      ))}
+      {asset.hotspots.map((hotspot) => {
+        const dotColor = getHotspotDotColor(hotspot.type, primaryColor);
+        const glow     = getHotspotGlow(hotspot.type, primaryColor);
+        const hasPulse = hotspot.type !== 'measurement';
+        const label    = hotspot.type === 'navigation'
+          ? `${hotspot.label} ›`
+          : hotspot.label;
+
+        return (
+          <button
+            key={hotspot.id}
+            type="button"
+            onClick={() => handleHotspotClick(hotspot)}
+            className="group absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full py-1.5 pl-2 pr-4 text-xs font-black text-white transition-all duration-200 motion-safe:hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            style={{
+              left: `${hotspot.position.x}%`,
+              top: `${hotspot.position.y}%`,
+              background: 'rgba(0,0,0,0.52)',
+              backdropFilter: 'blur(10px)',
+              boxShadow: `0 0 0 1px rgba(255,255,255,0.12), 0 4px 16px rgba(0,0,0,0.45), ${glow}`,
+            }}
+          >
+            {/* Pulse ring + core dot */}
+            <span className="relative flex h-5 w-5 shrink-0 items-center justify-center">
+              {hasPulse ? (
+                <span
+                  className="hs-ring absolute inset-0 rounded-full"
+                  style={{ backgroundColor: dotColor }}
+                />
+              ) : null}
+              <span
+                className="relative z-10 h-2.5 w-2.5 rounded-full"
+                style={{ backgroundColor: dotColor }}
+              />
+            </span>
+            <span className="leading-none">{label}</span>
+          </button>
+        );
+      })}
 
       <div className="absolute bottom-5 right-5 z-30 flex gap-2 rounded-2xl border border-white/10 bg-black/45 p-2 text-white backdrop-blur">
         {vrSupported ? (
@@ -419,10 +463,6 @@ export default function PanoramaViewer({
         >
           +
         </button>
-      </div>
-
-      <div className="absolute left-5 top-5 z-30 rounded-2xl border border-white/10 bg-black/45 px-4 py-3 text-xs font-black text-white/75 backdrop-blur">
-        FOV {Math.round(currentFov)}°
       </div>
 
       <MeasurementOverlay
