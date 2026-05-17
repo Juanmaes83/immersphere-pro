@@ -18,7 +18,7 @@ const PropertyStatus = {
 } as const;
 // LOCAL STRING ENUMS PROPERTY CONTROLLER END
 // SQLite compatible
-import type { Request, Response } from 'express';
+import type { NextFunction, Request, Response } from 'express';
 import { z } from 'zod';
 import { AppError } from '../middleware/errorHandler.js';
 import * as propertiesService from '../services/properties.service.js';
@@ -162,18 +162,22 @@ export async function getPropertyStats(request: Request, response: Response): Pr
   response.status(200).json({ success: true, data });
 }
 
-export async function updateProperty(request: Request, response: Response): Promise<void> {
-  if (!request.auth) {
-    throw new AppError(401, 'Usuario no autenticado.');
+export async function updateProperty(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!request.auth) {
+      throw new AppError(401, 'Usuario no autenticado.');
+    }
+
+    const input = propertySchema.parse(request.body);
+    const data = await propertiesService.updateProperty(request.auth.tenantId, request.params.id, input);
+
+    response.status(200).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    next(error);
   }
-
-  const input = propertySchema.parse(request.body);
-  const data = await propertiesService.updateProperty(request.auth!.tenantId, request.params.id, input);
-
-  response.status(200).json({
-    success: true,
-    data
-  });
 }
 
 export async function listPropertySpaces(request: Request, response: Response): Promise<void> {
