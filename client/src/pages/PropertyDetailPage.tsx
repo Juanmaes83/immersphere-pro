@@ -718,6 +718,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 spaces={property.spaces}
                 primaryColor={primaryColor}
                 removeBranding={property.removeBranding}
+                propertyTitle={property.title}
                 className="mt-8"
                 onAnalyticsEvent={handleAnalyticsEvent}
               />

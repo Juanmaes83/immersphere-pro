@@ -102,6 +102,10 @@ export interface UniversalViewerProps {
   primaryColor?: string;
   removeBranding?: boolean;
   className?: string;
+  /** Shown in the branded loading screen (seconds 0-2). Falls back to first space name. */
+  propertyTitle?: string;
+  /** Optional agency / studio name shown below the property title during load. */
+  agencyName?: string;
   onAnalyticsEvent: (event: ViewerEvent) => void;
 }
 

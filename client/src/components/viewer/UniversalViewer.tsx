@@ -144,6 +144,8 @@ export default function UniversalViewer({
   primaryColor = '#7C3AED',
   removeBranding = false,
   className = '',
+  propertyTitle,
+  agencyName,
   onAnalyticsEvent
 }: UniversalViewerProps): JSX.Element {
   const sortedSpaces = useMemo(() => sortSpaces(spaces), [spaces]);
@@ -161,6 +163,11 @@ export default function UniversalViewer({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMeasuring,  setIsMeasuring]  = useState(false);
   const [showDollhouse, setShowDollhouse] = useState(false);
+
+  // ── Branded loading screen ───────────────────────────────────────────────────
+  const [showBrandedLoading, setShowBrandedLoading] = useState(true);
+  const [loadingVisible,     setLoadingVisible]     = useState(true);
+  const [progressStarted,    setProgressStarted]    = useState(false);
 
   const viewerRef  = useRef<HTMLElement>(null);
   const sessionId  = useRef(`s-${Date.now()}-${Math.random().toString(16).slice(2)}`);
@@ -187,6 +194,22 @@ export default function UniversalViewer({
     }
     document.addEventListener('fullscreenchange', onFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
+  }, []);
+
+  // Branded loading: start progress bar after first paint, then fade out
+  useEffect(() => {
+    // Tiny delay so the browser paints width:0 before transitioning to 100%
+    const startProgress = setTimeout(() => { setProgressStarted(true); }, 60);
+    // Begin fade-out at 1.8s (progress bar reaches ~100% at 1.66s)
+    const startFade     = setTimeout(() => { setLoadingVisible(false); }, 1800);
+    // Remove the DOM node entirely after the 500ms fade completes
+    const removeDom     = setTimeout(() => { setShowBrandedLoading(false); }, 2350);
+    return () => {
+      clearTimeout(startProgress);
+      clearTimeout(startFade);
+      clearTimeout(removeDom);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function toggleFullscreen(): void {
@@ -384,8 +407,47 @@ export default function UniversalViewer({
   return (
     <section
       ref={viewerRef}
-      className={`overflow-hidden rounded-[1.6rem] bg-slate-950 text-white ${className} ${isFullscreen ? 'fixed inset-0 z-[9999] rounded-none' : ''}`}
+      className={`relative overflow-hidden rounded-[1.6rem] bg-slate-950 text-white ${className} ${isFullscreen ? 'fixed inset-0 z-[9999] rounded-none' : ''}`}
     >
+      {/* ── Branded loading screen (seconds 0–2) ──────────────────────────── */}
+      {showBrandedLoading ? (
+        <div
+          className="pointer-events-none absolute inset-0 z-[100] flex flex-col items-center justify-center bg-slate-950 px-6"
+          style={{
+            opacity: loadingVisible ? 1 : 0,
+            transition: 'opacity 500ms ease-in-out'
+          }}
+        >
+          {/* Accent line */}
+          <div
+            className="mb-10 h-px w-10 rounded-full"
+            style={{ backgroundColor: primaryColor }}
+          />
+
+          {/* Property title */}
+          <h2 className="max-w-xs text-center text-2xl font-black leading-snug tracking-tight text-white">
+            {propertyTitle ?? sortedSpaces[0]?.name ?? 'Experiencia inmersiva'}
+          </h2>
+
+          {/* Agency name / subtitle */}
+          <p className="mt-3 text-[0.65rem] font-bold uppercase tracking-[0.28em] text-white/35">
+            {agencyName ?? 'Experiencia inmersiva'}
+          </p>
+
+          {/* Progress line */}
+          <div className="mt-12 h-px w-28 overflow-hidden rounded-full bg-white/10">
+            <div
+              className="h-full rounded-full"
+              style={{
+                backgroundColor: primaryColor,
+                width: progressStarted ? '100%' : '0%',
+                transition: 'width 1660ms ease-in-out'
+              }}
+            />
+          </div>
+        </div>
+      ) : null}
+
       {showLeadModal ? (
         <LeadCaptureModal
           propertyId={propertyId}

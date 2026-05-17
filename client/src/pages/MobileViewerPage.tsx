@@ -129,6 +129,7 @@ export default function MobileViewerPage(): JSX.Element {
           spaces={selectedProperty.spaces}
           primaryColor={selectedProperty.tenantPrimaryColor || '#7C3AED'}
           removeBranding={selectedProperty.removeBranding}
+          propertyTitle={selectedProperty.title}
           className="h-full rounded-none border-0"
           onAnalyticsEvent={handleAnalyticsEvent}
         />
