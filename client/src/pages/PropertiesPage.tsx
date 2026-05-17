@@ -940,165 +940,160 @@ export default function PropertiesPage(): JSX.Element {
           {properties.map((property) => {
             const cover = getPropertyCover(property);
             return (
-            <article key={property.id} className="overflow-hidden rounded-[1.5rem] bg-white shadow-sm ring-1 ring-slate-200">
-              {/* ── Auto-cover hero ── */}
-              {cover ? (
-                <div className="relative h-32 overflow-hidden bg-slate-900">
-                  <img src={cover} alt="" className="h-full w-full object-cover opacity-80" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
-                  <div className="absolute bottom-3 left-4 right-4">
-                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/60">{translatePropertyType(property.type)}</p>
-                    <h3 className="text-lg font-black leading-tight text-white">{property.title}</h3>
-                    <p className="text-xs font-semibold text-white/60">{property.area} m² · {formatCurrency(property.price)}</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400" />
-              )}
+            <article key={property.id} className="overflow-hidden rounded-[1.75rem] bg-white shadow-sm ring-1 ring-slate-200/80 transition-shadow duration-300 hover:shadow-md">
 
-              <div className="p-5">
-              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                <div>
-                  {/* Badges row */}
-                  <div className="mb-2 flex flex-wrap gap-2">
-                    {!cover ? (
-                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
-                        {translatePropertyType(property.type)}
-                      </span>
-                    ) : null}
-                    <span className={`rounded-full px-3 py-1 text-xs font-black ${
-                      property.status === 'PUBLISHED'
-                        ? 'bg-emerald-50 text-emerald-700'
-                        : 'bg-amber-50 text-amber-700'
-                    }`}>
-                      {property.status === 'PUBLISHED' ? 'Publicado' : 'Borrador'}
+              {/* ── Cinematic hero ── */}
+              <div className="relative h-44 overflow-hidden bg-slate-950 sm:h-56">
+                {cover ? (
+                  <img
+                    src={cover}
+                    alt=""
+                    className="h-full w-full object-cover opacity-90 transition-transform duration-700 group-hover:scale-[1.03]"
+                  />
+                ) : (
+                  /* Synthetic hero: brand gradient + initials watermark */
+                  <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-violet-700 via-fuchsia-700 to-violet-900">
+                    <span className="select-none text-7xl font-black tracking-tighter text-white/10">
+                      {property.title.slice(0, 2).toUpperCase()}
                     </span>
                   </div>
+                )}
 
-                  {!cover ? (
-                    <>
-                      <h3 className="text-xl font-black">{property.title}</h3>
-                      <p className="mt-1 text-sm font-semibold text-slate-500">{property.area} m² · {formatCurrency(property.price)}</p>
-                    </>
-                  ) : null}
+                {/* Cinematic overlay: transparent top → slate-950/85 bottom */}
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/88 via-slate-950/30 to-transparent" />
 
-                  {/* Completeness chips */}
-                  <div className="mt-2 flex flex-wrap gap-1.5">
-                    {getPropertyCompleteness(property).map((item) => (
-                      <span
-                        key={item.label}
-                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black ${
-                          item.ok
-                            ? 'bg-emerald-50 text-emerald-700'
-                            : 'bg-amber-50 text-amber-600'
-                        }`}
-                      >
-                        <span>{item.ok ? '✓' : '⚠'}</span>
-                        {item.label}
-                      </span>
-                    ))}
-                  </div>
+                {/* Top-right: status badge only */}
+                <div className="absolute right-4 top-4">
+                  <span className={`rounded-full px-3 py-1 text-[10px] font-black backdrop-blur-sm ${
+                    property.status === 'PUBLISHED'
+                      ? 'bg-emerald-500/25 text-emerald-200 ring-1 ring-emerald-400/30'
+                      : 'bg-black/30 text-white/55 ring-1 ring-white/15'
+                  }`}>
+                    {property.status === 'PUBLISHED' ? 'Publicado' : 'Borrador'}
+                  </span>
                 </div>
 
-                <div className="flex flex-wrap gap-2">
-                  <button type="button" onClick={() => navigate(`/property/${property.id}`)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
-                    Ver
-                  </button>
-
-                  <button type="button" onClick={() => handleOpenSpaces(property)} className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-black text-violet-700 hover:bg-violet-100">
-                    {property.spaces.length === 0 ? 'Crear recorrido' : 'Diseñar recorrido'}
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void handleViewLeads(property.id)}
-                    className={`rounded-full px-4 py-2 text-sm font-black ${
-                      leadsPropertyId === property.id
-                        ? 'bg-cyan-700 text-white'
-                        : 'border border-cyan-200 bg-cyan-50 text-cyan-700 hover:bg-cyan-100'
-                    }`}
-                  >
-                    Leads ({property.leads})
-                  </button>
-
-                  <button type="button" onClick={() => handleEditProperty(property)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
-                    Editar
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => void handleTogglePublish(property)}
-                    className={`rounded-full px-4 py-2 text-sm font-black ${
-                      property.status === 'PUBLISHED'
-                        ? 'bg-slate-100 text-slate-700 hover:bg-slate-200'
-                        : 'bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
-                    }`}
-                  >
-                    {property.status === 'PUBLISHED' ? 'Despublicar' : 'Publicar'}
-                  </button>
-
-                  <button type="button" onClick={() => void handleDeleteProperty(property.id)} className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-700 hover:bg-red-100">
-                    Eliminar
-                  </button>
+                {/* Bottom: editorial title block */}
+                <div className="absolute bottom-0 left-0 right-0 p-5">
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-white/45">
+                    {translatePropertyType(property.type)}
+                  </p>
+                  <h3 className="mt-1 text-2xl font-black leading-tight tracking-tight text-white">
+                    {property.title}
+                  </h3>
+                  <div className="mt-2 flex items-baseline gap-3">
+                    <span className="text-base font-black tracking-tight text-white">
+                      {formatCurrency(property.price)}
+                    </span>
+                    <span className="text-xs font-semibold text-white/45">
+                      {property.area} m²
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* â”€â”€ Quick action footer â”€â”€ */}
-              <div className="mt-3 flex items-center justify-end gap-1 border-t border-slate-100 pt-3 dark:border-white/5">
-                {/* Copy public link */}
-                <button
-                  type="button"
-                  title="Copiar link público"
-                  onClick={(e) => { e.stopPropagation(); handleCopyProp(property.id, 'link', `${window.location.origin}/property/${property.id}`); }}
-                  className="flex items-center gap-1.5 rounded-lg p-2 text-slate-400 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 dark:text-white/30 dark:hover:bg-white/5 dark:hover:text-white/80"
-                >
-                  {copiedPropId === property.id && copiedPropType === 'link' ? IcoCheckSm : IcoLink}
-                  <span className="hidden text-ip-xs font-medium lg:block">
-                    {copiedPropId === property.id && copiedPropType === 'link' ? 'Copiado' : 'Copiar link'}
+              <div className="p-5">
+              {/* ── Completeness chips ── */}
+              <div className="flex flex-wrap gap-1.5">
+                {getPropertyCompleteness(property).map((item) => (
+                  <span
+                    key={item.label}
+                    className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black ${
+                      item.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-600'
+                    }`}
+                  >
+                    <span>{item.ok ? '✓' : '⚠'}</span>
+                    {item.label}
                   </span>
-                </button>
-                {/* WhatsApp share */}
+                ))}
+              </div>
+
+              {/* ── Actions ── */}
+              <div className="mt-4 flex flex-wrap items-center gap-2">
+                {/* Primary CTA */}
                 <button
                   type="button"
-                  title="Compartir por WhatsApp"
-                  onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(`Te comparto el tour inmersivo de ${property.title}: ${window.location.origin}/property/${property.id}`)}`, '_blank'); }}
-                  className="flex items-center gap-1.5 rounded-lg p-2 text-slate-400 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 dark:text-white/30 dark:hover:bg-white/5 dark:hover:text-white/80"
+                  onClick={() => navigate(`/property/${property.id}`)}
+                  className="rounded-full px-5 py-2.5 text-sm font-black text-white transition-opacity hover:opacity-90"
+                  style={bgStyle}
                 >
-                  {IcoWhatsApp}
-                  <span className="hidden text-ip-xs font-medium lg:block">WhatsApp</span>
+                  Abrir recorrido
                 </button>
-                {/* Copy embed */}
+
+                {/* Secondary: design flow */}
                 <button
                   type="button"
-                  title="Copiar código embed"
-                  onClick={(e) => { e.stopPropagation(); handleCopyProp(property.id, 'embed', `<iframe src="${window.location.origin}/embed/${property.id}" width="100%" height="600" frameborder="0" allowfullscreen></iframe>`); }}
-                  className="flex items-center gap-1.5 rounded-lg p-2 text-slate-400 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 dark:text-white/30 dark:hover:bg-white/5 dark:hover:text-white/80"
+                  onClick={() => handleOpenSpaces(property)}
+                  className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-black text-violet-700 hover:bg-violet-100"
                 >
-                  {copiedPropId === property.id && copiedPropType === 'embed' ? IcoCheckSm : IcoCode}
-                  <span className="hidden text-ip-xs font-medium lg:block">
-                    {copiedPropId === property.id && copiedPropType === 'embed' ? 'Copiado' : 'Embed'}
-                  </span>
+                  {property.spaces.length === 0 ? 'Crear recorrido' : 'Diseñar'}
                 </button>
-                {/* PDF download */}
+
+                {/* Publish toggle */}
                 <button
                   type="button"
-                  title="Descargar PDF"
-                  onClick={(e) => { e.stopPropagation(); window.open(`/api/properties/${property.id}/report.pdf`, '_blank'); }}
-                  className="flex items-center gap-1.5 rounded-lg p-2 text-slate-400 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 dark:text-white/30 dark:hover:bg-white/5 dark:hover:text-white/80"
+                  onClick={() => void handleTogglePublish(property)}
+                  className={`rounded-full px-4 py-2.5 text-sm font-black ${
+                    property.status === 'PUBLISHED'
+                      ? 'border border-slate-200 text-slate-500 hover:bg-slate-50'
+                      : 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
+                  }`}
                 >
-                  {IcoFilePdf}
-                  <span className="hidden text-ip-xs font-medium lg:block">PDF</span>
+                  {property.status === 'PUBLISHED' ? 'Despublicar' : 'Publicar'}
                 </button>
-                {/* Ver leads */}
+
+                {/* Edit — low-key tertiary */}
                 <button
                   type="button"
-                  title="Ver leads de esta propiedad"
-                  onClick={(e) => { e.stopPropagation(); navigate(`/leads?propertyId=${property.id}`); }}
-                  className="flex items-center gap-1.5 rounded-lg p-2 text-slate-400 transition-colors duration-150 hover:bg-slate-100 hover:text-slate-700 dark:text-white/30 dark:hover:bg-white/5 dark:hover:text-white/80"
+                  onClick={() => handleEditProperty(property)}
+                  className="rounded-full px-4 py-2.5 text-sm font-black text-slate-400 hover:bg-slate-50 hover:text-slate-700"
+                >
+                  Editar
+                </button>
+
+                {/* Delete — minimal, pushed right */}
+                <button
+                  type="button"
+                  onClick={() => void handleDeleteProperty(property.id)}
+                  className="ml-auto rounded-full px-3 py-2 text-sm font-black text-slate-300 hover:bg-red-50 hover:text-red-500"
+                  title="Eliminar propiedad"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* ── Quick actions footer ── */}
+              <div className="mt-3 flex items-center gap-0 border-t border-slate-100 pt-3">
+                {/* Leads count — left, visible */}
+                <button
+                  type="button"
+                  title="Ver leads"
+                  onClick={(e) => { e.stopPropagation(); void handleViewLeads(property.id); }}
+                  className={`flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold transition ${
+                    leadsPropertyId === property.id
+                      ? 'bg-slate-950 text-white'
+                      : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                  }`}
                 >
                   {IcoUsers}
-                  <span className="hidden text-ip-xs font-medium lg:block">Leads</span>
+                  <span>{property.leads} lead{property.leads !== 1 ? 's' : ''}</span>
                 </button>
+
+                {/* Icon-only strip — right */}
+                <div className="ml-auto flex items-center">
+                  <button type="button" title="Copiar link público" onClick={(e) => { e.stopPropagation(); handleCopyProp(property.id, 'link', `${window.location.origin}/property/${property.id}`); }} className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                    {copiedPropId === property.id && copiedPropType === 'link' ? IcoCheckSm : IcoLink}
+                  </button>
+                  <button type="button" title="Compartir por WhatsApp" onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(`Te comparto el tour inmersivo de ${property.title}: ${window.location.origin}/property/${property.id}`)}`, '_blank'); }} className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                    {IcoWhatsApp}
+                  </button>
+                  <button type="button" title="Copiar embed" onClick={(e) => { e.stopPropagation(); handleCopyProp(property.id, 'embed', `<iframe src="${window.location.origin}/embed/${property.id}" width="100%" height="600" frameborder="0" allowfullscreen></iframe>`); }} className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                    {copiedPropId === property.id && copiedPropType === 'embed' ? IcoCheckSm : IcoCode}
+                  </button>
+                  <button type="button" title="Descargar PDF" onClick={(e) => { e.stopPropagation(); window.open(`/api/properties/${property.id}/report.pdf`, '_blank'); }} className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                    {IcoFilePdf}
+                  </button>
+                </div>
               </div>
 
               {expandedPropertyId === property.id ? (() => {
@@ -1135,7 +1130,7 @@ export default function PropertiesPage(): JSX.Element {
                   {/* ── B. Siguiente paso contextual ── */}
                   <div className="mx-3 mt-2">
                     {nextStep ? (
-                      <div className="rounded-2xl border border-violet-200/60 bg-violet-600/8 px-4 py-3">
+                      <div className="rounded-2xl border border-violet-200/60 bg-violet-50/80 px-4 py-3">
                         <p className="text-sm font-black text-violet-900">{nextStep.title}</p>
                         <p className="mt-0.5 text-xs font-semibold text-violet-700/70">{nextStep.body}</p>
                       </div>
@@ -1312,7 +1307,7 @@ export default function PropertiesPage(): JSX.Element {
                                   ) : isUploadingAsset ? (
                                     <span className="h-6 w-6 animate-spin rounded-full border-2 border-violet-300 border-t-violet-700" />
                                   ) : (
-                                    <span className="text-2xl leading-none">{isDragOver ? 'ðŸ“‚' : 'ðŸ“'}</span>
+                                    <span className="text-2xl leading-none">{isDragOver ? 'ðŸ"‚' : 'ðŸ"'}</span>
                                   )}
 
                                   {/* Label */}
@@ -1322,7 +1317,7 @@ export default function PropertiesPage(): JSX.Element {
                                       : isDragOver
                                         ? 'Suelta el archivo aquí'
                                         : uploadPhase === 'done'
-                                          ? `âœ“ ${selectedAssetFileName ?? 'Archivo subido'}`
+                                          ? `âœ" ${selectedAssetFileName ?? 'Archivo subido'}`
                                           : 'Arrastra tu archivo aquí o haz clic para seleccionar'}
                                   </span>
 
@@ -1363,7 +1358,7 @@ export default function PropertiesPage(): JSX.Element {
                                       /* GLB / Splat: file card */
                                       <div className="flex items-center gap-3 px-4 py-3">
                                         <span className="text-2xl leading-none">
-                                          {assetPreviewType === 'gaussian_splat' ? 'âœ¨' : 'ðŸ“¦'}
+                                          {assetPreviewType === 'gaussian_splat' ? 'âœ¨' : 'ðŸ"¦'}
                                         </span>
                                         <div className="min-w-0 flex-1">
                                           <p className="truncate text-sm font-black text-slate-900">{selectedAssetFileName}</p>
@@ -1453,7 +1448,7 @@ export default function PropertiesPage(): JSX.Element {
                                 ) : null}
                               </div>
 
-                              {/* â”€â”€ Visual hotspot placement editor (panorama_360 only) â”€â”€ */}
+                              {/* â"€â"€ Visual hotspot placement editor (panorama_360 only) â"€â"€ */}
                               {assetForm.type === 'panorama_360' && assetForm.url.trim() ? (
                                 <div
                                   ref={hotspotPreviewRef}
@@ -1873,7 +1868,7 @@ export default function PropertiesPage(): JSX.Element {
               })() : null}
 
               {leadsPropertyId === property.id ? (
-                <div className="mt-5 rounded-[1.25rem] border border-cyan-100 bg-cyan-50/60 p-4">
+                <div className="mt-5 rounded-[1.25rem] border border-slate-200 bg-slate-50 p-4">
                   <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
                       <h4 className="text-lg font-black text-slate-950">Leads captados</h4>
