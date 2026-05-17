@@ -63,7 +63,7 @@ function DetailStat({ label, value }: { label: string; value: string | number })
 
 function PropertyHero({ property, primaryColor }: { property: ImmersiveProperty; primaryColor: string }): JSX.Element {
   return (
-    <div className="relative min-h-[420px] bg-gradient-to-br from-cyan-400/35 via-violet-500/20 to-slate-950">
+    <div className="relative min-h-[420px] bg-gradient-to-br from-violet-400/35 via-fuchsia-500/20 to-slate-950">
       {property.coverImage ? (
         <img src={property.coverImage} alt={property.title} className="absolute inset-0 h-full w-full object-cover" />
       ) : null}
@@ -101,7 +101,7 @@ const EVENT_TYPE_LABELS: Record<string, string> = {
 
 const EVENT_TYPE_COLORS: Record<string, string> = {
   viewer_open: 'text-slate-400',
-  space_change: 'text-cyan-400',
+  space_change: 'text-violet-400',
   hotspot_click: 'text-violet-400',
   viewer_drag: 'text-sky-400',
   lead_cta: 'text-emerald-400',
@@ -113,7 +113,7 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
 };
 
 function ScoreBadge({ score }: { score: number }): JSX.Element {
-  const color = score >= 70 ? 'from-emerald-500 to-cyan-500' : score >= 35 ? 'from-amber-500 to-orange-500' : 'from-slate-600 to-slate-500';
+  const color = score >= 70 ? 'from-emerald-500 to-violet-500' : score >= 35 ? 'from-amber-500 to-orange-500' : 'from-slate-600 to-slate-500';
   return (
     <div className={`flex h-20 w-20 flex-col items-center justify-center rounded-full bg-gradient-to-br ${color} shadow-lg`}>
       <span className="text-2xl font-black text-white leading-none">{score}</span>
@@ -136,8 +136,8 @@ function AnalyticsDashboard({ summary, primaryColor, spaces }: {
   return (
     <section className="mt-6 overflow-hidden rounded-[1.6rem] bg-slate-950 text-white">
       <div className="border-b border-white/10 px-6 py-5">
-        <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
-          Analytics del visor
+        <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">
+          Rendimiento del recorrido
         </p>
         <p className="mt-1 text-xs text-white/40">Comportamiento real de visitantes en esta propiedad</p>
       </div>
@@ -160,8 +160,8 @@ function AnalyticsDashboard({ summary, primaryColor, spaces }: {
               <p className="mt-1 text-3xl font-black text-emerald-300">{summary.leadCtas}</p>
             </div>
             <div className="rounded-2xl bg-white/[0.07] p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-cyan-400/80">Estancias</p>
-              <p className="mt-1 text-3xl font-black text-cyan-300">{summary.spaceChanges}</p>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-violet-400/80">Estancias</p>
+              <p className="mt-1 text-3xl font-black text-violet-300">{summary.spaceChanges}</p>
             </div>
           </div>
         </div>
@@ -170,8 +170,8 @@ function AnalyticsDashboard({ summary, primaryColor, spaces }: {
         {(topSpaceName || summary.topHotspotLabel) ? (
           <div className="mt-5 flex flex-wrap gap-3">
             {topSpaceName ? (
-              <div className="flex items-center gap-2 rounded-full bg-cyan-500/15 px-4 py-2 text-sm">
-                <span className="text-cyan-400 font-bold">Estancia top</span>
+              <div className="flex items-center gap-2 rounded-full bg-violet-500/15 px-4 py-2 text-sm">
+                <span className="text-violet-400 font-bold">Estancia top</span>
                 <span className="text-white font-black">{topSpaceName}</span>
               </div>
             ) : null}

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 
 interface LeadCaptureModalProps {
   propertyId: string;
@@ -85,7 +85,7 @@ export default function LeadCaptureModal({
         <div className="border-b border-white/10 px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
                 Solicitud de contacto
               </p>
               <h2 className="mt-1 text-xl font-black leading-snug">{hotspotLabel}</h2>
@@ -139,7 +139,7 @@ export default function LeadCaptureModal({
                     placeholder="tu@email.com"
                     required
                     disabled={state === 'submitting'}
-                    className="w-full rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 text-sm font-semibold text-white placeholder:text-white/25 outline-none focus:border-cyan-500 focus:bg-white/10 disabled:opacity-50"
+                    className="w-full rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 text-sm font-semibold text-white placeholder:text-white/25 outline-none focus:border-violet-500 focus:bg-white/10 disabled:opacity-50"
                   />
                 </div>
 
@@ -153,7 +153,7 @@ export default function LeadCaptureModal({
                     onChange={(e) => setPhone(e.target.value)}
                     placeholder="+34 600 000 000"
                     disabled={state === 'submitting'}
-                    className="w-full rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 text-sm font-semibold text-white placeholder:text-white/25 outline-none focus:border-cyan-500 focus:bg-white/10 disabled:opacity-50"
+                    className="w-full rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 text-sm font-semibold text-white placeholder:text-white/25 outline-none focus:border-violet-500 focus:bg-white/10 disabled:opacity-50"
                   />
                 </div>
 
@@ -167,7 +167,7 @@ export default function LeadCaptureModal({
                     placeholder="Estoy interesado en esta propiedad..."
                     rows={3}
                     disabled={state === 'submitting'}
-                    className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 text-sm font-semibold text-white placeholder:text-white/25 outline-none focus:border-cyan-500 focus:bg-white/10 disabled:opacity-50"
+                    className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 text-sm font-semibold text-white placeholder:text-white/25 outline-none focus:border-violet-500 focus:bg-white/10 disabled:opacity-50"
                   />
                 </div>
 

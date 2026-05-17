@@ -294,7 +294,7 @@ export default function DollhouseViewer({
           Panorama 360°
         </span>
         <span className="flex items-center gap-2">
-          <span className="h-2.5 w-2.5 rounded-sm bg-cyan-500" />
+          <span className="h-2.5 w-2.5 rounded-sm bg-violet-500" />
           Vista inmersiva
         </span>
         <span className="mt-1 border-t border-white/10 pt-1 font-black uppercase tracking-wider text-white/40">

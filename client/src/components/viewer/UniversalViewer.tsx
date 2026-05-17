@@ -122,7 +122,7 @@ class ViewerErrorBoundary extends Component<EBProps, EBState> {
         <div className="flex min-h-[520px] flex-col items-center justify-center gap-4 rounded-[1.5rem] bg-slate-800 p-6 text-center">
           <p className="text-4xl">⚠️</p>
           <p className="text-sm font-black text-white">Error al cargar el visor</p>
-          <p className="text-xs text-white/50">{this.state.error?.message ?? 'Error desconocido'}</p>
+          <p className="text-xs text-white/50">No pudimos cargar el visor. Inténtalo de nuevo.</p>
           <button
             type="button"
             onClick={() => { this.setState({ hasError: false, error: null }); }}
@@ -459,8 +459,8 @@ export default function UniversalViewer({
   if (!activeSpace || !activeAsset) {
     return (
       <section className={`rounded-[1.6rem] bg-slate-950 p-6 text-white ${className}`}>
-        <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
-          Visor universal
+        <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">
+          Experiencia inmersiva
         </p>
         <h2 className="mt-3 text-3xl font-black">Sin estancias configuradas</h2>
         <p className="mt-3 text-white/60">
@@ -545,11 +545,11 @@ export default function UniversalViewer({
         <div>
           {/* Tour counter always visible — it's UX, not branding */}
           {isGuidedTour ? (
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">
               Tour guiado · {guidedTourIdx + 1} / {sortedSpaces.length}
             </p>
           ) : !removeBranding ? (
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">
               Recorrido inmersivo
             </p>
           ) : null}
@@ -764,7 +764,7 @@ export default function UniversalViewer({
           {isGuidedTour && !activeHotspot ? (
             <>
               <div className="rounded-2xl bg-white/10 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
                   Tour guiado
                 </p>
                 <div className="mt-3 flex items-center justify-between text-xs font-bold text-white/50">
@@ -773,7 +773,7 @@ export default function UniversalViewer({
                 </div>
                 <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
                   <div
-                    className="h-full rounded-full bg-cyan-400 transition-all duration-500"
+                    className="h-full rounded-full bg-violet-400 transition-all duration-500"
                     style={{ width: `${tourProgress}%` }}
                   />
                 </div>
@@ -828,7 +828,7 @@ export default function UniversalViewer({
             /* DEFAULT / HOTSPOT PANEL */
             <>
               <div className="rounded-2xl bg-white/10 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
                   Estancia activa
                 </p>
                 <h3 className="mt-3 text-2xl font-black">{activeSpace.name}</h3>
@@ -845,7 +845,7 @@ export default function UniversalViewer({
               </div>
 
               <div className="mt-5 rounded-2xl bg-white/10 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-cyan-300">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
                   Información
                 </p>
 
