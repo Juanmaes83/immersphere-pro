@@ -1,4 +1,5 @@
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import DollhouseViewer from '@/components/viewer/DollhouseViewer';
 import GaussianSplatViewer from '@/components/viewer/GaussianSplatViewer';
 import LeadCaptureModal from '@/components/viewer/LeadCaptureModal';
@@ -94,6 +95,46 @@ function formatSpaceDimensions(dims: Space['dimensions']): string | null {
   if (dims.height != null) parts.push(`altura ${dims.height} m`);
   if (dims.depth != null)  parts.push(`fondo ${dims.depth} m`);
   return parts.length > 0 ? parts.join(' · ') : null;
+}
+
+// ── Error boundary ──────────────────────────────────────────────────────────
+
+interface EBState { hasError: boolean; error: Error | null }
+interface EBProps  { children: ReactNode }
+
+class ViewerErrorBoundary extends Component<EBProps, EBState> {
+  constructor(props: EBProps) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error): EBState {
+    return { hasError: true, error };
+  }
+
+  override componentDidCatch(error: Error, info: ErrorInfo): void {
+    console.error('[ViewerErrorBoundary]', error, info.componentStack);
+  }
+
+  override render(): ReactNode {
+    if (this.state.hasError) {
+      return (
+        <div className="flex min-h-[520px] flex-col items-center justify-center gap-4 rounded-[1.5rem] bg-slate-800 p-6 text-center">
+          <p className="text-4xl">⚠️</p>
+          <p className="text-sm font-black text-white">Error al cargar el visor</p>
+          <p className="text-xs text-white/50">{this.state.error?.message ?? 'Error desconocido'}</p>
+          <button
+            type="button"
+            onClick={() => { this.setState({ hasError: false, error: null }); }}
+            className="rounded-xl bg-white/10 px-4 py-2 text-xs font-bold text-white/70 transition hover:bg-white/20"
+          >
+            Reintentar
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
 }
 
 export default function UniversalViewer({
@@ -465,53 +506,55 @@ export default function UniversalViewer({
 
         {/* Viewer area */}
         <div className="relative p-5">
-          {showDollhouse ? (
-            <DollhouseViewer
-              spaces={sortedSpaces}
-              primaryColor={primaryColor}
-              activeSpaceId={activeSpace.id}
-              onSpaceClick={(spaceId) => { handleSpaceChange(spaceId); }}
-            />
-          ) : activeAsset.type === 'panorama_360' ? (
-            <PanoramaViewer
-              key={`pano-${activeSpace.id}-${activeAsset.id}`}
-              propertyId={propertyId}
-              spaceId={activeSpace.id}
-              asset={activeAsset}
-              primaryColor={primaryColor}
-              measureMode={isMeasuring}
-              onHotspotClick={handleHotspotClick}
-              onAnalyticsEvent={onAnalyticsEvent}
-            />
-          ) : activeAsset.type === 'gaussian_splat' ? (
-            <GaussianSplatViewer
-              key={`splat-${activeSpace.id}-${activeAsset.id}`}
-              propertyId={propertyId}
-              spaceId={activeSpace.id}
-              asset={activeAsset}
-              primaryColor={primaryColor}
-              measureMode={isMeasuring}
-              onAnalyticsEvent={onAnalyticsEvent}
-            />
-          ) : (
-            <Suspense
-              key={`glb-${activeSpace.id}-${activeAsset.id}`}
-              fallback={
-                <div className="flex min-h-[520px] items-center justify-center rounded-[1.5rem] bg-slate-800">
-                  <p className="text-sm font-bold text-slate-400">Cargando modelo 3D...</p>
-                </div>
-              }
-            >
-              <GlbViewer
-                src={activeAsset.url}
-                alt={activeSpace.name}
-                autoRotate
-                cameraControls
-                ar={false}
-                className="min-h-[520px]"
+          <ViewerErrorBoundary key={`eb-${activeSpace.id}`}>
+            {showDollhouse ? (
+              <DollhouseViewer
+                spaces={sortedSpaces}
+                primaryColor={primaryColor}
+                activeSpaceId={activeSpace.id}
+                onSpaceClick={(spaceId) => { handleSpaceChange(spaceId); }}
               />
-            </Suspense>
-          )}
+            ) : activeAsset.type === 'panorama_360' ? (
+              <PanoramaViewer
+                key={`pano-${activeSpace.id}-${activeAsset.id}`}
+                propertyId={propertyId}
+                spaceId={activeSpace.id}
+                asset={activeAsset}
+                primaryColor={primaryColor}
+                measureMode={isMeasuring}
+                onHotspotClick={handleHotspotClick}
+                onAnalyticsEvent={onAnalyticsEvent}
+              />
+            ) : activeAsset.type === 'gaussian_splat' ? (
+              <GaussianSplatViewer
+                key={`splat-${activeSpace.id}-${activeAsset.id}`}
+                propertyId={propertyId}
+                spaceId={activeSpace.id}
+                asset={activeAsset}
+                primaryColor={primaryColor}
+                measureMode={isMeasuring}
+                onAnalyticsEvent={onAnalyticsEvent}
+              />
+            ) : (
+              <Suspense
+                key={`glb-${activeSpace.id}-${activeAsset.id}`}
+                fallback={
+                  <div className="flex min-h-[520px] items-center justify-center rounded-[1.5rem] bg-slate-800">
+                    <p className="text-sm font-bold text-slate-400">Cargando modelo 3D...</p>
+                  </div>
+                }
+              >
+                <GlbViewer
+                  src={activeAsset.url}
+                  alt={activeSpace.name}
+                  autoRotate
+                  cameraControls
+                  ar={false}
+                  className="min-h-[520px]"
+                />
+              </Suspense>
+            )}
+          </ViewerErrorBoundary>
           {/* ── Prev / Next overlay navigation ─────────────────────────────── */}
           {sortedSpaces.length >= 2 && !showDollhouse ? (
             <div className="pointer-events-none absolute inset-x-5 bottom-8 flex items-end justify-between gap-3">
