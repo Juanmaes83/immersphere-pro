@@ -52,10 +52,10 @@ function getProgressSteps(property: { title: string; spaces: Array<{ assets: unk
   const hasSpaces = property.spaces.length > 0;
   const hasScenes = property.spaces.some((s) => (s.assets as unknown[]).length > 0);
   return [
-    { label: 'Datos básicos', ok: Boolean(property.title) },
-    { label: hasSpaces ? `${property.spaces.length} estancia${property.spaces.length !== 1 ? 's' : ''}` : 'Estancias', ok: hasSpaces },
+    { label: 'Informacion principal', ok: Boolean(property.title) },
+    { label: hasSpaces ? 'Espacios definidos' : 'Define los espacios', ok: hasSpaces },
     { label: 'Escenas inmersivas', ok: hasScenes },
-    { label: 'Publicado', ok: property.status === 'PUBLISHED' }
+    { label: 'Listo para publicar', ok: property.status === 'PUBLISHED' }
   ];
 }
 
@@ -71,9 +71,9 @@ function getPropertyCompleteness(property: { title: string; spaces: Array<{ asse
 function getNextStep(property: { title: string; spaces: Array<{ assets: Array<{ thumbnail?: string; url?: string; type?: string }> }>; status?: string }): { title: string; body: string } | null {
   const hasSpaces = property.spaces.length > 0;
   const hasScenes = property.spaces.some((s) => s.assets.length > 0);
-  if (!hasSpaces) return { title: 'Añade las estancias del recorrido', body: 'Cada estancia es una parada en el tour. Empieza por el salón, la cocina o la entrada.' };
-  if (!hasScenes) return { title: 'Sube las escenas inmersivas', body: 'Añade un panorama 360° o un escaneo 3D a cada estancia para que los compradores la recorran.' };
-  if (property.status !== 'PUBLISHED') return { title: 'Tu recorrido está listo para publicarse', body: 'Todo en orden. Publícalo ahora para que los compradores accedan al tour inmersivo.' };
+  if (!hasSpaces) return { title: 'Define los espacios del recorrido', body: 'Cada espacio es una parada en la experiencia. Empieza por el espacio principal: el salon, la entrada o la terraza.' };
+  if (!hasScenes) return { title: 'Añade las escenas de cada espacio', body: 'Sube un panorama 360° o un escaneo 3D. Los visitantes comenzaran la experiencia desde aqui.' };
+  if (property.status !== 'PUBLISHED') return { title: 'El recorrido esta listo para publicarse', body: 'Todo en orden. Publícalo para que los compradores accedan a la experiencia.' };
   return null;
 }
 
@@ -933,8 +933,8 @@ export default function PropertiesPage(): JSX.Element {
           {!isLoading && properties.length === 0 ? (
             <EmptyState
               icon={IcoBuilding}
-              title="Crea tu primera propiedad inmersiva"
-              body="Empieza a medir visitas, contactos y rendimiento comercial desde un solo lugar."
+              title="Tu primer recorrido inmersivo"
+              body="Crea una propiedad, define sus espacios y sube las escenas. Los compradores podran explorarla como si estuvieran dentro."
             />
           ) : null}
           {properties.map((property) => {
@@ -1146,7 +1146,7 @@ export default function PropertiesPage(): JSX.Element {
                   <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
                       <h4 className="text-lg font-black text-slate-950">Construir experiencia</h4>
-                      <p className="text-sm font-semibold text-slate-500">Añade estancias y escenas para crear el recorrido inmersivo.</p>
+                      <p className="text-sm font-semibold text-slate-500">Define los espacios y añade las escenas para construir la experiencia.</p>
                     </div>
                     <button type="button" onClick={() => resetSpaceForm(property.id)} className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
                       Nueva estancia
@@ -1177,8 +1177,8 @@ export default function PropertiesPage(): JSX.Element {
                   <div className="mt-4 grid grid-cols-1 gap-3">
                     {property.spaces.length === 0 ? (
                       <div className="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
-                        <p className="text-sm font-black text-slate-800">Añade la primera estancia</p>
-                        <p className="mt-1 text-xs font-semibold text-slate-400">Divide el recorrido en habitaciones, salas o zonas para crear una experiencia inmersiva completa.</p>
+                        <p className="text-sm font-black text-slate-800">Define los espacios del recorrido</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-400">Cada espacio es una parada en la experiencia. Empieza por el espacio principal: el salon, la entrada o la terraza.</p>
                       </div>
                     ) : (
                       property.spaces.map((space) => (
@@ -1809,8 +1809,8 @@ export default function PropertiesPage(): JSX.Element {
                             <div className="grid grid-cols-1 gap-2">
                               {space.assets.length === 0 ? (
                                 <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-                                  <p className="text-sm font-black text-slate-800">Aún no hay escenas en esta estancia</p>
-                                  <p className="mt-1 text-xs font-semibold text-slate-400">Sube un panorama 360° o un escaneo 3D para que los compradores puedan recorrerla.</p>
+                                  <p className="text-sm font-black text-slate-800">Empieza el recorrido con una escena principal</p>
+                                  <p className="mt-1 text-xs font-semibold text-slate-400">Los visitantes comenzaran la experiencia desde aqui. Sube un panorama 360° o un escaneo 3D.</p>
                                 </div>
                               ) : (
                                 space.assets.map((asset) => (
@@ -1891,7 +1891,7 @@ export default function PropertiesPage(): JSX.Element {
                     <div className="rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{leadsError}</div>
                   ) : leads.length === 0 ? (
                     <div className="rounded-2xl bg-white p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">
-                      Esta propiedad aún no tiene leads capturados.
+                      Aun no hay contactos para esta propiedad. Los leads apareceran aqui cuando los compradores interactuen con el tour.
                     </div>
                   ) : (
                     <div className="overflow-x-auto rounded-2xl bg-white ring-1 ring-slate-200">
