@@ -568,9 +568,10 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   if (isLoading) {
     return (
       <main className="min-h-[calc(100vh-73px)] bg-[#F8FAFC] text-slate-950">
-        <section className="mx-auto max-w-3xl px-5 py-20 text-center">
-          <h1 className="text-4xl font-black">Cargando propiedad...</h1>
-          <p className="mt-3 text-slate-500">Conectando con el backend real.</p>
+        <section className="mx-auto flex max-w-3xl flex-col items-center px-5 py-24 text-center">
+          <div className="mb-6 h-9 w-9 animate-spin rounded-full border-2 border-slate-200 border-t-slate-950" />
+          <p className="text-lg font-black text-slate-950">Cargando propiedad...</p>
+          <p className="mt-2 text-sm text-slate-400">Un momento</p>
         </section>
       </main>
     );

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+﻿import { useCallback, useEffect, useRef, useState } from 'react';
 import LeadCaptureModal from '@/components/viewer/LeadCaptureModal';
 
 interface ChatbotWidgetProps {
@@ -28,32 +28,32 @@ function hasAny(input: string, words: string[]): boolean {
 
 function getReply(input: string): { text: string; cta?: 'contact' } {
   if (hasAny(input, ['precio', 'cuesta', 'vale', 'coste', 'costar', 'euro', 'eur'])) {
-    return { text: 'El precio está indicado en la ficha de la propiedad. ¿Quieres que un agente te contacte para hablar de condiciones?' };
+    return { text: 'El precio exacto está en la ficha. ¿Quieres que un agente te llame para hablar de condiciones?' };
   }
   if (hasAny(input, ['habitacion', 'dormitorio', 'cuarto', 'bano', 'aseo', 'garaje', 'terraza', 'piscina', 'metro', 'superficie', 'm2'])) {
-    return { text: 'Puedes ver todos los detalles de habitaciones, superficies y zonas en la ficha completa de la propiedad. ¿Necesitas más información?' };
+    return { text: 'Habitaciones, m² y zonas están detallados en la ficha. ¿Te ayudo con algo más?' };
   }
   if (hasAny(input, ['zona', 'barrio', 'ubicacion', 'ubicar', 'donde', 'localizacion', 'cerca', 'colegio', 'transporte', 'metro', 'bus'])) {
-    return { text: 'Puedes ver la ubicación exacta y el mapa en la ficha de la propiedad. ¿Quieres que te expliquemos más sobre el entorno?' };
+    return { text: 'La ubicación exacta y el mapa están en la ficha. ¿Quieres que un agente te cuente más sobre el entorno?' };
   }
   if (hasAny(input, ['visita', 'ver', 'cita', 'reservar', 'agendar', 'cuando', 'disponibilidad', 'horario', 'quedar'])) {
-    return { text: '¡Perfecto! Podemos organizar una visita. Rellena el formulario o llámanos directamente:', cta: 'contact' };
+    return { text: '¡Genial, lo organizamos! Elige cómo prefieres contactar:', cta: 'contact' };
   }
   if (hasAny(input, ['contactar', 'contacto', 'agente', 'hablar', 'llamar', 'email', 'correo', 'whatsapp'])) {
-    return { text: 'Puedes contactar con nosotros a través del formulario o directamente por teléfono:', cta: 'contact' };
+    return { text: 'Claro, aquí tienes las opciones para hablar con el agente:', cta: 'contact' };
   }
   if (hasAny(input, ['hola', 'buenas', 'buenos', 'hey', 'saludos', 'ola'])) {
-    return { text: '¡Hola! Soy el asistente de esta propiedad. ¿En qué puedo ayudarte? Puedo resolver dudas sobre precio, habitaciones, ubicación o concertar una visita.' };
+    return { text: '¡Hola! Cuéntame qué buscas — precio, habitaciones, zona, visita...' };
   }
   if (hasAny(input, ['gracias', 'ok', 'perfecto', 'genial', 'bien', 'adios', 'hasta'])) {
-    return { text: '¡De nada! Si tienes más preguntas, aquí estaré. ¡Que tengas un buen día!' };
+    return { text: '¡De nada! Si necesitas algo más, aquí estoy.' };
   }
-  return { text: 'No estoy seguro de haber entendido bien tu pregunta. Puedo ayudarte con dudas sobre precio, habitaciones, zona, visitas o contacto con el agente.' };
+  return { text: 'No entendí del todo bien. Pregúntame sobre precio, habitaciones, zona, visitas o contacto con el agente.' };
 }
 
 const WELCOME: Message = {
   role: 'bot',
-  text: '¡Hola! Soy el asistente de esta propiedad. Pregúntame sobre precio, habitaciones, zona o reserva una visita.'
+  text: '¡Hola! Cuéntame qué te interesa saber: precio, habitaciones, zona... o si quieres organizar una visita.'
 };
 
 export default function ChatbotWidget({
@@ -109,7 +109,7 @@ export default function ChatbotWidget({
         type="button"
         aria-label="Abrir chatbot"
         onClick={() => setOpen((o) => !o)}
-        className="fixed bottom-5 right-5 z-[9990] flex h-14 w-14 items-center justify-center rounded-full shadow-xl transition-transform hover:scale-105 focus:outline-none"
+        className="fixed bottom-5 right-5 z-[10000] flex h-14 w-14 items-center justify-center rounded-full shadow-xl transition-transform hover:scale-105 focus:outline-none"
         style={{ backgroundColor: primaryColor }}
       >
         {open ? (
@@ -123,8 +123,8 @@ export default function ChatbotWidget({
       {open ? (
         <div
           ref={panelRef}
-          className="fixed bottom-24 right-5 z-[9990] flex w-[320px] flex-col overflow-hidden rounded-[1.4rem] bg-slate-900 text-white shadow-2xl"
-          style={{ height: '400px' }}
+          className="fixed bottom-24 right-5 z-[10000] flex w-[320px] max-w-[calc(100vw-2.5rem)] flex-col overflow-hidden rounded-[1.4rem] bg-slate-900 text-white shadow-2xl"
+          style={{ height: 'min(400px, calc(100dvh - 8rem))' }}
         >
           {/* Header */}
           <div

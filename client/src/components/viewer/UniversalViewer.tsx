@@ -724,7 +724,10 @@ export default function UniversalViewer({
           </div>{/* end micro-scale wrapper */}
           {/* ── Prev / Next overlay navigation ─────────────────────────────── */}
           {sortedSpaces.length >= 2 && !showDollhouse ? (
-            <div className="pointer-events-none absolute inset-x-5 bottom-8 flex items-end justify-between gap-3">
+            <div
+              className="pointer-events-none absolute inset-x-5 flex items-end justify-between gap-3"
+              style={{ bottom: 'max(2rem, calc(env(safe-area-inset-bottom, 0px) + 1.25rem))' }}
+            >
               {prevSpace ? (
                 <button
                   type="button"
