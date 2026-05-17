@@ -9,7 +9,7 @@ import type { Hotspot } from '@/types/viewer';
 import type { LeadRecord, UploadAssetResponse } from '@/types/api';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FormInput, FormTextarea } from '@/components/ui/FormFields';
-import { IcoBuilding, IcoLink, IcoWhatsApp, IcoCode, IcoFilePdf, IcoUsers, IcoCheckSm } from '@/components/ui/icons';
+import { IcoBuilding, IcoLink, IcoWhatsApp, IcoCode, IcoFilePdf, IcoUsers, IcoCheckSm, IcoPencil } from '@/components/ui/icons';
 import { formatCurrency } from '@/utils/format';
 
 const GlbViewer = lazy(() => import('@/components/viewer/GlbViewer'));
@@ -1014,17 +1014,17 @@ export default function PropertiesPage(): JSX.Element {
                 <button
                   type="button"
                   onClick={() => navigate(`/property/${property.id}`)}
-                  className="rounded-full px-5 py-2.5 text-sm font-black text-white transition-opacity hover:opacity-90"
+                  className="inline-flex items-center gap-1.5 rounded-full px-5 py-2.5 text-sm font-black text-white transition-opacity hover:opacity-90"
                   style={bgStyle}
                 >
-                  Abrir recorrido
+                  Explorar recorrido <span aria-hidden="true" className="opacity-70">&#8594;</span>
                 </button>
 
                 {/* Secondary: design flow */}
                 <button
                   type="button"
                   onClick={() => handleOpenSpaces(property)}
-                  className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-black text-violet-700 hover:bg-violet-100"
+                  className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-black text-violet-700 transition-colors hover:bg-violet-100"
                 >
                   {property.spaces.length === 0 ? 'Crear recorrido' : 'Diseñar'}
                 </button>
@@ -1033,29 +1033,20 @@ export default function PropertiesPage(): JSX.Element {
                 <button
                   type="button"
                   onClick={() => void handleTogglePublish(property)}
-                  className={`rounded-full px-4 py-2.5 text-sm font-black ${
+                  className={`rounded-full px-4 py-2.5 text-sm font-black transition-colors ${
                     property.status === 'PUBLISHED'
-                      ? 'border border-slate-200 text-slate-500 hover:bg-slate-50'
+                      ? 'border border-slate-200 bg-slate-50 text-slate-500 hover:bg-slate-100'
                       : 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100'
                   }`}
                 >
                   {property.status === 'PUBLISHED' ? 'Despublicar' : 'Publicar'}
                 </button>
 
-                {/* Edit — low-key tertiary */}
-                <button
-                  type="button"
-                  onClick={() => handleEditProperty(property)}
-                  className="rounded-full px-4 py-2.5 text-sm font-black text-slate-400 hover:bg-slate-50 hover:text-slate-700"
-                >
-                  Editar
-                </button>
-
                 {/* Delete — minimal, pushed right */}
                 <button
                   type="button"
                   onClick={() => void handleDeleteProperty(property.id)}
-                  className="ml-auto rounded-full px-3 py-2 text-sm font-black text-slate-300 hover:bg-red-50 hover:text-red-500"
+                  className="ml-auto rounded-full px-3 py-2 text-sm font-black text-slate-400 transition-colors hover:bg-red-50 hover:text-red-500"
                   title="Eliminar propiedad"
                 >
                   ×
@@ -1080,17 +1071,27 @@ export default function PropertiesPage(): JSX.Element {
                 </button>
 
                 {/* Icon-only strip — right */}
-                <div className="ml-auto flex items-center">
-                  <button type="button" title="Copiar link público" onClick={(e) => { e.stopPropagation(); handleCopyProp(property.id, 'link', `${window.location.origin}/property/${property.id}`); }} className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                <div className="ml-auto flex items-center gap-1">
+                  {/* Edit datos */}
+                  <button type="button" title="Editar datos" onClick={(e) => { e.stopPropagation(); handleEditProperty(property); }} className="rounded-xl p-2.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                    {IcoPencil}
+                  </button>
+                  {/* Separator */}
+                  <span aria-hidden="true" className="mx-1.5 h-3.5 w-px self-center bg-slate-900/10" />
+                  {/* Compartir */}
+                  <button type="button" title="Copiar link publico" onClick={(e) => { e.stopPropagation(); handleCopyProp(property.id, 'link', `${window.location.origin}/property/${property.id}`); }} className="rounded-xl p-2.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
                     {copiedPropId === property.id && copiedPropType === 'link' ? IcoCheckSm : IcoLink}
                   </button>
-                  <button type="button" title="Compartir por WhatsApp" onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(`Te comparto el tour inmersivo de ${property.title}: ${window.location.origin}/property/${property.id}`)}`, '_blank'); }} className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                  <button type="button" title="Compartir por WhatsApp" onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(`Te comparto el tour inmersivo de ${property.title}: ${window.location.origin}/property/${property.id}`)}`, '_blank'); }} className="rounded-xl p-2.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
                     {IcoWhatsApp}
                   </button>
-                  <button type="button" title="Copiar embed" onClick={(e) => { e.stopPropagation(); handleCopyProp(property.id, 'embed', `<iframe src="${window.location.origin}/embed/${property.id}" width="100%" height="600" frameborder="0" allowfullscreen></iframe>`); }} className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                  {/* Separator */}
+                  <span aria-hidden="true" className="mx-1.5 h-3.5 w-px self-center bg-slate-900/10" />
+                  {/* Tecnico */}
+                  <button type="button" title="Copiar embed" onClick={(e) => { e.stopPropagation(); handleCopyProp(property.id, 'embed', `<iframe src="${window.location.origin}/embed/${property.id}" width="100%" height="600" frameborder="0" allowfullscreen></iframe>`); }} className="rounded-xl p-2.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
                     {copiedPropId === property.id && copiedPropType === 'embed' ? IcoCheckSm : IcoCode}
                   </button>
-                  <button type="button" title="Descargar PDF" onClick={(e) => { e.stopPropagation(); window.open(`/api/properties/${property.id}/report.pdf`, '_blank'); }} className="rounded-xl p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                  <button type="button" title="Descargar PDF" onClick={(e) => { e.stopPropagation(); window.open(`/api/properties/${property.id}/report.pdf`, '_blank'); }} className="rounded-xl p-2.5 text-slate-400 opacity-60 transition hover:bg-slate-100 hover:text-slate-700 hover:opacity-100">
                     {IcoFilePdf}
                   </button>
                 </div>
@@ -1197,17 +1198,17 @@ export default function PropertiesPage(): JSX.Element {
                               </div>
                             </div>
 
-                            <div className="flex flex-wrap gap-2">
-                              <button type="button" onClick={() => handleOpenAssetForm(property.id, space.id)} className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-black text-violet-700 hover:bg-violet-100">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <button type="button" onClick={() => handleOpenAssetForm(property.id, space.id)} className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-black text-violet-700 transition-colors hover:bg-violet-100">
                                 Nueva escena
                               </button>
-                              <button type="button" onClick={() => handleEditSpace(property.id, space)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
-                                Editar
+                              <button type="button" onClick={() => handleEditSpace(property.id, space)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition-colors hover:bg-slate-100">
+                                Editar espacio
                               </button>
-                              <button type="button" onClick={() => void handleToggleSpaceStatus(property.id, space)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
+                              <button type="button" onClick={() => void handleToggleSpaceStatus(property.id, space)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition-colors hover:bg-slate-100">
                                 {space.status === 'HIDDEN' ? 'Activar' : 'Ocultar'}
                               </button>
-                              <button type="button" onClick={() => void handleDeleteSpace(property.id, space.id)} className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-700 hover:bg-red-100">
+                              <button type="button" onClick={() => void handleDeleteSpace(property.id, space.id)} className="ml-auto rounded-full px-4 py-2 text-sm font-black text-red-400 transition-colors hover:bg-red-50 hover:text-red-600">
                                 Eliminar
                               </button>
                             </div>
@@ -1846,12 +1847,12 @@ export default function PropertiesPage(): JSX.Element {
                                       </div>
                                     </div>
 
-                                    <div className="flex flex-wrap gap-2">
-                                      <button type="button" onClick={() => handleEditAsset(property.id, space.id, asset)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
+                                    <div className="flex flex-wrap items-center gap-2">
+                                      <button type="button" onClick={() => handleEditAsset(property.id, space.id, asset)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition-colors hover:bg-slate-100">
                                         Editar escena
                                       </button>
-                                      <button type="button" onClick={() => void handleDeleteAsset(property.id, space.id, asset.id)} className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-700 hover:bg-red-100">
-                                        Eliminar escena
+                                      <button type="button" onClick={() => void handleDeleteAsset(property.id, space.id, asset.id)} className="ml-auto rounded-full px-3 py-2 text-sm font-black text-red-400 transition-colors hover:bg-red-50 hover:text-red-600">
+                                        Eliminar
                                       </button>
                                     </div>
                                   </div>

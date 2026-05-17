@@ -1,4 +1,4 @@
-// Inline Lucide-style SVG icons (no extra dependency)
+﻿// Inline Lucide-style SVG icons (no extra dependency)
 
 // h-7 w-7 — used in EmptyState contexts
 export const IcoInbox = (
@@ -71,5 +71,11 @@ export const IcoUsers = (
 export const IcoCheckSm = (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
     <polyline points="20 6 9 17 4 12" />
+  </svg>
+);
+export const IcoPencil = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+    <path d="M17 3a2.85 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z" />
+    <path d="m15 5 4 4" />
   </svg>
 );
