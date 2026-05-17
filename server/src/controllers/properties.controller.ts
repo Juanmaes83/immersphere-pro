@@ -138,18 +138,22 @@ export async function unlockProperty(request: Request, response: Response): Prom
   response.status(200).json({ success: true, data });
 }
 
-export async function createProperty(request: Request, response: Response): Promise<void> {
-  if (!request.auth) {
-    throw new AppError(401, 'Usuario no autenticado.');
+export async function createProperty(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!request.auth) {
+      throw new AppError(401, 'Usuario no autenticado.');
+    }
+
+    const input = propertySchema.parse(request.body);
+    const data = await propertiesService.createProperty(request.auth.tenantId, input);
+
+    response.status(201).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    next(error);
   }
-
-  const input = propertySchema.parse(request.body);
-  const data = await propertiesService.createProperty(request.auth!.tenantId, input);
-
-  response.status(201).json({
-    success: true,
-    data
-  });
 }
 
 export async function incrementPropertyViews(request: Request, response: Response): Promise<void> {
@@ -193,32 +197,40 @@ export async function listPropertySpaces(request: Request, response: Response): 
   });
 }
 
-export async function createPropertySpace(request: Request, response: Response): Promise<void> {
-  if (!request.auth) {
-    throw new AppError(401, 'Usuario no autenticado.');
+export async function createPropertySpace(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!request.auth) {
+      throw new AppError(401, 'Usuario no autenticado.');
+    }
+
+    const input = spaceSchema.parse(request.body);
+    const data = await propertiesService.createSpace(request.auth.tenantId, request.params.propertyId, input as any);
+
+    response.status(201).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    next(error);
   }
-
-  const input = spaceSchema.parse(request.body);
-  const data = await propertiesService.createSpace(request.auth!.tenantId, request.params.propertyId, input as any);
-
-  response.status(201).json({
-    success: true,
-    data
-  });
 }
 
-export async function updatePropertySpace(request: Request, response: Response): Promise<void> {
-  if (!request.auth) {
-    throw new AppError(401, 'Usuario no autenticado.');
+export async function updatePropertySpace(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    if (!request.auth) {
+      throw new AppError(401, 'Usuario no autenticado.');
+    }
+
+    const input = spaceUpdateSchema.parse(request.body);
+    const data = await propertiesService.updateSpace(request.auth.tenantId, request.params.propertyId, request.params.spaceId, input as any);
+
+    response.status(200).json({
+      success: true,
+      data
+    });
+  } catch (error) {
+    next(error);
   }
-
-  const input = spaceUpdateSchema.parse(request.body);
-  const data = await propertiesService.updateSpace(request.auth!.tenantId, request.params.propertyId, request.params.spaceId, input as any);
-
-  response.status(200).json({
-    success: true,
-    data
-  });
 }
 
 export async function deletePropertySpace(request: Request, response: Response): Promise<void> {
@@ -260,29 +272,37 @@ export async function listSpaceAssets(request: Request, response: Response): Pro
   response.json({ success: true, data });
 }
 
-export async function createSpaceAsset(request: Request, response: Response): Promise<void> {
-  const input = assetSchema.parse(request.body);
-  const data = await propertiesService.createAsset(
-    request.auth!.tenantId,
-    request.params.propertyId,
-    request.params.spaceId,
-    input as any
-  );
+export async function createSpaceAsset(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const input = assetSchema.parse(request.body);
+    const data = await propertiesService.createAsset(
+      request.auth!.tenantId,
+      request.params.propertyId,
+      request.params.spaceId,
+      input as any
+    );
 
-  response.status(201).json({ success: true, data });
+    response.status(201).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
 }
 
-export async function updateSpaceAsset(request: Request, response: Response): Promise<void> {
-  const input = assetUpdateSchema.parse(request.body);
-  const data = await propertiesService.updateAsset(
-    request.auth!.tenantId,
-    request.params.propertyId,
-    request.params.spaceId,
-    request.params.assetId,
-    input as any
-  );
+export async function updateSpaceAsset(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const input = assetUpdateSchema.parse(request.body);
+    const data = await propertiesService.updateAsset(
+      request.auth!.tenantId,
+      request.params.propertyId,
+      request.params.spaceId,
+      request.params.assetId,
+      input as any
+    );
 
-  response.json({ success: true, data });
+    response.json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
 }
 
 export async function deleteSpaceAsset(request: Request, response: Response): Promise<void> {
