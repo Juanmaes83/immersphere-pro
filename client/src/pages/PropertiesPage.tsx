@@ -45,16 +45,47 @@ function translateHotspotType(type: string): string {
   return HOTSPOT_TYPE_LABELS[type] ?? type;
 }
 
-// ─── Completeness indicator ───────────────────────────────────────────────────
-interface CompletenessItem { label: string; ok: boolean }
-function getPropertyCompleteness(property: { title: string; spaces: Array<{ assets: unknown[] }> }): CompletenessItem[] {
+// ─── Progress & guidance system ──────────────────────────────────────────────
+interface ProgressStep { label: string; ok: boolean }
+
+function getProgressSteps(property: { title: string; spaces: Array<{ assets: unknown[] }>; status?: string }): ProgressStep[] {
   const hasSpaces = property.spaces.length > 0;
-  const hasScenes = property.spaces.some((s) => s.assets.length > 0);
+  const hasScenes = property.spaces.some((s) => (s.assets as unknown[]).length > 0);
   return [
     { label: 'Datos básicos', ok: Boolean(property.title) },
-    { label: hasSpaces ? `${property.spaces.length} estancia${property.spaces.length !== 1 ? 's' : ''}` : 'Sin estancias', ok: hasSpaces },
-    { label: hasScenes ? 'Escenas añadidas' : 'Sin escenas', ok: hasScenes }
+    { label: hasSpaces ? `${property.spaces.length} estancia${property.spaces.length !== 1 ? 's' : ''}` : 'Estancias', ok: hasSpaces },
+    { label: 'Escenas inmersivas', ok: hasScenes },
+    { label: 'Publicado', ok: property.status === 'PUBLISHED' }
   ];
+}
+
+function getProgressPct(steps: ProgressStep[]): number {
+  return Math.round((steps.filter((s) => s.ok).length / steps.length) * 100);
+}
+
+// Card chips — first 3 steps only (published shown elsewhere)
+function getPropertyCompleteness(property: { title: string; spaces: Array<{ assets: unknown[] }> }): ProgressStep[] {
+  return getProgressSteps(property).slice(0, 3);
+}
+
+function getNextStep(property: { title: string; spaces: Array<{ assets: Array<{ thumbnail?: string; url?: string; type?: string }> }>; status?: string }): { title: string; body: string } | null {
+  const hasSpaces = property.spaces.length > 0;
+  const hasScenes = property.spaces.some((s) => s.assets.length > 0);
+  if (!hasSpaces) return { title: 'Añade las estancias del recorrido', body: 'Cada estancia es una parada en el tour. Empieza por el salón, la cocina o la entrada.' };
+  if (!hasScenes) return { title: 'Sube las escenas inmersivas', body: 'Añade un panorama 360° o un escaneo 3D a cada estancia para que los compradores la recorran.' };
+  if (property.status !== 'PUBLISHED') return { title: 'Tu recorrido está listo para publicarse', body: 'Todo en orden. Publícalo ahora para que los compradores accedan al tour inmersivo.' };
+  return null;
+}
+
+function getPropertyCover(property: { coverImage?: string | null; spaces: Array<{ assets: Array<{ thumbnail?: string | null; url?: string; type?: string }> }> }): string | null {
+  if (property.coverImage) return property.coverImage;
+  for (const space of property.spaces) {
+    for (const asset of space.assets) {
+      if (asset.thumbnail) return asset.thumbnail;
+      if (asset.type === 'panorama_360' && asset.url && asset.url.startsWith('http')) return asset.url;
+    }
+  }
+  return null;
 }
 
 export default function PropertiesPage(): JSX.Element {
@@ -135,6 +166,8 @@ export default function PropertiesPage(): JSX.Element {
   const [draggingHotspotIdx, setDraggingHotspotIdx] = useState<number | null>(null);
   // Index of the hotspot being edited (null = adding new); null | number
   const [editingHotspotIndex, setEditingHotspotIndex] = useState<number | null>(null);
+  // Disclosure: show advanced asset fields (URL, thumbnail, size)
+  const [showAdvancedAsset, setShowAdvancedAsset] = useState(false);
   // Used to detect click vs drag on existing pins
   const pinPointerStart = useRef<{ x: number; y: number; idx: number } | null>(null);
   const hotspotPreviewRef = useRef<HTMLDivElement>(null);
@@ -213,6 +246,7 @@ export default function PropertiesPage(): JSX.Element {
     setShowHotspotForm(false);
     setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: '' });
     setEditingHotspotIndex(null);
+    setShowAdvancedAsset(false);
   }
 
   function closeAssetForm(): void {
@@ -689,6 +723,7 @@ export default function PropertiesPage(): JSX.Element {
       setUploadPhase('done');
     }
     setMessage('Editando escena seleccionada.');
+    setShowAdvancedAsset(true); // show URL/thumbnail when editing existing
   }
 
   async function handleSubmitAsset(event: any, propertyId: string, spaceId: string): Promise<void> {
@@ -755,7 +790,7 @@ export default function PropertiesPage(): JSX.Element {
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
         <form onSubmit={handleSubmit} className="rounded-[1.8rem] bg-white p-6 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
           <div className="flex items-center justify-between gap-4">
-            <h2 className="text-2xl font-black">{editingPropertyId ? 'Editar propiedad' : 'Nueva propiedad'}</h2>
+            <h2 className="text-2xl font-black">{editingPropertyId ? 'Editar propiedad' : 'Crear recorrido'}</h2>
 
             {editingPropertyId ? (
               <button type="button" onClick={resetForm} className="rounded-full bg-slate-100 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-200">
@@ -902,14 +937,35 @@ export default function PropertiesPage(): JSX.Element {
               body="Empieza a medir visitas, contactos y rendimiento comercial desde un solo lugar."
             />
           ) : null}
-          {properties.map((property) => (
-            <article key={property.id} className="rounded-[1.5rem] bg-white p-5 shadow-sm ring-1 ring-slate-200">
+          {properties.map((property) => {
+            const cover = getPropertyCover(property);
+            return (
+            <article key={property.id} className="overflow-hidden rounded-[1.5rem] bg-white shadow-sm ring-1 ring-slate-200">
+              {/* ── Auto-cover hero ── */}
+              {cover ? (
+                <div className="relative h-32 overflow-hidden bg-slate-900">
+                  <img src={cover} alt="" className="h-full w-full object-cover opacity-80" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  <div className="absolute bottom-3 left-4 right-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.16em] text-white/60">{translatePropertyType(property.type)}</p>
+                    <h3 className="text-lg font-black leading-tight text-white">{property.title}</h3>
+                    <p className="text-xs font-semibold text-white/60">{property.area} m² · {formatCurrency(property.price)}</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="h-1.5 w-full bg-gradient-to-r from-violet-500 via-fuchsia-500 to-cyan-400" />
+              )}
+
+              <div className="p-5">
               <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
                 <div>
+                  {/* Badges row */}
                   <div className="mb-2 flex flex-wrap gap-2">
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
-                      {translatePropertyType(property.type)}
-                    </span>
+                    {!cover ? (
+                      <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
+                        {translatePropertyType(property.type)}
+                      </span>
+                    ) : null}
                     <span className={`rounded-full px-3 py-1 text-xs font-black ${
                       property.status === 'PUBLISHED'
                         ? 'bg-emerald-50 text-emerald-700'
@@ -919,10 +975,14 @@ export default function PropertiesPage(): JSX.Element {
                     </span>
                   </div>
 
-                  <h3 className="text-xl font-black">{property.title}</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">{property.status === 'PUBLISHED' ? 'Publicado' : 'Borrador'} · {property.area} m² · {formatCurrency(property.price)}</p>
+                  {!cover ? (
+                    <>
+                      <h3 className="text-xl font-black">{property.title}</h3>
+                      <p className="mt-1 text-sm font-semibold text-slate-500">{property.area} m² · {formatCurrency(property.price)}</p>
+                    </>
+                  ) : null}
 
-                  {/* Completeness indicator */}
+                  {/* Completeness chips */}
                   <div className="mt-2 flex flex-wrap gap-1.5">
                     {getPropertyCompleteness(property).map((item) => (
                       <span
@@ -946,7 +1006,7 @@ export default function PropertiesPage(): JSX.Element {
                   </button>
 
                   <button type="button" onClick={() => handleOpenSpaces(property)} className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-black text-violet-700 hover:bg-violet-100">
-                    Estancias ({property.spaces.length})
+                    {property.spaces.length === 0 ? 'Crear recorrido' : 'Diseñar recorrido'}
                   </button>
 
                   <button
@@ -1041,12 +1101,57 @@ export default function PropertiesPage(): JSX.Element {
                 </button>
               </div>
 
-              {expandedPropertyId === property.id ? (
-                <div className="mt-5 rounded-[1.25rem] border border-violet-100 bg-violet-50/60 p-4">
+              {expandedPropertyId === property.id ? (() => {
+                const steps = getProgressSteps(property);
+                const pct = getProgressPct(steps);
+                const nextStep = getNextStep(property);
+                return (
+                <div className="mt-5 overflow-hidden rounded-[1.25rem] border border-violet-100 bg-violet-50/60">
+                  {/* ── A. Sticky progress header ── */}
+                  <div className="sticky top-2 z-10 mx-3 mt-3 rounded-2xl border border-white/80 bg-white/95 px-4 py-3 shadow-sm backdrop-blur">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex flex-wrap gap-1.5">
+                        {steps.map((step) => (
+                          <span key={step.label} className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-black ${
+                            step.ok ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-400'
+                          }`}>
+                            {step.ok ? '✓' : '○'} {step.label}
+                          </span>
+                        ))}
+                      </div>
+                      <div className="shrink-0 text-right">
+                        <p className="text-sm font-black leading-none text-slate-950">{pct}%</p>
+                        <p className="text-[10px] font-semibold text-slate-400">completado</p>
+                      </div>
+                    </div>
+                    <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-violet-500 to-fuchsia-500 transition-all duration-500"
+                        style={{ width: `${pct}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* ── B. Siguiente paso contextual ── */}
+                  <div className="mx-3 mt-2">
+                    {nextStep ? (
+                      <div className="rounded-2xl border border-violet-200/60 bg-violet-600/8 px-4 py-3">
+                        <p className="text-sm font-black text-violet-900">{nextStep.title}</p>
+                        <p className="mt-0.5 text-xs font-semibold text-violet-700/70">{nextStep.body}</p>
+                      </div>
+                    ) : (
+                      <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50 px-4 py-3">
+                        <p className="text-sm font-black text-emerald-800">Recorrido completo y publicado</p>
+                        <p className="mt-0.5 text-xs font-semibold text-emerald-700/60">Los compradores pueden acceder al tour inmersivo ahora mismo.</p>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="p-4">
                   <div className="mb-4 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                     <div>
-                      <h4 className="text-lg font-black text-slate-950">Gestor de estancias</h4>
-                      <p className="text-sm font-semibold text-slate-500">Crear, editar, ocultar o eliminar espacios de esta propiedad.</p>
+                      <h4 className="text-lg font-black text-slate-950">Construir experiencia</h4>
+                      <p className="text-sm font-semibold text-slate-500">Añade estancias y escenas para crear el recorrido inmersivo.</p>
                     </div>
                     <button type="button" onClick={() => resetSpaceForm(property.id)} className="rounded-full bg-white px-4 py-2 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
                       Nueva estancia
@@ -1276,51 +1381,77 @@ export default function PropertiesPage(): JSX.Element {
                                 ) : null}
                               </div>
 
+                              {/* Paste URL shortcut — shown only when no file uploaded yet */}
+                              {uploadPhase !== 'done' && !assetForm.url ? (
+                                <div className="md:col-span-2 -mt-1 text-center">
+                                  <button
+                                    type="button"
+                                    onClick={() => setShowAdvancedAsset(true)}
+                                    className="text-xs font-semibold text-slate-400 underline-offset-2 hover:text-violet-600 hover:underline"
+                                  >
+                                    ¿Tienes una URL? Pégala directamente
+                                  </button>
+                                </div>
+                              ) : null}
+
+                              {/* ── D. Configuración avanzada (disclosure) ── */}
                               <div className="md:col-span-2">
-                                <label className="block">
-                                  <span className="mb-2 block text-sm font-black text-slate-700">
-                                    URL de la escena <span className="font-semibold text-slate-400">(se rellena automáticamente al subir · o pega una URL directamente)</span>
-                                  </span>
-                                  <input
-                                    type="url"
-                                    value={assetForm.url ?? ''}
-                                    onChange={(event) => setAssetForm((current) => ({ ...current, url: event.target.value }))}
-                                    placeholder="https://res.cloudinary.com/…"
-                                    className={`w-full rounded-2xl border px-4 py-3 text-sm font-semibold outline-none transition ${
-                                      assetForm.url && !assetForm.url.startsWith('http')
-                                        ? 'border-amber-400 bg-amber-50 focus:border-amber-500'
-                                        : 'border-slate-200 bg-white focus:border-violet-400'
-                                    }`}
-                                  />
-                                  {assetForm.url && !assetForm.url.startsWith('http') ? (
-                                    <p className="mt-1 text-xs font-semibold text-amber-600">La URL debe empezar por https://</p>
-                                  ) : null}
-                                </label>
+                                <button
+                                  type="button"
+                                  onClick={() => setShowAdvancedAsset((v) => !v)}
+                                  className="flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-black text-slate-600 hover:bg-slate-50"
+                                >
+                                  <span className="flex-1 text-left">Configuración avanzada</span>
+                                  <span className={`text-xs transition-transform duration-200 ${showAdvancedAsset ? 'rotate-180' : ''}`}>▼</span>
+                                </button>
+
+                                {showAdvancedAsset ? (
+                                  <div className="mt-2 grid grid-cols-1 gap-3 rounded-2xl border border-slate-100 bg-white p-4 md:grid-cols-2">
+                                    <div className="md:col-span-2">
+                                      <label className="block">
+                                        <span className="mb-2 block text-sm font-black text-slate-700">
+                                          URL de la escena <span className="font-semibold text-slate-400">(auto · o pega una URL directamente)</span>
+                                        </span>
+                                        <input
+                                          type="url"
+                                          value={assetForm.url ?? ''}
+                                          onChange={(event) => setAssetForm((current) => ({ ...current, url: event.target.value }))}
+                                          placeholder="https://res.cloudinary.com/…"
+                                          className={`w-full rounded-2xl border px-4 py-3 text-sm font-semibold outline-none transition ${
+                                            assetForm.url && !assetForm.url.startsWith('http')
+                                              ? 'border-amber-400 bg-amber-50 focus:border-amber-500'
+                                              : 'border-slate-200 bg-white focus:border-violet-400'
+                                          }`}
+                                        />
+                                        {assetForm.url && !assetForm.url.startsWith('http') ? (
+                                          <p className="mt-1 text-xs font-semibold text-amber-600">La URL debe empezar por https://</p>
+                                        ) : null}
+                                      </label>
+                                    </div>
+                                    <label className="block">
+                                      <span className="mb-2 block text-sm font-black text-slate-700">Miniatura <span className="font-semibold text-slate-400">(auto)</span></span>
+                                      <input
+                                        type="url"
+                                        value={assetForm.thumbnail ?? ''}
+                                        onChange={(event) => setAssetForm((current) => ({ ...current, thumbnail: event.target.value }))}
+                                        placeholder="https://…"
+                                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+                                      />
+                                    </label>
+                                    <label className="block">
+                                      <span className="mb-2 block text-sm font-black text-slate-700">Tamaño <span className="font-semibold text-slate-400">(MB · auto)</span></span>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        value={String(assetForm.size ?? 0)}
+                                        onChange={(event) => setAssetForm((current) => ({ ...current, size: Number(event.target.value) }))}
+                                        className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+                                      />
+                                    </label>
+                                  </div>
+                                ) : null}
                               </div>
-
-                              {/* Thumbnail + Size – secondary, collapsible feel */}
-                              <label className="block">
-                                <span className="mb-2 block text-sm font-black text-slate-700">Miniatura <span className="font-semibold text-slate-400">(auto)</span></span>
-                                <input
-                                  type="url"
-                                  value={assetForm.thumbnail ?? ''}
-                                  onChange={(event) => setAssetForm((current) => ({ ...current, thumbnail: event.target.value }))}
-                                  placeholder="https://…"
-                                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
-                                />
-                              </label>
-
-                              <label className="block">
-                                <span className="mb-2 block text-sm font-black text-slate-700">Tamaño <span className="font-semibold text-slate-400">(MB · auto)</span></span>
-                                <input
-                                  type="number"
-                                  min="0"
-                                  step="0.01"
-                                  value={String(assetForm.size ?? 0)}
-                                  onChange={(event) => setAssetForm((current) => ({ ...current, size: Number(event.target.value) }))}
-                                  className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
-                                />
-                              </label>
 
                               {/* â”€â”€ Visual hotspot placement editor (panorama_360 only) â”€â”€ */}
                               {assetForm.type === 'panorama_360' && assetForm.url.trim() ? (
@@ -1736,8 +1867,10 @@ export default function PropertiesPage(): JSX.Element {
                         </div>
                       ))                    )}
                   </div>
+                  </div>{/* /p-4 */}
                 </div>
-              ) : null}
+                );
+              })() : null}
 
               {leadsPropertyId === property.id ? (
                 <div className="mt-5 rounded-[1.25rem] border border-cyan-100 bg-cyan-50/60 p-4">
@@ -1799,8 +1932,10 @@ export default function PropertiesPage(): JSX.Element {
                   )}
                 </div>
               ) : null}
+              </div>{/* /p-5 */}
             </article>
-          ))}
+            );
+          })}
         </section>
       </div>
     </main>
