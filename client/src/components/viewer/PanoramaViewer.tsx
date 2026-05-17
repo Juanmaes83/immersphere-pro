@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+﻿import { useEffect, useRef, useState } from 'react';
 import { PanoramaEngine360 } from '@/engines/PanoramaEngine360';
 import MeasurementOverlay from '@/components/viewer/MeasurementOverlay';
 import type { Hotspot, ViewerAsset, ViewerEvent } from '@/types/viewer';
@@ -80,8 +80,8 @@ function createRuntimeFallbackPanoramaUrl(label: string): string {
       </g>
 
       <text x="1024" y="460" text-anchor="middle" font-family="Arial, sans-serif" font-size="76" font-weight="900" fill="#ffffff">${safeLabel}</text>
-      <text x="1024" y="540" text-anchor="middle" font-family="Arial, sans-serif" font-size="38" font-weight="800" fill="#a5f3fc">Panorama 360 demo seguro</text>
-      <text x="1024" y="600" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" fill="#cbd5e1">Fallback runtime activo hasta subida real de assets</text>
+      <text x="1024" y="540" text-anchor="middle" font-family="Arial, sans-serif" font-size="38" font-weight="800" fill="#a5f3fc">Vista en preparacion</text>
+      <text x="1024" y="600" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" fill="#cbd5e1">Sube el panorama 360 para activar esta estancia</text>
     </svg>
   `;
 
@@ -389,7 +389,7 @@ export default function PanoramaViewer({
             key={hotspot.id}
             type="button"
             onClick={() => handleHotspotClick(hotspot)}
-            className="group absolute z-20 flex -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full py-1.5 pl-2 pr-4 text-xs font-black text-white transition-all duration-200 motion-safe:hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
+            className="group absolute z-20 flex min-h-[44px] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full py-2 pl-2 pr-4 text-xs font-black text-white transition-all duration-200 motion-safe:hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             style={{
               left: `${hotspot.position.x}%`,
               top: `${hotspot.position.y}%`,

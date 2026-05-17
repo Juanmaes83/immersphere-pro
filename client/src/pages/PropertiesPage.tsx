@@ -52,7 +52,7 @@ function getProgressSteps(property: { title: string; spaces: Array<{ assets: unk
   const hasSpaces = property.spaces.length > 0;
   const hasScenes = property.spaces.some((s) => (s.assets as unknown[]).length > 0);
   return [
-    { label: 'Informacion principal', ok: Boolean(property.title) },
+    { label: 'Información principal', ok: Boolean(property.title) },
     { label: hasSpaces ? 'Espacios definidos' : 'Define los espacios', ok: hasSpaces },
     { label: 'Escenas inmersivas', ok: hasScenes },
     { label: 'Listo para publicar', ok: property.status === 'PUBLISHED' }
@@ -799,8 +799,8 @@ export default function PropertiesPage(): JSX.Element {
             ) : null}
           </div>
 
-          <FormInput label="Titulo" value={form.title ?? ''} onChange={(value) => setForm((current) => ({ ...current, title: value }))} />
-          <FormTextarea label="Descripcion" value={form.description ?? ''} onChange={(value) => setForm((current) => ({ ...current, description: value }))} />
+          <FormInput label="Título" value={form.title ?? ''} onChange={(value) => setForm((current) => ({ ...current, title: value }))} />
+          <FormTextarea label="Descripción" value={form.description ?? ''} onChange={(value) => setForm((current) => ({ ...current, description: value }))} />
 
           <div className="grid grid-cols-2 gap-3">
             <label className="mt-4 block">
@@ -838,7 +838,7 @@ export default function PropertiesPage(): JSX.Element {
 
           <div className="grid grid-cols-2 gap-3">
             <FormInput label="Habitaciones" type="number" value={String(form.rooms ?? 0)} onChange={(value) => setForm((current) => ({ ...current, rooms: Number(value) }))} />
-            <FormInput label="Banos" type="number" value={String(form.bathrooms ?? 0)} onChange={(value) => setForm((current) => ({ ...current, bathrooms: Number(value) }))} />
+            <FormInput label="Baños" type="number" value={String(form.bathrooms ?? 0)} onChange={(value) => setForm((current) => ({ ...current, bathrooms: Number(value) }))} />
           </div>
           <label className="mt-4 block">
             <span className="mb-2 block text-sm font-black text-slate-700">
@@ -1082,7 +1082,7 @@ export default function PropertiesPage(): JSX.Element {
                   <button type="button" title="Copiar link publico" onClick={(e) => { e.stopPropagation(); handleCopyProp(property.id, 'link', `${window.location.origin}/property/${property.id}`); }} className="rounded-xl p-2.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
                     {copiedPropId === property.id && copiedPropType === 'link' ? IcoCheckSm : IcoLink}
                   </button>
-                  <button type="button" title="Compartir por WhatsApp" onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(`Te comparto el tour inmersivo de ${property.title}: ${window.location.origin}/property/${property.id}`)}`, '_blank'); }} className="rounded-xl p-2.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
+                  <button type="button" title="Compartir por WhatsApp" onClick={(e) => { e.stopPropagation(); window.open(`https://wa.me/?text=${encodeURIComponent(`Te paso el recorrido inmersivo de ${property.title}. Puedes verlo como si estuvieras dentro de la vivienda: ${window.location.origin}/property/${property.id}`)}`, '_blank'); }} className="rounded-xl p-2.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700">
                     {IcoWhatsApp}
                   </button>
                   {/* Separator */}

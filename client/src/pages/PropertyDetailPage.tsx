@@ -1,4 +1,4 @@
-import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+﻿import { Suspense, lazy, useEffect, useRef, useState } from 'react';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -759,7 +759,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                   value={analyticsSummary ? `${analyticsSummary.engagementScore}/100` : '—'}
                 />
               </div>
-              {property.tenantWhatsapp ? (
+              {property.tenantWhatsapp?.replace(/\D/g, '').length ? (
                 <a
                   href={`https://wa.me/${property.tenantWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`${property.title} — Tour inmersivo 360° · Ver tour: ${ogUrl}`)}`}
                   target="_blank"

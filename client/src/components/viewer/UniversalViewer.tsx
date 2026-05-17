@@ -1,4 +1,4 @@
-import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+﻿import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import DollhouseViewer from '@/components/viewer/DollhouseViewer';
 import GaussianSplatViewer from '@/components/viewer/GaussianSplatViewer';
@@ -650,14 +650,20 @@ export default function UniversalViewer({
 
         {/* Viewer area */}
         <div className="relative p-5">
-          {/* Cinematic transition overlay — fades to black between spaces */}
+          {/* Cinematic transition overlay — fades to black between spaces, stays visible until idle */}
           <div
-            className="pointer-events-none absolute inset-0 z-50 rounded-[1.5rem] bg-slate-950"
+            className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-[1.5rem] bg-slate-950"
             style={{
-              opacity: tPhase === 'out' ? 1 : 0,
+              opacity: tPhase !== 'idle' ? 1 : 0,
               transition: `opacity ${prefersReducedMotion ? 80 : isTouchDevice.current ? 120 : 160}ms ease-in-out`,
             }}
-          />
+          >
+            {!prefersReducedMotion && tPhase === 'in' ? (
+              <p className="text-[11px] font-bold uppercase tracking-widest text-white/30">
+                Preparando estancia...
+              </p>
+            ) : null}
+          </div>
           {/* Micro-scale wrapper — subtle parallax on desktop only, not on mobile/reduced-motion */}
           <div
             style={!prefersReducedMotion && !isTouchDevice.current ? {
