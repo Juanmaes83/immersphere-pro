@@ -169,6 +169,17 @@ export default function UniversalViewer({
   const [loadingVisible,     setLoadingVisible]     = useState(true);
   const [progressStarted,    setProgressStarted]    = useState(false);
 
+  // ── Cinematic transitions ────────────────────────────────────────────────────
+  type TPhase = 'idle' | 'out' | 'in';
+  const [tPhase, setTPhase]                               = useState<TPhase>('idle');
+  const [prefersReducedMotion, setPrefersReducedMotion]   = useState(
+    () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+  const transitionLock  = useRef(false);
+  const pendingSpaceRef = useRef<string | null>(null);
+  const pendingSwapRef  = useRef<(() => void) | null>(null);
+  const isTouchDevice   = useRef(window.matchMedia('(pointer: coarse)').matches);
+
   const viewerRef  = useRef<HTMLElement>(null);
   const sessionId  = useRef(`s-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
@@ -212,6 +223,40 @@ export default function UniversalViewer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Sync prefers-reduced-motion when the OS setting changes mid-session
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)');
+    function onChange(e: MediaQueryListEvent): void { setPrefersReducedMotion(e.matches); }
+    mq.addEventListener('change', onChange);
+    return () => mq.removeEventListener('change', onChange);
+  }, []);
+
+  // Prewarm prev/next and hotspot-target panorama assets so transitions feel instant
+  useEffect(() => {
+    if (!activeSpace) return;
+    const currentIdx = sortedSpaces.findIndex((s) => s.id === activeSpace.id);
+    const prewarmIds: string[] = [];
+    if (currentIdx > 0) prewarmIds.push(sortedSpaces[currentIdx - 1]!.id);
+    if (currentIdx < sortedSpaces.length - 1) prewarmIds.push(sortedSpaces[currentIdx + 1]!.id);
+    for (const hs of activeAsset?.hotspots ?? []) {
+      if (hs.targetSpaceId && !prewarmIds.includes(hs.targetSpaceId)) {
+        prewarmIds.push(hs.targetSpaceId);
+      }
+    }
+    const imgs: HTMLImageElement[] = [];
+    for (const sid of prewarmIds) {
+      const space = sortedSpaces.find((s) => s.id === sid);
+      const asset = selectPrimaryAsset(space);
+      if (asset?.url && asset.type === 'panorama_360') {
+        const img = new Image();
+        img.src = asset.url;
+        imgs.push(img);
+      }
+    }
+    return () => { imgs.forEach((img) => { img.src = ''; }); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSpace?.id]);
+
   function toggleFullscreen(): void {
     if (!document.fullscreenEnabled) return;
     if (document.fullscreenElement) {
@@ -229,10 +274,17 @@ export default function UniversalViewer({
 
     setIsGuidedTour(true);
     setGuidedTourIdx(0);
-    setActiveSpaceId(firstSpace.id);
-    setActiveHotspot(null);
     setIsMeasuring(false);
     setShowDollhouse(false);
+
+    if (activeSpaceId !== firstSpace.id) {
+      runTransition(() => {
+        setActiveSpaceId(firstSpace.id);
+        setActiveHotspot(null);
+      }, firstSpace.id);
+    } else {
+      setActiveHotspot(null);
+    }
 
     const payload = {
       step: 1,
@@ -262,10 +314,6 @@ export default function UniversalViewer({
     const nextSpace = sortedSpaces[newIdx];
     if (!nextSpace) return;
 
-    setGuidedTourIdx(newIdx);
-    setActiveSpaceId(nextSpace.id);
-    setActiveHotspot(null);
-
     const isLast     = newIdx === sortedSpaces.length - 1;
     const eventType: ViewerEvent['type'] = isLast ? 'tour_complete' : 'tour_step';
     const payload = {
@@ -283,6 +331,40 @@ export default function UniversalViewer({
       payload,
       sessionId: sessionId.current
     });
+
+    runTransition(() => {
+      setGuidedTourIdx(newIdx);
+      setActiveSpaceId(nextSpace.id);
+      setActiveHotspot(null);
+    }, nextSpace.id);
+  }
+
+  // ── Cinematic transition runner ──────────────────────────────────────────────
+
+  function runTransition(swapFn: () => void, targetId: string): void {
+    if (transitionLock.current) {
+      pendingSpaceRef.current = targetId;  // last click wins
+      pendingSwapRef.current  = swapFn;
+      return;
+    }
+    transitionLock.current = true;
+    const ms = prefersReducedMotion ? 80 : isTouchDevice.current ? 120 : 160;
+    setTPhase('out');
+    setTimeout(() => {
+      swapFn();
+      setTPhase('in');
+      setTimeout(() => {
+        setTPhase('idle');
+        transitionLock.current = false;
+        const pendingId = pendingSpaceRef.current;
+        const pendingFn = pendingSwapRef.current;
+        pendingSpaceRef.current = null;
+        pendingSwapRef.current  = null;
+        if (pendingId && pendingFn) {
+          runTransition(pendingFn, pendingId);
+        }
+      }, ms);
+    }, ms);
   }
 
   // ── Navigation ───────────────────────────────────────────────────────────────
@@ -343,7 +425,7 @@ export default function UniversalViewer({
 
     // Navigation hotspots: switch space directly — do not open info panel
     if (hotspot.type === 'navigation' && hotspot.targetSpaceId) {
-      handleSpaceChange(hotspot.targetSpaceId);
+      runTransition(() => { handleSpaceChange(hotspot.targetSpaceId!); }, hotspot.targetSpaceId);
       return;
     }
 
@@ -489,7 +571,7 @@ export default function UniversalViewer({
             <button
               key={space.id}
               type="button"
-              onClick={() => handleSpaceChange(space.id)}
+              onClick={() => { runTransition(() => handleSpaceChange(space.id), space.id); }}
               className={`rounded-full px-4 py-2 text-sm font-black transition ${
                 activeSpace.id === space.id
                   ? 'text-white'
@@ -568,13 +650,28 @@ export default function UniversalViewer({
 
         {/* Viewer area */}
         <div className="relative p-5">
+          {/* Cinematic transition overlay — fades to black between spaces */}
+          <div
+            className="pointer-events-none absolute inset-0 z-50 rounded-[1.5rem] bg-slate-950"
+            style={{
+              opacity: tPhase === 'out' ? 1 : 0,
+              transition: `opacity ${prefersReducedMotion ? 80 : isTouchDevice.current ? 120 : 160}ms ease-in-out`,
+            }}
+          />
+          {/* Micro-scale wrapper — subtle parallax on desktop only, not on mobile/reduced-motion */}
+          <div
+            style={!prefersReducedMotion && !isTouchDevice.current ? {
+              transform: tPhase === 'out' ? 'scale(1.012)' : 'scale(1)',
+              transition: 'transform 160ms ease-out',
+            } : undefined}
+          >
           <ViewerErrorBoundary key={`eb-${activeSpace.id}`}>
             {showDollhouse ? (
               <DollhouseViewer
                 spaces={sortedSpaces}
                 primaryColor={primaryColor}
                 activeSpaceId={activeSpace.id}
-                onSpaceClick={(spaceId) => { handleSpaceChange(spaceId); }}
+                onSpaceClick={(spaceId) => { runTransition(() => handleSpaceChange(spaceId), spaceId); }}
               />
             ) : activeAsset.type === 'panorama_360' ? (
               <PanoramaViewer
@@ -618,13 +715,14 @@ export default function UniversalViewer({
               </Suspense>
             )}
           </ViewerErrorBoundary>
+          </div>{/* end micro-scale wrapper */}
           {/* ── Prev / Next overlay navigation ─────────────────────────────── */}
           {sortedSpaces.length >= 2 && !showDollhouse ? (
             <div className="pointer-events-none absolute inset-x-5 bottom-8 flex items-end justify-between gap-3">
               {prevSpace ? (
                 <button
                   type="button"
-                  onClick={() => handleSpaceChange(prevSpace.id)}
+                  onClick={() => { runTransition(() => handleSpaceChange(prevSpace.id), prevSpace.id); }}
                   className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-slate-950/70 px-4 py-3 text-sm font-black text-white backdrop-blur-sm transition hover:bg-slate-950/90 active:scale-95"
                 >
                   <span className="text-lg leading-none">←</span>
@@ -636,7 +734,7 @@ export default function UniversalViewer({
               {nextSpace ? (
                 <button
                   type="button"
-                  onClick={() => handleSpaceChange(nextSpace.id)}
+                  onClick={() => { runTransition(() => handleSpaceChange(nextSpace.id), nextSpace.id); }}
                   className="pointer-events-auto flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-black text-white backdrop-blur-sm transition hover:opacity-90 active:scale-95"
                   style={{ backgroundColor: primaryColor + 'cc' }}
                 >
