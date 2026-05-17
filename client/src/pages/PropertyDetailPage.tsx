@@ -71,10 +71,10 @@ function PropertyHero({ property, primaryColor }: { property: ImmersiveProperty;
       <div className="relative flex min-h-[420px] flex-col justify-end p-7 text-white md:p-10">
         <div className="mb-5 flex flex-wrap gap-2">
           <span className="rounded-full px-4 py-2 text-xs font-black" style={{ backgroundColor: primaryColor }}>
-            Visor universal
+            Tour inmersivo
           </span>
           <span className="rounded-full bg-white/15 px-4 py-2 text-xs font-black backdrop-blur">
-            {property.type}
+            {({'APARTMENT':'Apartamento','HOUSE':'Casa','VILLA':'Villa','OFFICE':'Oficina','COMMERCIAL':'Comercial'} as Record<string,string>)[property.type] ?? property.type}
           </span>
           <span className="rounded-full bg-white/15 px-4 py-2 text-xs font-black backdrop-blur">
             {property.status}
@@ -89,9 +89,9 @@ function PropertyHero({ property, primaryColor }: { property: ImmersiveProperty;
 const EVENT_TYPE_LABELS: Record<string, string> = {
   viewer_open: 'Apertura',
   space_change: 'Cambio espacio',
-  hotspot_click: 'Hotspot',
+  hotspot_click: 'Punto interactivo',
   viewer_drag: 'Navegación',
-  lead_cta: 'Lead CTA',
+  lead_cta: 'Contacto',
   asset_load_error: 'Error carga',
   viewer_whatsapp_click: 'WhatsApp',
   tour_start: 'Tour iniciado',
@@ -152,11 +152,11 @@ function AnalyticsDashboard({ summary, primaryColor, spaces }: {
               <p className="mt-1 text-3xl font-black">{summary.totalEvents}</p>
             </div>
             <div className="rounded-2xl bg-white/[0.07] p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-violet-400/80">Hotspots</p>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-violet-400/80">Puntos interactivos</p>
               <p className="mt-1 text-3xl font-black text-violet-300">{summary.hotspotClicks}</p>
             </div>
             <div className="rounded-2xl bg-white/[0.07] p-4">
-              <p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-400/80">Lead CTAs</p>
+              <p className="text-xs font-bold uppercase tracking-[0.12em] text-emerald-400/80">Contactos</p>
               <p className="mt-1 text-3xl font-black text-emerald-300">{summary.leadCtas}</p>
             </div>
             <div className="rounded-2xl bg-white/[0.07] p-4">
@@ -177,7 +177,7 @@ function AnalyticsDashboard({ summary, primaryColor, spaces }: {
             ) : null}
             {summary.topHotspotLabel ? (
               <div className="flex items-center gap-2 rounded-full bg-violet-500/15 px-4 py-2 text-sm">
-                <span className="text-violet-400 font-bold">Hotspot top</span>
+                <span className="text-violet-400 font-bold">Punto más visitado</span>
                 <span className="text-white font-black">{summary.topHotspotLabel}</span>
               </div>
             ) : null}
@@ -188,7 +188,7 @@ function AnalyticsDashboard({ summary, primaryColor, spaces }: {
         {summary.topHotspots.length > 0 ? (
           <div className="mt-6">
             <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-white/40">
-              Hotspots más clicados
+              Puntos más visitados
             </p>
             <div className="space-y-2">
               {summary.topHotspots.map((h, i) => {

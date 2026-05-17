@@ -14,6 +14,49 @@ import { formatCurrency } from '@/utils/format';
 
 const GlbViewer = lazy(() => import('@/components/viewer/GlbViewer'));
 
+// ─── Enum translation helpers ─────────────────────────────────────────────────
+const PROPERTY_TYPE_LABELS: Record<string, string> = {
+  APARTMENT: 'Apartamento',
+  HOUSE: 'Casa',
+  VILLA: 'Villa',
+  OFFICE: 'Oficina',
+  COMMERCIAL: 'Comercial'
+};
+function translatePropertyType(type: string): string {
+  return PROPERTY_TYPE_LABELS[type] ?? type;
+}
+
+const ASSET_TYPE_LABELS: Record<string, string> = {
+  panorama_360: 'Panorama 360°',
+  gaussian_splat: 'Escaneo 3D',
+  mesh: 'Modelo 3D'
+};
+function translateAssetType(type: string): string {
+  return ASSET_TYPE_LABELS[type] ?? type;
+}
+
+const HOTSPOT_TYPE_LABELS: Record<string, string> = {
+  info: 'Información',
+  cta: 'Contacto',
+  navigation: 'Navegación',
+  measurement: 'Medición'
+};
+function translateHotspotType(type: string): string {
+  return HOTSPOT_TYPE_LABELS[type] ?? type;
+}
+
+// ─── Completeness indicator ───────────────────────────────────────────────────
+interface CompletenessItem { label: string; ok: boolean }
+function getPropertyCompleteness(property: { title: string; spaces: Array<{ assets: unknown[] }> }): CompletenessItem[] {
+  const hasSpaces = property.spaces.length > 0;
+  const hasScenes = property.spaces.some((s) => s.assets.length > 0);
+  return [
+    { label: 'Datos básicos', ok: Boolean(property.title) },
+    { label: hasSpaces ? `${property.spaces.length} estancia${property.spaces.length !== 1 ? 's' : ''}` : 'Sin estancias', ok: hasSpaces },
+    { label: hasScenes ? 'Escenas añadidas' : 'Sin escenas', ok: hasScenes }
+  ];
+}
+
 export default function PropertiesPage(): JSX.Element {
   const navigate = useNavigate();
   const {
@@ -270,7 +313,7 @@ export default function PropertiesPage(): JSX.Element {
       setAssetPreviewUrl(upload.thumbnailUrl || upload.url || null);
       setAssetPreviewType(detectedType);
       setSelectedAssetFileName(upload.originalName || file.name);
-      setMessage('Archivo subido correctamente. Revisa y guarda el asset.');
+      setMessage('Archivo subido correctamente. Revisa y guarda la escena.');
     } catch (error) {
       setUploadPhase('idle');
       setUploadProgress(0);
@@ -608,7 +651,7 @@ export default function PropertiesPage(): JSX.Element {
     setActiveAssetFormTarget({ propertyId, spaceId });
     setEditingAsset(null);
     setAssetForm(getDefaultAssetForm());
-    setMessage('Preparando nuevo asset para la estancia.');
+    setMessage('Preparando nueva escena para la estancia.');
   }
 
   function handleEditAsset(
@@ -626,7 +669,7 @@ export default function PropertiesPage(): JSX.Element {
     if (isFallbackAssetId(asset.id)) {
       setEditingAsset(null);
       setAssetForm(getDefaultAssetForm());
-      setMessage('Este asset es demo temporal. Crea un asset real para sustituirlo.');
+      setMessage('Esta escena es demo temporal. Crea una real para sustituirla.');
       return;
     }
 
@@ -645,7 +688,7 @@ export default function PropertiesPage(): JSX.Element {
       setAssetPreviewType(asset.type);
       setUploadPhase('done');
     }
-    setMessage('Editando asset seleccionado.');
+    setMessage('Editando escena seleccionada.');
   }
 
   async function handleSubmitAsset(event: any, propertyId: string, spaceId: string): Promise<void> {
@@ -662,30 +705,30 @@ export default function PropertiesPage(): JSX.Element {
     };
 
     if (payload.url.length < 1) {
-      setMessage('El asset necesita una URL.');
+      setMessage('La escena necesita una URL.');
       return;
     }
 
     try {
       if (editingAsset && editingAsset.propertyId === propertyId && editingAsset.spaceId === spaceId) {
         await updateAsset(propertyId, spaceId, editingAsset.assetId, payload);
-        setMessage('Asset actualizado correctamente.');
+        setMessage('Escena actualizada correctamente.');
       } else {
         await createAsset(propertyId, spaceId, payload);
-        setMessage('Asset creado correctamente.');
+        setMessage('Escena creada correctamente.');
       }
 
       closeAssetForm();
       setExpandedPropertyId(propertyId);
       await fetchProperties({ limit: 100 });
     } catch {
-      setMessage('No se ha podido guardar el asset.');
+      setMessage('No se ha podido guardar la escena.');
     }
   }
 
   async function handleDeleteAsset(propertyId: string, spaceId: string, assetId: string): Promise<void> {
     if (isFallbackAssetId(assetId)) {
-      setMessage('No se puede eliminar el asset demo temporal. Crea un asset real para sustituirlo.');
+      setMessage('No se puede eliminar la escena demo temporal. Crea una real para sustituirla.');
       return;
     }
 
@@ -697,16 +740,16 @@ export default function PropertiesPage(): JSX.Element {
       }
 
       setExpandedPropertyId(propertyId);
-      setMessage('Asset eliminado correctamente.');
+      setMessage('Escena eliminada correctamente.');
       await fetchProperties({ limit: 100 });
     } catch {
-      setMessage('No se ha podido eliminar el asset.');
+      setMessage('No se ha podido eliminar la escena.');
     }
   }
 
   return (
     <main className="mx-auto max-w-7xl px-5 py-10">
-      <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Property Manager</p>
+      <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Mis propiedades</p>
       <h1 className="mt-3 text-5xl font-black tracking-tight">Propiedades</h1>
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
@@ -865,7 +908,7 @@ export default function PropertiesPage(): JSX.Element {
                 <div>
                   <div className="mb-2 flex flex-wrap gap-2">
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">
-                      {property.type}
+                      {translatePropertyType(property.type)}
                     </span>
                     <span className={`rounded-full px-3 py-1 text-xs font-black ${
                       property.status === 'PUBLISHED'
@@ -877,7 +920,24 @@ export default function PropertiesPage(): JSX.Element {
                   </div>
 
                   <h3 className="text-xl font-black">{property.title}</h3>
-                  <p className="mt-1 text-sm font-semibold text-slate-500">{property.status === 'PUBLISHED' ? 'Publicado' : 'Borrador'} - {property.area} m2 - {formatCurrency(property.price)}</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-500">{property.status === 'PUBLISHED' ? 'Publicado' : 'Borrador'} · {property.area} m² · {formatCurrency(property.price)}</p>
+
+                  {/* Completeness indicator */}
+                  <div className="mt-2 flex flex-wrap gap-1.5">
+                    {getPropertyCompleteness(property).map((item) => (
+                      <span
+                        key={item.label}
+                        className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-black ${
+                          item.ok
+                            ? 'bg-emerald-50 text-emerald-700'
+                            : 'bg-amber-50 text-amber-600'
+                        }`}
+                      >
+                        <span>{item.ok ? '✓' : '⚠'}</span>
+                        {item.label}
+                      </span>
+                    ))}
+                  </div>
                 </div>
 
                 <div className="flex flex-wrap gap-2">
@@ -1016,8 +1076,9 @@ export default function PropertiesPage(): JSX.Element {
 
                   <div className="mt-4 grid grid-cols-1 gap-3">
                     {property.spaces.length === 0 ? (
-                      <div className="rounded-2xl bg-white p-4 text-sm font-bold text-slate-500 ring-1 ring-slate-200">
-                        Esta propiedad todavia no tiene estancias.
+                      <div className="rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+                        <p className="text-sm font-black text-slate-800">Añade la primera estancia</p>
+                        <p className="mt-1 text-xs font-semibold text-slate-400">Divide el recorrido en habitaciones, salas o zonas para crear una experiencia inmersiva completa.</p>
                       </div>
                     ) : (
                       property.spaces.map((space) => (
@@ -1030,7 +1091,7 @@ export default function PropertiesPage(): JSX.Element {
                                   {space.status === 'HIDDEN' ? 'Oculta' : 'Activa'}
                                 </span>
                                 <span className="rounded-full bg-violet-50 px-3 py-1 text-xs font-black text-violet-700">
-                                  {space.assets.length} assets
+                                  {space.assets.length} escena{space.assets.length !== 1 ? 's' : ''}
                                 </span>
                               </div>
                               <p className="text-base font-black text-slate-950">{space.name}</p>
@@ -1038,7 +1099,7 @@ export default function PropertiesPage(): JSX.Element {
 
                             <div className="flex flex-wrap gap-2">
                               <button type="button" onClick={() => handleOpenAssetForm(property.id, space.id)} className="rounded-full border border-violet-200 bg-violet-50 px-4 py-2 text-sm font-black text-violet-700 hover:bg-violet-100">
-                                Nuevo asset
+                                Nueva escena
                               </button>
                               <button type="button" onClick={() => handleEditSpace(property.id, space)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
                                 Editar
@@ -1056,21 +1117,21 @@ export default function PropertiesPage(): JSX.Element {
                             <form onSubmit={(event) => void handleSubmitAsset(event, property.id, space.id)} className="mt-4 grid grid-cols-1 gap-3 rounded-2xl border border-violet-100 bg-violet-50/70 p-4 md:grid-cols-2">
                               <div className="md:col-span-2">
                                 <p className="text-sm font-black text-slate-950">
-                                  {editingAsset?.propertyId === property.id && editingAsset?.spaceId === space.id ? 'Editar asset inmersivo' : 'Añadir asset inmersivo'}
+                                  {editingAsset?.propertyId === property.id && editingAsset?.spaceId === space.id ? 'Editar escena inmersiva' : 'Añadir escena inmersiva'}
                                 </p>
                                 <p className="mt-1 text-xs font-semibold text-slate-500">
-                                  Sube una imagen 360°, un modelo 3D o un Gaussian Splat para esta estancia
+                                  Sube una imagen 360°, un modelo 3D o un escaneo 3D para esta estancia
                                 </p>
                               </div>
 
                               {/* Asset type pill selector */}
                               <div className="md:col-span-2">
-                                <span className="mb-2 block text-sm font-black text-slate-700">Tipo de asset</span>
+                                <span className="mb-2 block text-sm font-black text-slate-700">Tipo de escena</span>
                                 <div className="flex gap-2">
                                   {([
-                                    { value: 'panorama_360', label: 'ðŸŒ Panorama 360°', hint: 'JPG / WebP' },
-                                    { value: 'gaussian_splat', label: 'âœ¨ Gaussian Splat', hint: 'SPZ / SPLAT / PLY' },
-                                    { value: 'mesh', label: 'ðŸ“¦ Modelo 3D', hint: 'GLB' }
+                                    { value: 'panorama_360', label: 'Panorama 360', hint: 'JPG / WebP' },
+                                    { value: 'gaussian_splat', label: 'Escaneo 3D', hint: 'SPZ / SPLAT / PLY' },
+                                    { value: 'mesh', label: 'Modelo 3D', hint: 'GLB' }
                                   ] as const).map(({ value, label, hint }) => (
                                     <button
                                       key={value}
@@ -1089,24 +1150,22 @@ export default function PropertiesPage(): JSX.Element {
                                 </div>
                               </div>
 
-                              {/* Format selector – compact, inline */}
-                              <div className="md:col-span-2">
-                                <label className="block">
-                                  <span className="mb-2 block text-sm font-black text-slate-700">Formato detectado <span className="font-semibold text-slate-400">(se autodetecta al subir)</span></span>
-                                  <select
-                                    value={assetForm.format}
-                                    onChange={(event) => setAssetForm((current) => ({ ...current, format: event.target.value as CreateAssetPayload['format'] }))}
-                                    className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
-                                  >
-                                    <option value="jpg">JPG</option>
-                                    <option value="jpeg">JPEG</option>
-                                    <option value="png">PNG</option>
-                                    <option value="webp">WEBP</option>
-                                    <option value="splat">SPLAT</option>
-                                    <option value="ply">PLY</option>
-                                    <option value="glb">GLB</option>
-                                  </select>
-                                </label>
+                              {/* Format selector – hidden (auto-detected on upload, kept in state) */}
+                              <div className="hidden">
+                                <select
+                                  value={assetForm.format}
+                                  onChange={(event) => setAssetForm((current) => ({ ...current, format: event.target.value as CreateAssetPayload['format'] }))}
+                                  tabIndex={-1}
+                                  aria-hidden="true"
+                                >
+                                  <option value="jpg">JPG</option>
+                                  <option value="jpeg">JPEG</option>
+                                  <option value="png">PNG</option>
+                                  <option value="webp">WEBP</option>
+                                  <option value="splat">SPLAT</option>
+                                  <option value="ply">PLY</option>
+                                  <option value="glb">GLB</option>
+                                </select>
                               </div>
 
                               <div className="md:col-span-2">
@@ -1165,7 +1224,7 @@ export default function PropertiesPage(): JSX.Element {
                                   {/* Hint */}
                                   {!isUploadingAsset && uploadPhase !== 'done' ? (
                                     <span className="text-xs font-semibold text-slate-400">
-                                      JPG / WebP para 360° · GLB para modelos 3D · SPZ / SPLAT / PLY para Gaussian Splats · Máx. 100 MB
+                                      JPG / WebP para 360° · GLB para modelos 3D · SPZ / SPLAT / PLY para escaneos 3D · Máx. 100 MB
                                     </span>
                                   ) : null}
 
@@ -1204,7 +1263,7 @@ export default function PropertiesPage(): JSX.Element {
                                         <div className="min-w-0 flex-1">
                                           <p className="truncate text-sm font-black text-slate-900">{selectedAssetFileName}</p>
                                           <p className="text-xs font-semibold text-slate-400">
-                                            {assetPreviewType === 'gaussian_splat' ? 'Gaussian Splat' : 'Modelo 3D · GLB'}
+                                            {assetPreviewType === 'gaussian_splat' ? 'Escaneo 3D' : 'Modelo 3D · GLB'}
                                             {(assetForm.size ?? 0) > 0 ? ` · ${assetForm.size} MB` : ''}
                                           </p>
                                         </div>
@@ -1220,7 +1279,7 @@ export default function PropertiesPage(): JSX.Element {
                               <div className="md:col-span-2">
                                 <label className="block">
                                   <span className="mb-2 block text-sm font-black text-slate-700">
-                                    URL del asset <span className="font-semibold text-slate-400">(se rellena automáticamente al subir · o pega una URL directamente)</span>
+                                    URL de la escena <span className="font-semibold text-slate-400">(se rellena automáticamente al subir · o pega una URL directamente)</span>
                                   </span>
                                   <input
                                     type="url"
@@ -1241,7 +1300,7 @@ export default function PropertiesPage(): JSX.Element {
 
                               {/* Thumbnail + Size – secondary, collapsible feel */}
                               <label className="block">
-                                <span className="mb-2 block text-sm font-black text-slate-700">Thumbnail <span className="font-semibold text-slate-400">(auto)</span></span>
+                                <span className="mb-2 block text-sm font-black text-slate-700">Miniatura <span className="font-semibold text-slate-400">(auto)</span></span>
                                 <input
                                   type="url"
                                   value={assetForm.thumbnail ?? ''}
@@ -1284,7 +1343,7 @@ export default function PropertiesPage(): JSX.Element {
                                     if (draggingHotspotIdx === -1) {
                                       setHotspotDraft((d) => ({ ...d, x, y }));
                                     } else if (editingHotspotIndex === draggingHotspotIdx) {
-                                      // Dragging an editing pin â†’ update draft position
+                                      // Dragging an editing pin â†' update draft position
                                       setHotspotDraft((d) => ({ ...d, x, y }));
                                     } else {
                                       setAssetForm((curr) => ({
@@ -1296,7 +1355,7 @@ export default function PropertiesPage(): JSX.Element {
                                     }
                                   }}
                                   onPointerUp={() => {
-                                    // Detect click (< 5px movement) on an existing pin â†’ open edit form
+                                    // Detect click (< 5px movement) on an existing pin â†' open edit form
                                     if (pinPointerStart.current !== null && draggingHotspotIdx !== null && draggingHotspotIdx >= 0) {
                                       const dx = pinPointerStart.current.x;
                                       const dy = pinPointerStart.current.y;
@@ -1397,12 +1456,12 @@ export default function PropertiesPage(): JSX.Element {
                                   {showHotspotForm ? (
                                     <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-black/60 px-3 py-1 text-xs font-semibold text-white">
                                       {editingHotspotIndex !== null
-                                        ? 'Editando hotspot · Arrastra para mover'
+                                        ? 'Editando punto · Arrastra para mover'
                                         : 'Haz clic para colocar · Arrastra para mover'}
                                     </div>
                                   ) : (assetForm.hotspots ?? []).length > 0 ? (
                                     <div className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-black/50 px-3 py-1 text-xs font-semibold text-white">
-                                      {(assetForm.hotspots ?? []).length} hotspot{(assetForm.hotspots ?? []).length !== 1 ? 's' : ''} · Pulsa un pin para editar
+                                      {(assetForm.hotspots ?? []).length} punto{(assetForm.hotspots ?? []).length !== 1 ? 's' : ''} interactivo{(assetForm.hotspots ?? []).length !== 1 ? 's' : ''} · Pulsa un pin para editar
                                     </div>
                                   ) : null}
                                 </div>
@@ -1411,7 +1470,7 @@ export default function PropertiesPage(): JSX.Element {
                               <div className="md:col-span-2">
                                 <div className="mb-3 flex items-center justify-between">
                                   <p className="text-sm font-black text-slate-950">
-                                    Hotspots ({(assetForm.hotspots ?? []).length})
+                                    Puntos interactivos ({(assetForm.hotspots ?? []).length})
                                   </p>
                                   <button
                                     type="button"
@@ -1426,7 +1485,7 @@ export default function PropertiesPage(): JSX.Element {
                                     }}
                                     className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-violet-700"
                                   >
-                                    {showHotspotForm ? 'Cancelar' : '+ Añadir hotspot'}
+                                    {showHotspotForm ? 'Cancelar' : '+ Añadir punto'}
                                   </button>
                                 </div>
 
@@ -1440,12 +1499,11 @@ export default function PropertiesPage(): JSX.Element {
                                             hotspot.type === 'navigation' ? 'bg-blue-50 text-blue-700' :
                                             hotspot.type === 'measurement' ? 'bg-amber-50 text-amber-700' :
                                             'bg-slate-100 text-slate-700'
-                                          }`}>{hotspot.type}</span>
+                                          }`}>{translateHotspotType(hotspot.type)}</span>
                                           <span className="truncate text-sm font-bold text-slate-800">{hotspot.label}</span>
                                           {hotspot.type === 'navigation' && hotspot.targetSpaceId ? (
-                                            <span className="shrink-0 text-xs text-blue-500">â†’ {property.spaces.find((s) => s.id === hotspot.targetSpaceId)?.name ?? '?'}</span>
+                                            <span className="shrink-0 text-xs text-blue-500">→ {property.spaces.find((s) => s.id === hotspot.targetSpaceId)?.name ?? '?'}</span>
                                           ) : null}
-                                          <span className="shrink-0 text-xs text-slate-400">({hotspot.position.x},{hotspot.position.y})</span>
                                         </div>
                                         <div className="ml-2 flex shrink-0 gap-1">
                                           <button
@@ -1496,8 +1554,8 @@ export default function PropertiesPage(): JSX.Element {
                                           }}
                                           className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
                                         >
-                                          <option value="info">Info</option>
-                                          <option value="cta">CTA</option>
+                                          <option value="info">Información</option>
+                                          <option value="cta">Contacto</option>
                                           <option value="navigation">Navegación</option>
                                           <option value="measurement">Medición</option>
                                         </select>
@@ -1555,26 +1613,7 @@ export default function PropertiesPage(): JSX.Element {
                                           className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
                                         />
                                       </label>
-                                      <label className="block">
-                                        <span className="mb-1 block text-xs font-black text-slate-700">Posición X (0–100)</span>
-                                        <input
-                                          type="number"
-                                          min="0" max="100"
-                                          value={hotspotDraft.x}
-                                          onChange={(e) => setHotspotDraft((d) => ({ ...d, x: Number(e.target.value) }))}
-                                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
-                                        />
-                                      </label>
-                                      <label className="block">
-                                        <span className="mb-1 block text-xs font-black text-slate-700">Posición Y (0–100)</span>
-                                        <input
-                                          type="number"
-                                          min="0" max="100"
-                                          value={hotspotDraft.y}
-                                          onChange={(e) => setHotspotDraft((d) => ({ ...d, y: Number(e.target.value) }))}
-                                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
-                                        />
-                                      </label>
+                                      {/* X/Y inputs hidden: drag on the preview image to position */}
                                     </div>
                                     <button
                                       type="button"
@@ -1589,7 +1628,7 @@ export default function PropertiesPage(): JSX.Element {
                                           : 'bg-slate-950 hover:bg-violet-700'
                                       }`}
                                     >
-                                      {editingHotspotIndex !== null ? 'Guardar cambios' : 'Añadir hotspot'}
+                                      {editingHotspotIndex !== null ? 'Guardar cambios' : 'Añadir punto interactivo'}
                                     </button>
                                   </div>
                                 ) : null}
@@ -1598,10 +1637,10 @@ export default function PropertiesPage(): JSX.Element {
                               <div className="flex flex-wrap gap-2 md:col-span-2">
                                 <button disabled={isLoading || isUploadingAsset} type="submit" className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-60">
                                   {isUploadingAsset
-                                    ? 'Subiendo archivo...'
+                                    ? 'Subiendo...'
                                     : editingAsset?.propertyId === property.id && editingAsset?.spaceId === space.id
-                                      ? 'Guardar asset'
-                                      : 'Crear asset'}
+                                      ? 'Guardar escena'
+                                      : 'Crear escena'}
                                 </button>
                                 <button type="button" onClick={closeAssetForm} className="rounded-2xl bg-white px-5 py-3 text-sm font-black text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50">
                                   Cancelar
@@ -1636,15 +1675,16 @@ export default function PropertiesPage(): JSX.Element {
                           <div className="mt-4 rounded-2xl bg-slate-50 p-3 ring-1 ring-slate-200">
                             <div className="mb-3 flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
                               <div>
-                                <p className="text-sm font-black text-slate-950">Assets de la estancia</p>
-                                <p className="text-xs font-semibold text-slate-500">Panorama 360, Gaussian Splat o mesh 3D asociados al espacio.</p>
+                                <p className="text-sm font-black text-slate-950">Escenas de la estancia</p>
+                                <p className="text-xs font-semibold text-slate-500">Panorama 360°, escaneo 3D o modelo 3D asociados a esta estancia.</p>
                               </div>
                             </div>
 
                             <div className="grid grid-cols-1 gap-2">
                               {space.assets.length === 0 ? (
-                                <div className="rounded-xl bg-white p-3 text-sm font-bold text-slate-500 ring-1 ring-slate-200">
-                                  Esta estancia no tiene assets.
+                                <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
+                                  <p className="text-sm font-black text-slate-800">Aún no hay escenas en esta estancia</p>
+                                  <p className="mt-1 text-xs font-semibold text-slate-400">Sube un panorama 360° o un escaneo 3D para que los compradores puedan recorrerla.</p>
                                 </div>
                               ) : (
                                 space.assets.map((asset) => (
@@ -1670,9 +1710,8 @@ export default function PropertiesPage(): JSX.Element {
                                       )}
                                       <div>
                                         <div className="mb-2 flex flex-wrap gap-2">
-                                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{asset.type}</span>
-                                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{asset.format}</span>
-                                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{asset.size} MB</span>
+                                          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{translateAssetType(asset.type)}</span>
+                                          {(asset.size ?? 0) > 0 ? <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-700">{asset.size} MB</span> : null}
                                           {isFallbackAssetId(asset.id) ? (
                                             <span className="rounded-full bg-amber-50 px-3 py-1 text-xs font-black text-amber-700">Demo temporal</span>
                                           ) : null}
@@ -1683,10 +1722,10 @@ export default function PropertiesPage(): JSX.Element {
 
                                     <div className="flex flex-wrap gap-2">
                                       <button type="button" onClick={() => handleEditAsset(property.id, space.id, asset)} className="rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50">
-                                        Editar asset
+                                        Editar escena
                                       </button>
                                       <button type="button" onClick={() => void handleDeleteAsset(property.id, space.id, asset.id)} className="rounded-full bg-red-50 px-4 py-2 text-sm font-black text-red-700 hover:bg-red-100">
-                                        Eliminar asset
+                                        Eliminar escena
                                       </button>
                                     </div>
                                   </div>
