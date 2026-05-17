@@ -3,12 +3,15 @@ import { GaussianSplatRenderer } from '@/engines/GaussianSplatRenderer';
 import MeasurementOverlay from '@/components/viewer/MeasurementOverlay';
 import type { RemovedSplatZone, ViewerAsset, ViewerEvent } from '@/types/viewer';
 
+// Future: extend to viewerMode: 'public' | 'admin' | 'embed' | 'kiosk'
 interface GaussianSplatViewerProps {
   propertyId: string;
   spaceId: string;
   asset: ViewerAsset;
   primaryColor?: string;
   measureMode?: boolean;
+  /** When false (default): shows only the immersive 3D canvas — no editor, no upload, no tech badges. */
+  isAdminMode?: boolean;
   onAnalyticsEvent: (event: ViewerEvent) => void;
 }
 
@@ -40,6 +43,7 @@ export default function GaussianSplatViewer({
   asset,
   primaryColor = '#7C3AED',
   measureMode = false,
+  isAdminMode = false,
   onAnalyticsEvent
 }: GaussianSplatViewerProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -55,6 +59,7 @@ export default function GaussianSplatViewer({
   const [clipEnabled, setClipEnabled] = useState(false);
   const [removedZones, setRemovedZones] = useState<RemovedSplatZone[]>([]);
   const [activeTab, setActiveTab] = useState<'upload' | 'editor'>('upload');
+  const [retryKey, setRetryKey] = useState(0);
 
   const removedCount = removedZones.length;
 
@@ -130,7 +135,7 @@ export default function GaussianSplatViewer({
       setIsReady(false);
       setErrorMessage(message);
     }
-  }, [asset.id, propertyId, runtimeUrl, spaceId]);
+  }, [asset.id, propertyId, runtimeUrl, spaceId, retryKey]);
 
   useEffect(() => {
     return () => {
@@ -268,41 +273,66 @@ export default function GaussianSplatViewer({
           {!isReady && !errorMessage ? (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/90">
               <div className="rounded-2xl border border-white/10 bg-white/10 px-6 py-4 text-sm font-bold backdrop-blur">
-                Cargando Gaussian Splat con SparkJS…
+                {isAdminMode ? 'Cargando Gaussian Splat con SparkJS…' : 'Cargando vista inmersiva…'}
               </div>
             </div>
           ) : null}
 
-          {/* Estado: error / sin archivo → prompt de subida centrado y SIEMPRE visible */}
+          {/* Estado: error */}
           {errorMessage ? (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-br from-violet-950 via-slate-950 to-slate-950 p-4">
-              <div className="w-full max-w-sm space-y-4 text-center">
-                {/* Card info */}
-                <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
-                  <p className="text-5xl">🫧</p>
-                  <p className="mt-3 text-lg font-black">Sube tu Gaussian Splat</p>
-                  <p className="mt-2 text-sm leading-6 text-white/60">
-                    El archivo de demo no está disponible desde este dominio.
-                    Sube tu propio{' '}
-                    <span className="font-bold text-fuchsia-300">.splat</span> o{' '}
-                    <span className="font-bold text-fuchsia-300">.spz</span> para verlo aquí.
-                  </p>
-                </div>
-                {/* Upload zone */}
-                <div className="rounded-3xl border border-dashed border-fuchsia-400/40 bg-fuchsia-500/10 p-5 backdrop-blur">
-                  <p className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-fuchsia-300">
-                    Subir archivo local
-                  </p>
-                  <UploadZone />
-                  <p className="mt-3 text-xs text-white/40">
-                    Captura con{' '}
-                    <span className="text-white/70">Luma AI</span> ·{' '}
-                    <span className="text-white/70">Polycam</span> ·{' '}
-                    <span className="text-white/70">Postshot</span>
-                  </p>
+            isAdminMode ? (
+              /* ADMIN — upload zone + debug info */
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-br from-violet-950 via-slate-950 to-slate-950 p-4">
+                <div className="w-full max-w-sm space-y-4 text-center">
+                  <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
+                    <p className="text-5xl">🫧</p>
+                    <p className="mt-3 text-lg font-black">Sube tu Gaussian Splat</p>
+                    <p className="mt-2 text-sm leading-6 text-white/60">
+                      El archivo de demo no está disponible desde este dominio.
+                      Sube tu propio{' '}
+                      <span className="font-bold text-fuchsia-300">.splat</span> o{' '}
+                      <span className="font-bold text-fuchsia-300">.spz</span> para verlo aquí.
+                    </p>
+                    <p className="mt-2 text-xs text-white/30">{errorMessage}</p>
+                  </div>
+                  <div className="rounded-3xl border border-dashed border-fuchsia-400/40 bg-fuchsia-500/10 p-5 backdrop-blur">
+                    <p className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-fuchsia-300">
+                      Subir archivo local
+                    </p>
+                    <UploadZone />
+                    <p className="mt-3 text-xs text-white/40">
+                      Captura con{' '}
+                      <span className="text-white/70">Luma AI</span> ·{' '}
+                      <span className="text-white/70">Polycam</span> ·{' '}
+                      <span className="text-white/70">Postshot</span>
+                    </p>
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              /* PUBLIC — premium fallback, no technical language, no upload */
+              <div className="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-950 to-slate-950 p-6">
+                <div className="w-full max-w-xs space-y-5 text-center">
+                  <p className="text-5xl opacity-40">✦</p>
+                  <div>
+                    <p className="text-lg font-black text-white">
+                      Vista inmersiva no disponible
+                    </p>
+                    <p className="mt-2 text-sm leading-6 text-white/50">
+                      No hemos podido cargar esta vista. Por favor, inténtalo de nuevo.
+                    </p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => { setRetryKey((k) => k + 1); }}
+                    className="w-full rounded-2xl px-5 py-3 text-sm font-black text-white transition hover:opacity-90 active:scale-95"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    Reintentar
+                  </button>
+                </div>
+              </div>
+            )
           ) : null}
 
           {/* Overlay del editor (crosshair + zonas SDF) */}
@@ -329,8 +359,8 @@ export default function GaussianSplatViewer({
             ))}
           </div>
 
-          {/* Badge de formato — visible en esquina inferior izquierda */}
-          {isReady && !errorMessage ? (
+          {/* Badge de formato — solo en modo admin */}
+          {isAdminMode && isReady && !errorMessage ? (
             <div className="absolute bottom-4 left-4 z-40 rounded-2xl border border-white/10 bg-black/60 px-4 py-3 backdrop-blur">
               <p className="text-[0.6rem] font-black uppercase tracking-[0.2em] text-fuchsia-200">
                 Gaussian Splat · SparkJS
@@ -349,11 +379,9 @@ export default function GaussianSplatViewer({
         </div>
 
         {/* ══════════════════════════════════════════════════════
-            PANEL DE CONTROLES
-            Mobile  : debajo del visor, tab-switcher (Archivo / Editor)
-            Desktop : sidebar fija 280px, scroll interno independiente
+            PANEL DE CONTROLES — solo visible en modo admin
         ══════════════════════════════════════════════════════ */}
-        <div className="order-2 w-full shrink-0 border-t border-white/10 bg-white/[0.04] lg:w-[280px] lg:overflow-y-auto lg:border-l lg:border-t-0">
+        {isAdminMode ? <div className="order-2 w-full shrink-0 border-t border-white/10 bg-white/[0.04] lg:w-[280px] lg:overflow-y-auto lg:border-l lg:border-t-0">
 
           {/* ── Header desktop (oculto en mobile) ── */}
           <div className="hidden border-b border-white/10 px-5 py-4 lg:block">
@@ -500,7 +528,7 @@ export default function GaussianSplatViewer({
             </div>
           </div>
 
-        </div>
+        </div> : null}
       </div>
     </div>
   );

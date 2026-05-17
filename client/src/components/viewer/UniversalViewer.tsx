@@ -533,6 +533,7 @@ export default function UniversalViewer({
                 asset={activeAsset}
                 primaryColor={primaryColor}
                 measureMode={isMeasuring}
+                isAdminMode={false}
                 onAnalyticsEvent={onAnalyticsEvent}
               />
             ) : (
