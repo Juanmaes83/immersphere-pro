@@ -1128,7 +1128,7 @@ export default function PropertiesPage(): JSX.Element {
                   </div>
 
                   {/* ── B. Siguiente paso contextual ── */}
-                  <div className="mx-3 mt-2">
+                  <div className="mx-3 mt-3">
                     {nextStep ? (
                       <div className="rounded-2xl border border-violet-200/60 bg-violet-50/80 px-4 py-3">
                         <p className="text-sm font-black text-violet-900">{nextStep.title}</p>
@@ -1537,7 +1537,7 @@ export default function PropertiesPage(): JSX.Element {
                                         }}
                                       >
                                         <div className={`h-5 w-5 rounded-full border-2 border-white shadow-lg ring-1 ring-black/20 ${
-                                          hotspot.type === 'navigation' ? 'bg-blue-500' :
+                                          hotspot.type === 'navigation' ? 'bg-fuchsia-500' :
                                           hotspot.type === 'cta' ? 'bg-emerald-500' :
                                           hotspot.type === 'measurement' ? 'bg-amber-500' :
                                           'bg-violet-500'
@@ -1567,11 +1567,11 @@ export default function PropertiesPage(): JSX.Element {
                                     >
                                       <div className={`h-5 w-5 rounded-full border-2 border-white shadow-lg ${
                                         editingHotspotIndex !== null
-                                          ? 'bg-orange-400 ring-2 ring-orange-300/60'
+                                          ? 'bg-amber-400 ring-2 ring-amber-300/60'
                                           : 'animate-pulse bg-violet-400 ring-2 ring-violet-300/50'
                                       }`} />
                                       <div className={`max-w-[96px] truncate rounded-full px-2 py-0.5 text-[10px] font-bold leading-tight text-white ${
-                                        editingHotspotIndex !== null ? 'bg-orange-700/80' : 'bg-violet-700/80'
+                                        editingHotspotIndex !== null ? 'bg-amber-700/80' : 'bg-violet-700/80'
                                       }`}>
                                         {hotspotDraft.label || (editingHotspotIndex !== null ? 'editando' : 'nuevo')}
                                       </div>
@@ -1622,13 +1622,13 @@ export default function PropertiesPage(): JSX.Element {
                                         <div className="flex min-w-0 items-center gap-2">
                                           <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-black ${
                                             hotspot.type === 'cta' ? 'bg-emerald-50 text-emerald-700' :
-                                            hotspot.type === 'navigation' ? 'bg-blue-50 text-blue-700' :
+                                            hotspot.type === 'navigation' ? 'bg-fuchsia-50 text-fuchsia-700' :
                                             hotspot.type === 'measurement' ? 'bg-amber-50 text-amber-700' :
                                             'bg-slate-100 text-slate-700'
                                           }`}>{translateHotspotType(hotspot.type)}</span>
                                           <span className="truncate text-sm font-bold text-slate-800">{hotspot.label}</span>
                                           {hotspot.type === 'navigation' && hotspot.targetSpaceId ? (
-                                            <span className="shrink-0 text-xs text-blue-500">→ {property.spaces.find((s) => s.id === hotspot.targetSpaceId)?.name ?? '?'}</span>
+                                            <span className="shrink-0 text-xs text-fuchsia-600">→ {property.spaces.find((s) => s.id === hotspot.targetSpaceId)?.name ?? '?'}</span>
                                           ) : null}
                                         </div>
                                         <div className="ml-2 flex shrink-0 gap-1">
@@ -1750,7 +1750,7 @@ export default function PropertiesPage(): JSX.Element {
                                       }
                                       className={`mt-3 rounded-xl px-4 py-2 text-xs font-black text-white disabled:opacity-50 ${
                                         editingHotspotIndex !== null
-                                          ? 'bg-orange-500 hover:bg-orange-600'
+                                          ? 'bg-amber-500 hover:bg-amber-600'
                                           : 'bg-slate-950 hover:bg-violet-700'
                                       }`}
                                     >
@@ -1829,7 +1829,7 @@ export default function PropertiesPage(): JSX.Element {
                                             ? 'bg-violet-100 text-violet-700'
                                             : asset.type === 'mesh'
                                               ? 'bg-fuchsia-100 text-fuchsia-700'
-                                              : 'bg-cyan-100 text-cyan-700'
+                                              : 'bg-violet-100 text-violet-700'
                                         }`}>
                                           {asset.type === 'gaussian_splat' ? 'SPLAT' : asset.type === 'mesh' ? 'GLB' : '360'}
                                         </div>
@@ -1914,7 +1914,7 @@ export default function PropertiesPage(): JSX.Element {
                                 <span className="line-clamp-1">{lead.notes || '–'}</span>
                               </td>
                               <td className="px-4 py-3">
-                                <span className="rounded-full bg-cyan-50 px-3 py-1 text-xs font-black text-cyan-700">{lead.source}</span>
+                                <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black text-slate-600">{lead.source}</span>
                               </td>
                               <td className="px-4 py-3 text-slate-500">
                                 {new Date(lead.createdAt).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: '2-digit', hour: '2-digit', minute: '2-digit' })}
