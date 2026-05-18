@@ -13,6 +13,7 @@ import { IcoBuilding, IcoLink, IcoWhatsApp, IcoCode, IcoFilePdf, IcoUsers, IcoCh
 import { formatCurrency } from '@/utils/format';
 
 const GlbViewer = lazy(() => import('@/components/viewer/GlbViewer'));
+import FloorplanPinEditor from '@/components/admin/FloorplanPinEditor';
 
 // ─── Enum translation helpers ─────────────────────────────────────────────────
 const PROPERTY_TYPE_LABELS: Record<string, string> = {
@@ -1279,32 +1280,15 @@ export default function PropertiesPage(): JSX.Element {
                               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-violet-400"
                             />
                           </label>
-                          <label className="block">
-                            <span className="mb-1.5 block text-xs font-black text-slate-600">Pin plano — X <span className="font-semibold text-slate-400">(0-100%)</span></span>
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              step={1}
-                              value={spaceWowForm.floorplanPinX}
-                              onChange={(e) => { setSpaceWowForm((f) => ({ ...f, floorplanPinX: e.target.value })); }}
-                              placeholder="50"
-                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-violet-400"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="mb-1.5 block text-xs font-black text-slate-600">Pin plano — Y <span className="font-semibold text-slate-400">(0-100%)</span></span>
-                            <input
-                              type="number"
-                              min={0}
-                              max={100}
-                              step={1}
-                              value={spaceWowForm.floorplanPinY}
-                              onChange={(e) => { setSpaceWowForm((f) => ({ ...f, floorplanPinY: e.target.value })); }}
-                              placeholder="50"
-                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-violet-400"
-                            />
-                          </label>
+                          <FloorplanPinEditor
+                            floorplanUrl={property.floorplanUrl ?? ''}
+                            pinX={spaceWowForm.floorplanPinX}
+                            pinY={spaceWowForm.floorplanPinY}
+                            spaceName={spaceForm.name ?? ''}
+                            onChange={(x, y) => {
+                              setSpaceWowForm((f) => ({ ...f, floorplanPinX: x, floorplanPinY: y }));
+                            }}
+                          />
                         </div>
                       ) : null}
                     </div>

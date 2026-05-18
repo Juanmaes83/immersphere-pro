@@ -47,9 +47,17 @@ export default function FloorplanViewer({
               style={{ left: `${pin.x}%`, top: `${pin.y}%` }}
               title={space.name}
             >
+              {/* Active pulse ring — animate-ping creates a ripple without keyframes */}
+              {isActive ? (
+                <span
+                  className="absolute inset-0 animate-ping rounded-full opacity-35"
+                  style={{ backgroundColor: primaryColor }}
+                />
+              ) : null}
+
               {/* Pin circle */}
               <span
-                className="flex h-7 w-7 items-center justify-center rounded-full shadow-lg transition-all duration-200"
+                className="relative flex h-7 w-7 items-center justify-center rounded-full shadow-lg transition-all duration-200"
                 style={{
                   backgroundColor: isActive ? primaryColor : 'rgba(255,255,255,0.15)',
                   border: isActive
@@ -67,7 +75,7 @@ export default function FloorplanViewer({
                 />
               </span>
 
-              {/* Space name label — appears on hover / active */}
+              {/* Space name label — always visible on active, on hover otherwise */}
               {(isHovered || isActive) ? (
                 <span
                   className="pointer-events-none absolute bottom-full left-1/2 mb-2 -translate-x-1/2 whitespace-nowrap rounded-xl px-3 py-1.5 text-xs font-black text-white shadow-xl"
