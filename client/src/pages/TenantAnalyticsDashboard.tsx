@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+﻿import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api, unwrapApiResponse } from '@/services/api';
 
@@ -66,7 +66,7 @@ export default function TenantAnalyticsDashboard(): JSX.Element | null {
   if (loading) {
     return (
       <section className="mt-8 rounded-[1.6rem] bg-slate-950 p-6 text-white">
-        <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">Analytics global</p>
+        <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">Analytics global</p>
         <p className="mt-3 text-sm text-white/40">Cargando datos...</p>
       </section>
     );
@@ -79,7 +79,7 @@ export default function TenantAnalyticsDashboard(): JSX.Element | null {
   return (
     <section className="mt-8 overflow-hidden rounded-[1.6rem] bg-slate-950 text-white">
       <div className="border-b border-white/10 px-6 py-5">
-        <p className="text-sm font-black uppercase tracking-[0.22em] text-cyan-300">
+        <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">
           Analytics global del tenant
         </p>
         <p className="mt-1 text-xs text-white/40">
@@ -102,8 +102,8 @@ export default function TenantAnalyticsDashboard(): JSX.Element | null {
             <p className="mt-1 text-3xl font-black">{summary.totalEvents}</p>
           </div>
           <div className="rounded-2xl bg-white/[0.07] p-4">
-            <p className="text-xs font-bold uppercase tracking-[0.12em] text-cyan-400/70">Aperturas</p>
-            <p className="mt-1 text-3xl font-black text-cyan-300">{summary.totalViewerOpens}</p>
+            <p className="text-xs font-bold uppercase tracking-[0.12em] text-violet-400/70">Aperturas</p>
+            <p className="mt-1 text-3xl font-black text-violet-300">{summary.totalViewerOpens}</p>
           </div>
           <div className="rounded-2xl bg-white/[0.07] p-4">
             <p className="text-xs font-bold uppercase tracking-[0.12em] text-violet-400/70">Hotspots</p>

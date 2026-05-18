@@ -789,7 +789,7 @@ export default function UniversalViewer({
                 </div>
                 <h3 className="mt-4 text-2xl font-black">{activeSpace.name}</h3>
                 {tourDimensions ? (
-                  <p className="mt-2 text-xs font-semibold text-white/40">{tourDimensions}</p>
+                  <p className="mt-2 text-xs font-bold text-white/40">{tourDimensions}</p>
                 ) : null}
                 {tourDescription ? (
                   <p className="mt-3 text-sm leading-6 text-white/65">{tourDescription}</p>

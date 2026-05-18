@@ -103,7 +103,7 @@ const EVENT_TYPE_COLORS: Record<string, string> = {
   viewer_open: 'text-slate-400',
   space_change: 'text-violet-400',
   hotspot_click: 'text-violet-400',
-  viewer_drag: 'text-sky-400',
+  viewer_drag: 'text-slate-400',
   lead_cta: 'text-emerald-400',
   asset_load_error: 'text-red-400',
   viewer_whatsapp_click: 'text-green-400',

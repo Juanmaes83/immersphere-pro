@@ -436,7 +436,7 @@ export default function PanoramaViewer({
             disabled={gyroPermDenied}
             title={gyroPermDenied ? 'Permiso de giroscopio denegado' : gyroActive ? 'Desactivar giroscopio' : 'Activar giroscopio'}
             className={`h-10 rounded-xl px-3 text-xs font-black transition hover:bg-white/20 ${
-              gyroActive ? 'bg-cyan-500/80 text-white' : 'bg-white/10'
+              gyroActive ? 'bg-violet-500/80 text-white' : 'bg-white/10'
             } ${gyroPermDenied ? 'opacity-40' : ''}`}
           >
             {gyroActive ? '⬤ Gyro' : 'Gyro'}

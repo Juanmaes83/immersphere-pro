@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+﻿import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { api } from '@/services/api';
@@ -27,7 +27,7 @@ function PropertyCard({
   return (
     <article className="overflow-hidden rounded-[1.7rem] bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-xl dark:bg-slate-800 dark:ring-slate-700">
       <button type="button" onClick={onOpen} className="block w-full text-left">
-        <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-cyan-400/35 via-violet-500/20 to-slate-950">
+        <div className="relative aspect-[4/3] overflow-hidden bg-gradient-to-br from-violet-400/35 via-fuchsia-500/20 to-slate-950">
           {thumb ? (
             <img src={thumb} alt={property.title} className="h-full w-full object-cover" />
           ) : (

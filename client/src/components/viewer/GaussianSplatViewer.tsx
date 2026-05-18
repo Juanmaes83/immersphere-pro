@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+﻿import { useEffect, useMemo, useRef, useState } from 'react';
 import { GaussianSplatRenderer } from '@/engines/GaussianSplatRenderer';
 import MeasurementOverlay from '@/components/viewer/MeasurementOverlay';
 import type { RemovedSplatZone, ViewerAsset, ViewerEvent } from '@/types/viewer';
@@ -342,7 +342,7 @@ export default function GaussianSplatViewer({
             className={`absolute inset-0 z-30 ${editorMode ? 'cursor-crosshair' : 'pointer-events-none'}`}
           >
             {clipEnabled ? (
-              <div className="absolute inset-y-10 left-10 right-10 rounded-[2rem] border-2 border-dashed border-cyan-300/50 bg-cyan-300/5" />
+              <div className="absolute inset-y-10 left-10 right-10 rounded-[2rem] border-2 border-dashed border-violet-300/50 bg-violet-300/5" />
             ) : null}
             {removedZones.map((zone) => (
               <div

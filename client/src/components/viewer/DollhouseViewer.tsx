@@ -1,4 +1,4 @@
-import { useEffect, useRef } from 'react';
+﻿import { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import type { Hotspot, Space } from '@/types/viewer';
@@ -307,7 +307,7 @@ export default function DollhouseViewer({
           <span className="h-2 w-2 rounded-full bg-amber-400" /> Navegación
         </span>
         <span className="flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-sky-400" /> Medición
+          <span className="h-2 w-2 rounded-full bg-slate-400" /> Medición
         </span>
         <span className="flex items-center gap-2">
           <span className="h-2 w-2 rounded-full bg-slate-300" /> Info

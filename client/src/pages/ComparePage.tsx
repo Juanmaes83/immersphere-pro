@@ -1,4 +1,4 @@
-import { lazy, Suspense, useState, useEffect } from 'react';
+﻿import { lazy, Suspense, useState, useEffect } from 'react';
 import type { FormEvent } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
@@ -99,7 +99,7 @@ function CompareColumn({ propertyId }: { propertyId: string }): JSX.Element {
   return (
     <div className="flex flex-col overflow-hidden rounded-[1.7rem] bg-white ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
       {/* Thumbnail */}
-      <div className="relative aspect-[4/3] bg-gradient-to-br from-cyan-400/35 via-violet-500/20 to-slate-950">
+      <div className="relative aspect-[4/3] bg-gradient-to-br from-violet-400/35 via-fuchsia-500/20 to-slate-950">
         {data.thumbnailUrl ? (
           <img src={data.thumbnailUrl} alt={data.title} className="h-full w-full object-cover" />
         ) : (

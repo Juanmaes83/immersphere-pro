@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+﻿import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { api } from '@/services/api';
@@ -72,7 +72,7 @@ export default function AgencyPage(): JSX.Element {
         {profile.properties.map((property) => (
           <article key={property.id} className="overflow-hidden rounded-[1.7rem] bg-white shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-1 hover:shadow-xl">
             <button type="button" onClick={() => navigate(`/property/${property.id}`)} className="block w-full text-left">
-              <div className="relative aspect-[4/3] bg-gradient-to-br from-cyan-400/35 via-violet-500/20 to-slate-950">
+              <div className="relative aspect-[4/3] bg-gradient-to-br from-violet-400/35 via-fuchsia-500/20 to-slate-950">
                 {property.coverImage ? <img src={property.coverImage} alt={property.title} className="h-full w-full object-cover" /> : null}
                 <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
                 <div className="absolute bottom-4 left-4 right-4 text-white">

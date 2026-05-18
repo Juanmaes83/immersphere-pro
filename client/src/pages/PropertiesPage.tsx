@@ -1133,12 +1133,12 @@ export default function PropertiesPage(): JSX.Element {
                     {nextStep ? (
                       <div className="rounded-2xl border border-violet-200/60 bg-violet-50/80 px-4 py-3">
                         <p className="text-sm font-black text-violet-900">{nextStep.title}</p>
-                        <p className="mt-1 text-xs font-semibold text-violet-700/70">{nextStep.body}</p>
+                        <p className="mt-1 text-xs font-bold text-violet-700/70">{nextStep.body}</p>
                       </div>
                     ) : (
                       <div className="rounded-2xl border border-emerald-200/60 bg-emerald-50 px-4 py-3">
                         <p className="text-sm font-black text-emerald-800">Recorrido completo y publicado</p>
-                        <p className="mt-1 text-xs font-semibold text-emerald-700/60">Los compradores pueden acceder al tour inmersivo ahora mismo.</p>
+                        <p className="mt-1 text-xs font-bold text-emerald-700/60">Los compradores pueden acceder al tour inmersivo ahora mismo.</p>
                       </div>
                     )}
                   </div>
