@@ -175,9 +175,10 @@ export default function UniversalViewer({
   const [guidedTourIdx, setGuidedTourIdx]   = useState(0);
 
   // ── Other viewer modes ───────────────────────────────────────────────────────
-  const [isFullscreen, setIsFullscreen] = useState(false);
-  const [isMeasuring,  setIsMeasuring]  = useState(false);
+  const [isFullscreen,  setIsFullscreen]  = useState(false);
+  const [isMeasuring,   setIsMeasuring]   = useState(false);
   const [showDollhouse, setShowDollhouse] = useState(false);
+  const [showTools,     setShowTools]     = useState(false); // advanced tools menu (···)
 
   // ── Branded loading screen ───────────────────────────────────────────────────
   const [showBrandedLoading, setShowBrandedLoading] = useState(true);
@@ -904,20 +905,7 @@ export default function UniversalViewer({
             )
           ) : null}
 
-          <button
-            type="button"
-            onClick={() => {
-              setIsMeasuring((prev) => !prev);
-              setShowDollhouse(false);
-            }}
-            className={`rounded-full px-4 py-2 text-sm font-black transition ${
-              isMeasuring
-                ? 'bg-emerald-400 text-slate-950 hover:bg-emerald-300'
-                : 'bg-white/10 text-white/70 hover:bg-white/15'
-            }`}
-          >
-            {isMeasuring ? '📏 Midiendo' : '📏 Medir'}
-          </button>
+          {/* Plano / Dollhouse — visible to visitors (it's a premium feature) */}
           <button
             type="button"
             onClick={() => {
@@ -930,8 +918,10 @@ export default function UniversalViewer({
                 : 'bg-white/10 text-white/70 hover:bg-white/15'
             }`}
           >
-            {showDollhouse ? '← Volver al recorrido' : floorplanUrl ? '🗺 Plano' : '🏠 Planta'}
+            {showDollhouse ? '← Recorrido' : floorplanUrl ? '🗺 Plano' : '🏠 Planta'}
           </button>
+
+          {/* Fullscreen — useful for demos, clean single button */}
           {document.fullscreenEnabled ? (
             <button
               type="button"
@@ -939,37 +929,71 @@ export default function UniversalViewer({
               title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
               className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white/70 transition hover:bg-white/15"
             >
-              {isFullscreen ? '⊠ Salir' : '⛶ Presentar'}
+              {isFullscreen ? '⊠' : '⛶'}
             </button>
           ) : null}
 
-          <button
-            type="button"
-            onClick={() => { setStoryMode((m) => !m); }}
-            className={`rounded-full px-4 py-2 text-sm font-black transition ${
-              storyMode
-                ? 'bg-violet-600/70 text-white hover:bg-violet-600'
-                : 'bg-white/10 text-white/30 hover:bg-white/15 hover:text-white/60'
-            }`}
-            title={storyMode ? 'Desactivar narrativa' : 'Activar narrativa'}
-          >
-            Narrativa
-          </button>
-
-          {audioReady ? (
+          {/* ··· Advanced tools — not for visitors, not for the demo pitch */}
+          <div className="relative">
             <button
               type="button"
-              onClick={() => { setAudioMuted((m) => !m); }}
-              title={audioMuted ? 'Activar ambiente' : 'Silenciar ambiente'}
-              className={`rounded-full px-4 py-2 text-sm font-black transition ${
-                audioMuted
-                  ? 'bg-white/10 text-white/40 hover:bg-white/15 hover:text-white/70'
-                  : 'bg-violet-600/70 text-white hover:bg-violet-600'
+              onClick={() => { setShowTools((v) => !v); }}
+              title="Herramientas"
+              className={`rounded-full px-3 py-2 text-sm font-black transition ${
+                showTools
+                  ? 'bg-white/20 text-white'
+                  : 'bg-white/10 text-white/40 hover:bg-white/15 hover:text-white/70'
               }`}
             >
-              {audioMuted ? '🔇' : '🔊'} Ambiente
+              {'···'}
             </button>
-          ) : null}
+            {showTools ? (
+              <div className="absolute right-0 top-full z-50 mt-2 flex min-w-[160px] flex-col gap-1 rounded-2xl border border-white/10 bg-slate-900/95 p-2 shadow-xl backdrop-blur-sm">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsMeasuring((prev) => !prev);
+                    setShowDollhouse(false);
+                    setShowTools(false);
+                  }}
+                  className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-black transition ${
+                    isMeasuring
+                      ? 'bg-emerald-400/20 text-emerald-300'
+                      : 'text-white/60 hover:bg-white/10 hover:text-white/80'
+                  }`}
+                >
+                  <span>📏</span>
+                  <span>{isMeasuring ? 'Midiendo' : 'Medir espacio'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => { setStoryMode((m) => !m); setShowTools(false); }}
+                  className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-black transition ${
+                    storyMode
+                      ? 'text-violet-300 hover:bg-violet-600/20'
+                      : 'text-white/40 hover:bg-white/10 hover:text-white/60'
+                  }`}
+                >
+                  <span>✦</span>
+                  <span>{storyMode ? 'Narrativa activa' : 'Narrativa desact.'}</span>
+                </button>
+                {audioReady ? (
+                  <button
+                    type="button"
+                    onClick={() => { setAudioMuted((m) => !m); setShowTools(false); }}
+                    className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-black transition ${
+                      audioMuted
+                        ? 'text-white/40 hover:bg-white/10 hover:text-white/60'
+                        : 'text-violet-300 hover:bg-violet-600/20'
+                    }`}
+                  >
+                    <span>{audioMuted ? '🔇' : '🔊'}</span>
+                    <span>{audioMuted ? 'Silenciado' : 'Ambiente activo'}</span>
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
       </div>
 
@@ -1386,10 +1410,31 @@ export default function UniversalViewer({
                       </button>
                     ) : null}
                   </div>
+                ) : activeSpace.storySubheadline || activeSpace.storyHighlight ? (
+                  /* Emotional default — show the space narrative, not a tutorial */
+                  <div className="mt-4">
+                    {activeSpace.storySubheadline ? (
+                      <h4 className="text-xl font-black leading-snug text-white">
+                        {activeSpace.storySubheadline}
+                      </h4>
+                    ) : null}
+                    {activeSpace.storyHighlight ? (
+                      <p className="mt-2 text-sm font-light italic leading-relaxed text-white/55">
+                        {activeSpace.storyHighlight}
+                      </p>
+                    ) : null}
+                    {(activeAsset?.hotspots?.length ?? 0) > 0 ? (
+                      <p className="mt-5 text-xs text-white/25">
+                        Selecciona un punto del espacio para ver detalles
+                      </p>
+                    ) : null}
+                  </div>
                 ) : (
-                  <p className="mt-4 text-sm leading-6 text-white/55">
-                    Haz clic sobre cualquier punto destacado del espacio para ver detalles, medidas
-                    o solicitar información.
+                  /* Minimal fallback — no story content configured */
+                  <p className="mt-4 text-xs leading-6 text-white/30">
+                    {(activeAsset?.hotspots?.length ?? 0) > 0
+                      ? 'Selecciona un punto del espacio para ver detalles'
+                      : 'Explora la estancia con el visor 360°'}
                   </p>
                 )}
               </div>
