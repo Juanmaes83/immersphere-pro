@@ -517,7 +517,7 @@ export default function PanoramaViewer({
               gyroActive ? 'bg-violet-500/80 text-white' : 'bg-white/10'
             } ${gyroPermDenied ? 'opacity-40' : ''}`}
           >
-            {gyroActive ? '⬤ Gyro' : 'Gyro'}
+            {gyroActive ? '⬤ Giro' : 'Giro'}
           </button>
         ) : null}
         <button
@@ -532,7 +532,7 @@ export default function PanoramaViewer({
           onClick={handleReset}
           className="h-10 rounded-xl bg-white/10 px-4 text-xs font-black uppercase tracking-[0.18em] hover:bg-white/20"
         >
-          Reset
+          Reiniciar
         </button>
         <button
           type="button"

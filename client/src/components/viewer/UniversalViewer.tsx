@@ -906,21 +906,23 @@ export default function UniversalViewer({
             )
           ) : null}
 
-          {/* Plano / Dollhouse — visible to visitors (it's a premium feature) */}
-          <button
-            type="button"
-            onClick={() => {
-              setIsMeasuring(false);
-              setShowDollhouse((prev) => !prev);
-            }}
-            className={`rounded-full px-4 py-2 text-sm font-black transition ${
-              showDollhouse
-                ? 'bg-fuchsia-500 text-white hover:bg-fuchsia-400'
-                : 'bg-white/10 text-white/70 hover:bg-white/15'
-            }`}
-          >
-            {showDollhouse ? '← Recorrido' : floorplanUrl ? '🗺 Plano' : '🏠 Planta'}
-          </button>
+          {/* Plano — only shown when a real floorplan image exists */}
+          {floorplanUrl ? (
+            <button
+              type="button"
+              onClick={() => {
+                setIsMeasuring(false);
+                setShowDollhouse((prev) => !prev);
+              }}
+              className={`rounded-full px-4 py-2 text-sm font-black transition ${
+                showDollhouse
+                  ? 'bg-fuchsia-500 text-white hover:bg-fuchsia-400'
+                  : 'bg-white/10 text-white/70 hover:bg-white/15'
+              }`}
+            >
+              {showDollhouse ? '← Recorrido' : '🗺 Plano'}
+            </button>
+          ) : null}
 
           {/* Fullscreen — useful for demos, clean single button */}
           {document.fullscreenEnabled ? (
