@@ -77,7 +77,7 @@ function PropertyHero({ property, primaryColor }: { property: ImmersiveProperty;
             {({'APARTMENT':'Apartamento','HOUSE':'Casa','VILLA':'Villa','OFFICE':'Oficina','COMMERCIAL':'Comercial'} as Record<string,string>)[property.type] ?? property.type}
           </span>
           <span className="rounded-full bg-white/15 px-4 py-2 text-xs font-black backdrop-blur">
-            {property.status}
+            {({'PUBLISHED':'Publicado','DRAFT':'Borrador','ARCHIVED':'Archivado'} as Record<string,string>)[property.status] ?? property.status}
           </span>
         </div>
         <h1 className="max-w-4xl text-5xl font-black tracking-tight md:text-7xl">{property.title}</h1>
@@ -461,6 +461,12 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   const [iframeCopied, setIframeCopied] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [waVisible, setWaVisible] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => { setWaVisible(true); }, 4000);
+    return () => { clearTimeout(t); };
+  }, []);
 
   function handleCopyLink(): void {
     const url = `${window.location.origin}/property/${propertyId}`;
@@ -732,7 +738,9 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 </ErrorBoundary>
               ) : null}
 
-              <AnalyticsDashboard summary={analyticsSummary} primaryColor={primaryColor} spaces={property.spaces} />
+              {isAuthenticated ? (
+                <AnalyticsDashboard summary={analyticsSummary} primaryColor={primaryColor} spaces={property.spaces} />
+              ) : null}
 
               {isAuthenticated ? (
                 <PropertyLeadsList
@@ -743,23 +751,27 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
             </div>
 
             <aside className="rounded-[1.6rem] bg-slate-50 p-6 ring-1 ring-slate-200">
-              <p className="text-sm font-black uppercase tracking-[0.22em]" style={{ color: primaryColor }}>
-                Señales de intención
-              </p>
-              <div className="mt-5 space-y-4">
-                <DetailStat
-                  label="Aperturas del visor"
-                  value={analyticsSummary ? formatNumber(analyticsSummary.viewerOpens) : '—'}
-                />
-                <DetailStat
-                  label="Leads generados"
-                  value={analyticsSummary ? formatNumber(analyticsSummary.leadCtas) : '—'}
-                />
-                <DetailStat
-                  label="Engagement score"
-                  value={analyticsSummary ? `${analyticsSummary.engagementScore}/100` : '—'}
-                />
-              </div>
+              {isAuthenticated ? (
+                <>
+                  <p className="text-sm font-black uppercase tracking-[0.22em]" style={{ color: primaryColor }}>
+                    Señales de intención
+                  </p>
+                  <div className="mt-5 space-y-4">
+                    <DetailStat
+                      label="Aperturas del visor"
+                      value={analyticsSummary ? formatNumber(analyticsSummary.viewerOpens) : '—'}
+                    />
+                    <DetailStat
+                      label="Leads generados"
+                      value={analyticsSummary ? formatNumber(analyticsSummary.leadCtas) : '—'}
+                    />
+                    <DetailStat
+                      label="Engagement score"
+                      value={analyticsSummary ? `${analyticsSummary.engagementScore}/100` : '—'}
+                    />
+                  </div>
+                </>
+              ) : null}
               {property.tenantWhatsapp?.replace(/\D/g, '').length ? (
                 <a
                   href={`https://wa.me/${property.tenantWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`${property.title} — Tour inmersivo 360° · Ver tour: ${ogUrl}`)}`}
@@ -869,7 +881,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
               })
             }).catch(() => {});
           }}
-          className="fixed bottom-5 left-5 z-[9989] flex h-14 w-14 items-center justify-center rounded-full shadow-xl transition-transform hover:scale-105 focus:outline-none"
+          className={`fixed bottom-5 left-5 z-[9989] flex h-14 w-14 items-center justify-center rounded-full shadow-xl transition-all duration-500 hover:scale-105 focus:outline-none ${waVisible ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4 pointer-events-none'}`}
           style={{ backgroundColor: '#25D366' }}
         >
           <svg viewBox="0 0 24 24" fill="white" className="h-7 w-7" aria-hidden="true">

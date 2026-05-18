@@ -80,7 +80,7 @@ function createRuntimeFallbackPanoramaUrl(label: string): string {
       </g>
 
       <text x="1024" y="460" text-anchor="middle" font-family="Arial, sans-serif" font-size="76" font-weight="900" fill="#ffffff">${safeLabel}</text>
-      <text x="1024" y="540" text-anchor="middle" font-family="Arial, sans-serif" font-size="38" font-weight="800" fill="#a5f3fc">Vista en preparacion</text>
+      <text x="1024" y="540" text-anchor="middle" font-family="Arial, sans-serif" font-size="38" font-weight="800" fill="#a5f3fc">Vista en preparación</text>
       <text x="1024" y="600" text-anchor="middle" font-family="Arial, sans-serif" font-size="26" fill="#cbd5e1">Sube el panorama 360 para activar esta estancia</text>
     </svg>
   `;

@@ -154,6 +154,7 @@ export default function UniversalViewer({
   const [activeSpaceId, setActiveSpaceId] = useState(initialSpaceId ?? firstSpaceId);
   const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null);
   const [showLeadModal, setShowLeadModal] = useState(false);
+  const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
 
   // ── Guided tour ─────────────────────────────────────────────────────────────
   const [isGuidedTour, setIsGuidedTour]     = useState(false);
@@ -230,6 +231,15 @@ export default function UniversalViewer({
     mq.addEventListener('change', onChange);
     return () => mq.removeEventListener('change', onChange);
   }, []);
+
+  // Mobile bottom sheet: open when a hotspot is set on a touch device
+  useEffect(() => {
+    if (isTouchDevice.current && activeHotspot) {
+      setMobileSheetOpen(true);
+    } else {
+      setMobileSheetOpen(false);
+    }
+  }, [activeHotspot]);
 
   // Prewarm prev/next and hotspot-target panorama assets so transitions feel instant
   useEffect(() => {
@@ -744,8 +754,8 @@ export default function UniversalViewer({
                 <button
                   type="button"
                   onClick={() => { runTransition(() => handleSpaceChange(nextSpace.id), nextSpace.id); }}
-                  className="pointer-events-auto flex items-center gap-2 rounded-2xl px-4 py-3 text-sm font-black text-white backdrop-blur-sm transition hover:opacity-90 active:scale-95"
-                  style={{ backgroundColor: primaryColor + 'cc' }}
+                  className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-slate-950/70 px-4 py-3 text-sm font-black text-white backdrop-blur-sm transition hover:bg-slate-950/90 active:scale-95"
+                  style={{ borderLeft: `3px solid ${primaryColor}` }}
                 >
                   <span className="max-w-[120px] truncate">{nextSpace.name}</span>
                   <span className="text-lg leading-none">→</span>
@@ -895,6 +905,61 @@ export default function UniversalViewer({
           )}
         </aside>
       </div>
+
+      {/* ── Mobile hotspot bottom sheet ──────────────────────────────────────── */}
+      {mobileSheetOpen && activeHotspot ? (
+        <div
+          className="fixed inset-0 z-40 lg:hidden"
+          onClick={() => { setActiveHotspot(null); }}
+        >
+          {/* scrim */}
+          <div className="absolute inset-0 bg-black/50" />
+          {/* sheet */}
+          <div
+            className="absolute bottom-0 inset-x-0 rounded-t-[1.6rem] bg-slate-900 p-6 pb-[max(1.5rem,env(safe-area-inset-bottom,0px))] text-white shadow-2xl"
+            style={{ maxHeight: '70dvh', overflowY: 'auto' }}
+            onClick={(e) => { e.stopPropagation(); }}
+          >
+            {/* drag handle */}
+            <div className="mx-auto mb-4 h-1 w-10 rounded-full bg-white/20" />
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
+                  Punto destacado
+                </p>
+                <h3 className="mt-1 text-xl font-black leading-snug">{activeHotspot.label}</h3>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setActiveHotspot(null); }}
+                className="shrink-0 rounded-full p-2 text-white/40 transition hover:bg-white/10 hover:text-white"
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+            {activeHotspot.body ? (
+              <p className="mt-4 text-sm leading-6 text-white/65">{activeHotspot.body}</p>
+            ) : null}
+            {activeHotspot.metric ? (
+              <div className="mt-4 rounded-2xl bg-black/30 p-4">
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">Dato</p>
+                <p className="mt-1 text-xl font-black">{activeHotspot.metric}</p>
+              </div>
+            ) : null}
+            {activeHotspot.type === 'cta' ? (
+              <button
+                type="button"
+                onClick={() => { setActiveHotspot(null); handleLeadCtaOpen(); }}
+                className="mt-5 w-full rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90"
+                style={{ backgroundColor: primaryColor }}
+              >
+                Solicitar información
+              </button>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
     </section>
   );
 }
