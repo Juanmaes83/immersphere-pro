@@ -203,6 +203,14 @@ export default function UniversalViewer({
   const [storyVisible, setStoryVisible] = useState(false);
   const storyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Cinematic tour ───────────────────────────────────────────────────────────
+  const CINEMATIC_MS = 10_000; // 10s per space — no per-space config yet
+  const [isCinematic,      setIsCinematic]      = useState(false);
+  const [cinematicPaused,  setCinematicPaused]  = useState(false);
+  const [showCinematicEnd, setShowCinematicEnd] = useState(false);
+  const [cpTick,           setCpTick]           = useState(false); // drives progress animation
+  const cinematicTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ── Ambient audio engine ─────────────────────────────────────────────────────
   const audioRef       = useRef<HTMLAudioElement | null>(null);
   const audioMutedRef  = useRef(false);
@@ -378,7 +386,7 @@ export default function UniversalViewer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioEnabled, activeSpace?.ambientAudio]);
 
-  // Cleanup audio on unmount
+  // Cleanup audio + cinematic on unmount
   useEffect(() => {
     return () => {
       cancelAnimationFrame(fadeOutRafId.current);
@@ -388,8 +396,44 @@ export default function UniversalViewer({
         audioRef.current.src = '';
         audioRef.current = null;
       }
+      if (cinematicTimerRef.current) clearTimeout(cinematicTimerRef.current);
     };
   }, []);
+
+  // Cinematic auto-advance — fires after CINEMATIC_MS if playing
+  useEffect(() => {
+    if (!isCinematic || cinematicPaused || showCinematicEnd || prefersReducedMotion) {
+      if (cinematicTimerRef.current) clearTimeout(cinematicTimerRef.current);
+      return;
+    }
+    if (cinematicTimerRef.current) clearTimeout(cinematicTimerRef.current);
+    cinematicTimerRef.current = setTimeout(() => {
+      const curIdx = sortedSpaces.findIndex((s) => s.id === activeSpaceId);
+      const isLast = curIdx < 0 || curIdx >= sortedSpaces.length - 1;
+      if (isLast) {
+        setShowCinematicEnd(true);
+      } else {
+        const nextSpace = sortedSpaces[curIdx + 1]!;
+        runTransition(() => { handleSpaceChange(nextSpace.id); }, nextSpace.id);
+      }
+    }, CINEMATIC_MS);
+    return () => {
+      if (cinematicTimerRef.current) clearTimeout(cinematicTimerRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCinematic, cinematicPaused, activeSpaceId, showCinematicEnd, prefersReducedMotion]);
+
+  // Cinematic progress bar — reset tick on each space so CSS transition fires fresh
+  useEffect(() => {
+    if (!isCinematic || cinematicPaused || showCinematicEnd || prefersReducedMotion) {
+      setCpTick(false);
+      return;
+    }
+    setCpTick(false);
+    const t = setTimeout(() => { setCpTick(true); }, 32); // 2 frames — lets the bar reset to 0 first
+    return () => { clearTimeout(t); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isCinematic, cinematicPaused, activeSpaceId, showCinematicEnd, prefersReducedMotion]);
 
   // Prewarm prev/next and hotspot-target panorama assets so transitions feel instant
   useEffect(() => {
@@ -466,6 +510,41 @@ export default function UniversalViewer({
   function exitGuidedTour(): void {
     setIsGuidedTour(false);
     setGuidedTourIdx(0);
+  }
+
+  function startCinematicTour(): void {
+    if (prefersReducedMotion) return;
+    setIsCinematic(true);
+    setCinematicPaused(false);
+    setShowCinematicEnd(false);
+    setIsMeasuring(false);
+    setShowDollhouse(false);
+    setActiveHotspot(null);
+    // Go to first space so tour is consistent
+    const firstSpace = sortedSpaces[0];
+    if (firstSpace && activeSpaceId !== firstSpace.id) {
+      runTransition(() => {
+        setActiveSpaceId(firstSpace.id);
+        setActiveHotspot(null);
+      }, firstSpace.id);
+    }
+    trackToBackend({
+      propertyId,
+      spaceId: activeSpaceId,
+      type: 'tour_start',
+      label: 'cinematic',
+      sessionId: sessionId.current
+    });
+  }
+
+  function stopCinematicTour(): void {
+    setIsCinematic(false);
+    setCinematicPaused(false);
+    setShowCinematicEnd(false);
+    if (cinematicTimerRef.current) {
+      clearTimeout(cinematicTimerRef.current);
+      cinematicTimerRef.current = null;
+    }
   }
 
   function stepGuidedTour(dir: 1 | -1): void {
@@ -727,7 +806,11 @@ export default function UniversalViewer({
       <div className="flex flex-col gap-4 border-b border-white/10 p-5 lg:flex-row lg:items-center lg:justify-between">
         <div>
           {/* Tour counter always visible — it's UX, not branding */}
-          {isGuidedTour ? (
+          {isCinematic ? (
+            <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">
+              {cinematicPaused ? 'Cinematic · En pausa' : '● Cinematic'} · {currentSpaceIdx + 1} / {sortedSpaces.length}
+            </p>
+          ) : isGuidedTour ? (
             <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">
               Tour guiado · {guidedTourIdx + 1} / {sortedSpaces.length}
             </p>
@@ -766,9 +849,31 @@ export default function UniversalViewer({
             </button>
           ))}
 
-          {/* Guided tour button — only visible with 2+ spaces */}
+          {/* Guided tour / Cinematic — only visible with 2+ spaces */}
           {sortedSpaces.length >= 2 ? (
-            isGuidedTour ? (
+            isCinematic ? (
+              <>
+                <button
+                  type="button"
+                  onClick={() => { setCinematicPaused((p) => !p); }}
+                  className={`rounded-full px-4 py-2 text-sm font-black transition ${
+                    cinematicPaused
+                      ? 'bg-white/10 text-white/60 hover:bg-white/15'
+                      : 'bg-violet-600/70 text-white hover:bg-violet-600'
+                  }`}
+                  title={cinematicPaused ? 'Reanudar recorrido' : 'Pausar recorrido'}
+                >
+                  {cinematicPaused ? '▶ Reanudar' : '⏸ Pausa'}
+                </button>
+                <button
+                  type="button"
+                  onClick={stopCinematicTour}
+                  className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white/40 transition hover:bg-white/15 hover:text-white/70"
+                >
+                  ✕ Salir
+                </button>
+              </>
+            ) : isGuidedTour ? (
               <button
                 type="button"
                 onClick={exitGuidedTour}
@@ -777,13 +882,25 @@ export default function UniversalViewer({
                 ✕ Salir del tour
               </button>
             ) : (
-              <button
-                type="button"
-                onClick={startGuidedTour}
-                className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white/70 transition hover:bg-white/15"
-              >
-                ▶ Iniciar tour
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={startGuidedTour}
+                  className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white/70 transition hover:bg-white/15"
+                >
+                  ▶ Tour
+                </button>
+                {!prefersReducedMotion ? (
+                  <button
+                    type="button"
+                    onClick={startCinematicTour}
+                    className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white/70 transition hover:bg-white/15"
+                    title="Recorrido automatico cinematografico"
+                  >
+                    Cinematic
+                  </button>
+                ) : null}
+              </>
             )
           ) : null}
 
@@ -860,7 +977,13 @@ export default function UniversalViewer({
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px]">
 
         {/* Viewer area */}
-        <div className="relative p-5">
+        <div
+          className="relative p-5"
+          onPointerDown={() => {
+            // Pause cinematic on any direct viewer interaction (drag, tap on panorama)
+            if (isCinematic && !cinematicPaused) setCinematicPaused(true);
+          }}
+        >
           {/* Cinematic transition overlay — fades to black between spaces, stays visible until idle */}
           <div
             className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-[1.5rem] bg-slate-950"
@@ -945,6 +1068,69 @@ export default function UniversalViewer({
             )}
           </ViewerErrorBoundary>
           </div>{/* end micro-scale wrapper */}
+
+          {/* ── Cinematic progress line — top edge, very subtle ───────────── */}
+          {isCinematic && !showCinematicEnd ? (
+            <div className="pointer-events-none absolute inset-x-5 top-5 z-20 h-[2px] overflow-hidden rounded-full bg-white/[0.06]">
+              <div
+                className="h-full rounded-full"
+                style={{
+                  backgroundColor: primaryColor,
+                  opacity: 0.22,
+                  width: cpTick ? '100%' : '0%',
+                  transition: (cpTick && !cinematicPaused)
+                    ? `width ${CINEMATIC_MS}ms linear`
+                    : 'none',
+                }}
+              />
+            </div>
+          ) : null}
+
+          {/* ── Cinematic end screen — CTA final ──────────────────────────── */}
+          {showCinematicEnd ? (
+            <div className="pointer-events-auto absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 rounded-[1.5rem] bg-slate-950/92 px-8 text-center backdrop-blur-sm">
+              <div className="h-px w-8 rounded-full" style={{ backgroundColor: primaryColor }} />
+              <h3 className="max-w-[260px] text-2xl font-black leading-snug text-white">
+                {propertyTitle ?? activeSpace.name}
+              </h3>
+              <p className="text-[0.7rem] font-bold uppercase tracking-[0.28em] text-white/30">
+                Recorrido completo
+              </p>
+              <button
+                type="button"
+                onClick={handleLeadCtaOpen}
+                className="mt-2 rounded-2xl px-6 py-4 text-sm font-black text-white transition hover:opacity-90"
+                style={{ backgroundColor: primaryColor }}
+              >
+                Solicitar visita
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const firstSpace = sortedSpaces[0];
+                  if (firstSpace) {
+                    setShowCinematicEnd(false);
+                    setCinematicPaused(false);
+                    runTransition(() => {
+                      setActiveSpaceId(firstSpace.id);
+                      setActiveHotspot(null);
+                    }, firstSpace.id);
+                  }
+                }}
+                className="text-sm font-bold text-white/40 transition hover:text-white/70"
+              >
+                Explorar de nuevo
+              </button>
+              <button
+                type="button"
+                onClick={stopCinematicTour}
+                className="text-xs font-bold text-white/20 transition hover:text-white/45"
+              >
+                Salir del recorrido
+              </button>
+            </div>
+          ) : null}
+
           {/* ── Storytelling overlay — editorial, pointer-events-none ─────── */}
           {storyMode && (activeSpace.storySubheadline || activeSpace.storyHighlight) ? (
             <div
@@ -1018,8 +1204,66 @@ export default function UniversalViewer({
         {/* ── Aside panel ──────────────────────────────────────────────────── */}
         <aside className="border-t border-white/10 bg-white/[0.04] p-5 lg:border-l lg:border-t-0">
 
-          {/* GUIDED TOUR PANEL — shown when tour active and no hotspot is open */}
-          {isGuidedTour && !activeHotspot ? (
+          {/* CINEMATIC PANEL — shown when cinematic tour active and no hotspot open */}
+          {isCinematic && !activeHotspot ? (
+            <>
+              <div className="rounded-2xl bg-white/10 p-4">
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
+                  {cinematicPaused ? 'Cinematic · En pausa' : '● Cinematic'}
+                </p>
+                <div className="mt-3 flex items-center justify-between text-xs font-bold text-white/50">
+                  <span>Estancia {currentSpaceIdx + 1} de {sortedSpaces.length}</span>
+                  {cinematicPaused ? (
+                    <span className="text-amber-400/60">Pausado</span>
+                  ) : (
+                    <span className="text-violet-300/50">Auto</span>
+                  )}
+                </div>
+                <div className="mt-2 h-[2px] w-full overflow-hidden rounded-full bg-white/[0.06]">
+                  <div
+                    className="h-full rounded-full"
+                    style={{
+                      backgroundColor: primaryColor,
+                      opacity: 0.22,
+                      width: cpTick ? '100%' : '0%',
+                      transition: (cpTick && !cinematicPaused)
+                        ? `width ${CINEMATIC_MS}ms linear`
+                        : 'none',
+                    }}
+                  />
+                </div>
+                <h3 className="mt-4 text-2xl font-black">{activeSpace.name}</h3>
+                {activeSpace.storySubheadline ? (
+                  <p className="mt-2 text-sm font-light italic leading-snug text-white/45">
+                    {activeSpace.storySubheadline}
+                  </p>
+                ) : null}
+              </div>
+
+              <div className="mt-4 flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setCinematicPaused((p) => !p); }}
+                  className={`flex-1 rounded-2xl px-4 py-3 text-sm font-black transition ${
+                    cinematicPaused
+                      ? 'bg-violet-600/70 text-white hover:bg-violet-600'
+                      : 'bg-white/10 text-white/70 hover:bg-white/15'
+                  }`}
+                >
+                  {cinematicPaused ? '▶ Reanudar' : '⏸ Pausar'}
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={stopCinematicTour}
+                className="mt-3 w-full rounded-2xl bg-white/5 px-4 py-2 text-xs font-bold text-white/40 transition hover:bg-white/10 hover:text-white/60"
+              >
+                {'✕'} Salir del recorrido
+              </button>
+            </>
+          ) : /* GUIDED TOUR PANEL — shown when tour active and no hotspot is open */
+          isGuidedTour && !activeHotspot ? (
             <>
               <div className="rounded-2xl bg-white/10 p-4">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
