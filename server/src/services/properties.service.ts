@@ -50,6 +50,7 @@ const AssetFormat = {
   GLB: "GLB"
 } as const;
 // LOCAL STRING ENUMS PROPERTIES END
+import { Prisma } from '@prisma/client';
 import { prisma } from '../index.js';
 import { AppError } from '../middleware/errorHandler.js';
 
@@ -230,7 +231,7 @@ function buildSpacesCreate(spaces: SpaceInput[] | undefined) {
     storyHighlight:   space.storyHighlight   ?? '',
     ctaLabel:         space.ctaLabel         ?? '',
     ctaSubtext:       space.ctaSubtext        ?? '',
-    floorplanPin:     space.floorplanPin      ?? null,
+    floorplanPin:     space.floorplanPin      ?? Prisma.JsonNull,
     assets: {
       create: buildAssetsCreate(space.assets)
     }
@@ -350,7 +351,7 @@ export async function createSpace(tenantId: string, propertyId: string, input: S
       storyHighlight:   input.storyHighlight   ?? '',
       ctaLabel:         input.ctaLabel         ?? '',
       ctaSubtext:       input.ctaSubtext        ?? '',
-      floorplanPin:     input.floorplanPin      ?? null,
+      floorplanPin:     input.floorplanPin      ?? Prisma.JsonNull,
       assets: {
         create: buildAssetsCreate(input.assets)
       }
@@ -379,7 +380,7 @@ export async function updateSpace(tenantId: string, propertyId: string, spaceId:
     if (input.storyHighlight   !== undefined) data.storyHighlight   = input.storyHighlight   ?? '';
     if (input.ctaLabel         !== undefined) data.ctaLabel         = input.ctaLabel         ?? '';
     if (input.ctaSubtext       !== undefined) data.ctaSubtext       = input.ctaSubtext        ?? '';
-    if ('floorplanPin' in input)              data.floorplanPin     = (input as SpaceInput).floorplanPin ?? null;
+    if ('floorplanPin' in input)              data.floorplanPin     = (input as SpaceInput).floorplanPin ?? Prisma.JsonNull;
 
     if (shouldReplaceAssets) {
       data.assets = {
