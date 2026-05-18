@@ -1,6 +1,7 @@
 ﻿import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
 import DollhouseViewer from '@/components/viewer/DollhouseViewer';
+import FloorplanViewer from '@/components/viewer/FloorplanViewer';
 import GaussianSplatViewer from '@/components/viewer/GaussianSplatViewer';
 import LeadCaptureModal from '@/components/viewer/LeadCaptureModal';
 import PanoramaViewer from '@/components/viewer/PanoramaViewer';
@@ -147,6 +148,7 @@ export default function UniversalViewer({
   className = '',
   propertyTitle,
   agencyName,
+  floorplanUrl,
   onAnalyticsEvent
 }: UniversalViewerProps): JSX.Element {
   const sortedSpaces = useMemo(() => sortSpaces(spaces), [spaces]);
@@ -195,6 +197,11 @@ export default function UniversalViewer({
 
   const viewerRef  = useRef<HTMLElement>(null);
   const sessionId  = useRef(`s-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+
+  // ── Storytelling mode ────────────────────────────────────────────────────────
+  const [storyMode,    setStoryMode]    = useState(true);
+  const [storyVisible, setStoryVisible] = useState(false);
+  const storyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Ambient audio engine ─────────────────────────────────────────────────────
   const audioRef       = useRef<HTMLAudioElement | null>(null);
@@ -284,6 +291,20 @@ export default function UniversalViewer({
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefersReducedMotion]);
+
+  // Storytelling overlay: show on space enter, auto-dismiss after 4s
+  useEffect(() => {
+    if (storyTimerRef.current) clearTimeout(storyTimerRef.current);
+    const hasContent = !!(activeSpace?.storySubheadline || activeSpace?.storyHighlight);
+    if (!storyMode || !hasContent) {
+      setStoryVisible(false);
+      return;
+    }
+    setStoryVisible(true);
+    storyTimerRef.current = setTimeout(() => { setStoryVisible(false); }, 4000);
+    return () => { if (storyTimerRef.current) clearTimeout(storyTimerRef.current); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSpace?.id, storyMode]);
 
   // Sync muted ref so the audio effect closure can read the latest value without re-triggering
   useEffect(() => {
@@ -629,7 +650,13 @@ export default function UniversalViewer({
     <section
       ref={viewerRef}
       className={`relative overflow-hidden rounded-[1.6rem] bg-slate-950 text-white ${className} ${isFullscreen ? 'fixed inset-0 z-[9999] rounded-none' : ''}`}
-      onPointerDown={() => { if (!audioEnabled) setAudioEnabled(true); }}
+      onPointerDown={() => {
+        if (!audioEnabled) setAudioEnabled(true);
+        if (storyVisible) {
+          if (storyTimerRef.current) clearTimeout(storyTimerRef.current);
+          setStoryVisible(false);
+        }
+      }}
     >
       {/* ── Branded loading screen (seconds 0–2) ──────────────────────────── */}
       {showBrandedLoading ? (
@@ -786,7 +813,7 @@ export default function UniversalViewer({
                 : 'bg-white/10 text-white/70 hover:bg-white/15'
             }`}
           >
-            {showDollhouse ? '← Volver al recorrido' : '🏠 Planta'}
+            {showDollhouse ? '← Volver al recorrido' : floorplanUrl ? '🗺 Plano' : '🏠 Planta'}
           </button>
           {document.fullscreenEnabled ? (
             <button
@@ -798,6 +825,19 @@ export default function UniversalViewer({
               {isFullscreen ? '⊠ Salir' : '⛶ Presentar'}
             </button>
           ) : null}
+
+          <button
+            type="button"
+            onClick={() => { setStoryMode((m) => !m); }}
+            className={`rounded-full px-4 py-2 text-sm font-black transition ${
+              storyMode
+                ? 'bg-violet-600/70 text-white hover:bg-violet-600'
+                : 'bg-white/10 text-white/30 hover:bg-white/15 hover:text-white/60'
+            }`}
+            title={storyMode ? 'Desactivar narrativa' : 'Activar narrativa'}
+          >
+            Narrativa
+          </button>
 
           {audioReady ? (
             <button
@@ -846,7 +886,15 @@ export default function UniversalViewer({
             } : undefined}
           >
           <ViewerErrorBoundary key={`eb-${activeSpace.id}`}>
-            {showDollhouse ? (
+            {showDollhouse && floorplanUrl ? (
+              <FloorplanViewer
+                floorplanUrl={floorplanUrl}
+                spaces={sortedSpaces}
+                activeSpaceId={activeSpace.id}
+                primaryColor={primaryColor}
+                onSpaceClick={(spaceId) => { runTransition(() => { handleSpaceChange(spaceId); setShowDollhouse(false); }, spaceId); }}
+              />
+            ) : showDollhouse ? (
               <DollhouseViewer
                 spaces={sortedSpaces}
                 primaryColor={primaryColor}
@@ -897,6 +945,41 @@ export default function UniversalViewer({
             )}
           </ViewerErrorBoundary>
           </div>{/* end micro-scale wrapper */}
+          {/* ── Storytelling overlay — editorial, pointer-events-none ─────── */}
+          {storyMode && (activeSpace.storySubheadline || activeSpace.storyHighlight) ? (
+            <div
+              className="pointer-events-none absolute bottom-0 left-0 z-30 px-7 pb-8"
+              style={{
+                opacity: storyVisible ? 1 : 0,
+                transition: prefersReducedMotion
+                  ? 'none'
+                  : storyVisible
+                    ? 'opacity 400ms ease-in'
+                    : 'opacity 600ms ease-out',
+              }}
+            >
+              <div className="flex items-start gap-3">
+                {/* vertical accent line */}
+                <div className="mt-1 h-8 w-px shrink-0 rounded-full bg-white/35" />
+                <div>
+                  <p className="text-[0.58rem] font-bold uppercase tracking-[0.32em] text-white/35">
+                    {activeSpace.name}
+                  </p>
+                  {activeSpace.storySubheadline ? (
+                    <h3 className="mt-1.5 max-w-[300px] text-2xl font-black leading-snug text-white [text-shadow:0_2px_24px_rgba(0,0,0,0.7)]">
+                      {activeSpace.storySubheadline}
+                    </h3>
+                  ) : null}
+                  {activeSpace.storyHighlight ? (
+                    <p className="mt-2 max-w-[260px] text-sm font-light italic leading-snug text-white/60">
+                      {activeSpace.storyHighlight}
+                    </p>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
           {/* ── Prev / Next overlay navigation ─────────────────────────────── */}
           {sortedSpaces.length >= 2 && !showDollhouse ? (
             <div
@@ -1066,6 +1149,31 @@ export default function UniversalViewer({
                   </p>
                 )}
               </div>
+
+              {/* ── Contextual CTA — luxury action, integrated ─────────────── */}
+              {activeSpace.ctaLabel ? (
+                <div className="mt-5 border-t border-white/[0.06] pt-5">
+                  <p className="mb-3 text-[0.58rem] font-bold uppercase tracking-[0.3em] text-white/30">
+                    Próximo paso
+                  </p>
+                  <button
+                    type="button"
+                    onClick={handleLeadCtaOpen}
+                    className="group flex w-full items-center justify-between rounded-2xl bg-white/[0.06] px-5 py-4 text-left transition hover:bg-white/[0.1]"
+                    style={{ borderLeft: `2px solid ${primaryColor}` }}
+                  >
+                    <div>
+                      <p className="text-sm font-black text-white">{activeSpace.ctaLabel}</p>
+                      {activeSpace.ctaSubtext ? (
+                        <p className="mt-0.5 text-xs text-white/40">{activeSpace.ctaSubtext}</p>
+                      ) : null}
+                    </div>
+                    <span className="text-white/30 transition group-hover:text-white/60">
+                      →
+                    </span>
+                  </button>
+                </div>
+              ) : null}
             </>
           )}
         </aside>

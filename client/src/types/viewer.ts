@@ -77,6 +77,16 @@ export interface Space {
   assets: ViewerAsset[];
   /** Optional URL to an ambient audio MP3 for this space (e.g. '/audio/lounge.mp3'). */
   ambientAudio?: string;
+  /** Editorial subheadline shown in the storytelling overlay when entering this space. */
+  storySubheadline?: string;
+  /** Editorial microcaption shown below the accent line in the storytelling overlay. */
+  storyHighlight?: string;
+  /** Contextual CTA label for this space (e.g. 'Solicitar visita', 'Hablar con asesor'). */
+  ctaLabel?: string;
+  /** Optional subtext shown below the contextual CTA action. */
+  ctaSubtext?: string;
+  /** Position of this space's pin on the property floorplan, as percentage coords (0-100). */
+  floorplanPin?: { x: number; y: number };
 }
 
 export interface ViewerEvent {
@@ -108,6 +118,8 @@ export interface UniversalViewerProps {
   propertyTitle?: string;
   /** Optional agency / studio name shown below the property title during load. */
   agencyName?: string;
+  /** Optional URL to a floorplan image (PNG/JPG). Enables the interactive floorplan view. */
+  floorplanUrl?: string;
   onAnalyticsEvent: (event: ViewerEvent) => void;
 }
 
