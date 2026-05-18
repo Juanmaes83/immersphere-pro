@@ -48,7 +48,12 @@ const spaceSchema = z.object({
   order: z.number().int().positive().optional(),
   status: z.string().optional(),
   dimensions: z.record(z.unknown()).nullable().optional(),
-  assets: z.array(assetSchema).optional()
+  assets: z.array(assetSchema).optional(),
+  storySubheadline: z.string().optional(),
+  storyHighlight:   z.string().optional(),
+  ctaLabel:         z.string().optional(),
+  ctaSubtext:       z.string().optional(),
+  floorplanPin:     z.object({ x: z.number(), y: z.number() }).nullable().optional()
 });
 
 const spaceUpdateSchema = z.object({
@@ -56,7 +61,12 @@ const spaceUpdateSchema = z.object({
   order: z.number().int().positive().optional(),
   status: z.string().optional(),
   dimensions: z.record(z.unknown()).nullable().optional(),
-  assets: z.array(assetSchema).optional()
+  assets: z.array(assetSchema).optional(),
+  storySubheadline: z.string().optional(),
+  storyHighlight:   z.string().optional(),
+  ctaLabel:         z.string().optional(),
+  ctaSubtext:       z.string().optional(),
+  floorplanPin:     z.object({ x: z.number(), y: z.number() }).nullable().optional()
 });
 
 const propertySchema = z.object({
@@ -70,6 +80,7 @@ const propertySchema = z.object({
   bathrooms: z.number().int().min(0).optional(),
   coverImage: z.string().optional(),
   panoramaUrl: z.string().optional(),
+  floorplanUrl: z.string().optional(),
   address: z.string().optional(),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),

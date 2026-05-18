@@ -60,6 +60,7 @@ model Property {
   rooms       Int      @default(0)
   bathrooms   Int      @default(0)
   coverImage    String   @default("")
+  floorplanUrl  String   @default("")
   address       String   @default("")
   latitude      Float?
   longitude     Float?
@@ -86,6 +87,11 @@ model Space {
   order      Int      @default(1)
   status     String   @default("ACTIVE")
   dimensions String?
+  storySubheadline String  @default("")
+  storyHighlight   String  @default("")
+  ctaLabel         String  @default("")
+  ctaSubtext       String  @default("")
+  floorplanPin     Json?
   assets     Asset[]
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt

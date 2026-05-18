@@ -833,7 +833,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 primaryColor={primaryColor}
                 removeBranding={property.removeBranding}
                 propertyTitle={property.title}
-                floorplanUrl={(property as unknown as { floorplanUrl?: string }).floorplanUrl}
+                floorplanUrl={property.floorplanUrl || undefined}
                 className="mt-8"
                 onAnalyticsEvent={handleAnalyticsEvent}
               />

@@ -87,6 +87,11 @@ interface SpaceInput {
   status?: string;
   dimensions?: unknown;
   assets?: AssetInput[];
+  storySubheadline?: string;
+  storyHighlight?: string;
+  ctaLabel?: string;
+  ctaSubtext?: string;
+  floorplanPin?: { x: number; y: number } | null;
 }
 
 interface PropertyInput {
@@ -100,6 +105,7 @@ interface PropertyInput {
   bathrooms?: number;
   coverImage?: string;
   panoramaUrl?: string;
+  floorplanUrl?: string;
   address?: string;
   latitude?: number | null;
   longitude?: number | null;
@@ -220,6 +226,11 @@ function buildSpacesCreate(spaces: SpaceInput[] | undefined) {
     order: space.order ?? index + 1,
     status: normalizeSpaceStatus(space.status),
     dimensions: space.dimensions == null ? null : JSON.stringify(space.dimensions),
+    storySubheadline: space.storySubheadline ?? '',
+    storyHighlight:   space.storyHighlight   ?? '',
+    ctaLabel:         space.ctaLabel         ?? '',
+    ctaSubtext:       space.ctaSubtext        ?? '',
+    floorplanPin:     space.floorplanPin      ?? null,
     assets: {
       create: buildAssetsCreate(space.assets)
     }
@@ -335,6 +346,11 @@ export async function createSpace(tenantId: string, propertyId: string, input: S
       order: input.order ?? ((orderAggregate._max.order ?? 0) + 1),
       status: normalizeSpaceStatus(input.status),
       dimensions: input.dimensions == null ? null : JSON.stringify(input.dimensions),
+      storySubheadline: input.storySubheadline ?? '',
+      storyHighlight:   input.storyHighlight   ?? '',
+      ctaLabel:         input.ctaLabel         ?? '',
+      ctaSubtext:       input.ctaSubtext        ?? '',
+      floorplanPin:     input.floorplanPin      ?? null,
       assets: {
         create: buildAssetsCreate(input.assets)
       }
@@ -359,6 +375,11 @@ export async function updateSpace(tenantId: string, propertyId: string, spaceId:
     if (input.order !== undefined) data.order = input.order;
     if (input.status !== undefined) data.status = normalizeSpaceStatus(input.status);
     if (input.dimensions !== undefined) data.dimensions = input.dimensions == null ? null : JSON.stringify(input.dimensions);
+    if (input.storySubheadline !== undefined) data.storySubheadline = input.storySubheadline ?? '';
+    if (input.storyHighlight   !== undefined) data.storyHighlight   = input.storyHighlight   ?? '';
+    if (input.ctaLabel         !== undefined) data.ctaLabel         = input.ctaLabel         ?? '';
+    if (input.ctaSubtext       !== undefined) data.ctaSubtext       = input.ctaSubtext        ?? '';
+    if ('floorplanPin' in input)              data.floorplanPin     = (input as SpaceInput).floorplanPin ?? null;
 
     if (shouldReplaceAssets) {
       data.assets = {
@@ -433,6 +454,7 @@ export async function createProperty(tenantId: string, input: PropertyInput) {
       rooms: input.rooms ?? 0,
       bathrooms: input.bathrooms ?? 0,
       coverImage: input.coverImage ?? '',
+      floorplanUrl: input.floorplanUrl ?? '',
       address: input.address ?? '',
       latitude: input.latitude ?? null,
       longitude: input.longitude ?? null,
@@ -473,6 +495,7 @@ export async function updateProperty(tenantId: string, propertyId: string, input
         rooms: input.rooms ?? 0,
         bathrooms: input.bathrooms ?? 0,
         coverImage: input.coverImage ?? '',
+        floorplanUrl: input.floorplanUrl ?? '',
         address: input.address ?? '',
         latitude: input.latitude ?? null,
         longitude: input.longitude ?? null,
