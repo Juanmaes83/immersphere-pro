@@ -1,4 +1,4 @@
-export type ViewerAssetType = 'panorama_360' | 'gaussian_splat' | 'mesh';
+﻿export type ViewerAssetType = 'panorama_360' | 'gaussian_splat' | 'mesh';
 
 export type ViewerAssetFormat =
   | 'jpg'
@@ -160,6 +160,13 @@ export interface PanoramaEngineConfig {
   onReady?: () => void;
   onError?: (error: Error) => void;
   onViewChange?: (state: PanoramaViewState) => void;
+}
+
+/** Minimal preview data passed to PanoramaViewer for hotspot hover cards */
+export interface SpacePreview {
+  name: string;
+  thumbnail: string | null;
+  assetType: ViewerAssetType;
 }
 
 export interface RendererLifecycle {

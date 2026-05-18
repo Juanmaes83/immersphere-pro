@@ -10,6 +10,7 @@ import { AUTH_STORAGE_KEYS } from '@/services/api';
 import type {
   Hotspot,
   Space,
+  SpacePreview,
   UniversalViewerProps,
   ViewerAsset,
   ViewerAssetType,
@@ -151,6 +152,17 @@ export default function UniversalViewer({
   const sortedSpaces = useMemo(() => sortSpaces(spaces), [spaces]);
   const firstSpaceId = sortedSpaces[0]?.id ?? '';
 
+  const spacePreviewMap = useMemo<Record<string, SpacePreview>>(() =>
+    Object.fromEntries(sortedSpaces.map((s) => [
+      s.id,
+      {
+        name: s.name,
+        thumbnail: s.assets[0]?.thumbnail ?? null,
+        assetType: s.assets[0]?.type ?? 'panorama_360'
+      } satisfies SpacePreview
+    ])),
+  [sortedSpaces]);
+
   const [activeSpaceId, setActiveSpaceId] = useState(initialSpaceId ?? firstSpaceId);
   const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null);
   const [showLeadModal, setShowLeadModal] = useState(false);
@@ -240,6 +252,29 @@ export default function UniversalViewer({
       setMobileSheetOpen(false);
     }
   }, [activeHotspot]);
+
+  // Micro-parallax: follow cursor on desktop only, update CSS vars directly on the section el
+  useEffect(() => {
+    if (prefersReducedMotion || isTouchDevice.current) return;
+    let rafId = 0;
+    function onMouseMove(e: MouseEvent): void {
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const el = viewerRef.current;
+        if (!el) return;
+        const x = (e.clientX / window.innerWidth  - 0.5) * 8;
+        const y = (e.clientY / window.innerHeight - 0.5) * 4;
+        el.style.setProperty('--px', `${x}px`);
+        el.style.setProperty('--py', `${y}px`);
+      });
+    }
+    window.addEventListener('mousemove', onMouseMove, { passive: true });
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      cancelAnimationFrame(rafId);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [prefersReducedMotion]);
 
   // Prewarm prev/next and hotspot-target panorama assets so transitions feel instant
   useEffect(() => {
@@ -510,14 +545,24 @@ export default function UniversalViewer({
             transition: 'opacity 500ms ease-in-out'
           }}
         >
-          {/* Accent line */}
+          {/* Accent line — parallax layer A */}
           <div
             className="mb-10 h-px w-10 rounded-full"
-            style={{ backgroundColor: primaryColor }}
+            style={{
+              backgroundColor: primaryColor,
+              transform: 'translate(calc(var(--px, 0px) * 1.2), calc(var(--py, 0px) * 0.8))',
+              transition: 'transform 80ms linear',
+            }}
           />
 
-          {/* Property title */}
-          <h2 className="max-w-xs text-center text-2xl font-black leading-snug tracking-tight text-white">
+          {/* Property title — parallax layer B (lighter) */}
+          <h2
+            className="max-w-xs text-center text-2xl font-black leading-snug tracking-tight text-white"
+            style={{
+              transform: 'translate(calc(var(--px, 0px) * 0.5), calc(var(--py, 0px) * 0.35))',
+              transition: 'transform 80ms linear',
+            }}
+          >
             {propertyTitle ?? sortedSpaces[0]?.name ?? 'Experiencia inmersiva'}
           </h2>
 
@@ -526,8 +571,14 @@ export default function UniversalViewer({
             {agencyName ?? 'Experiencia inmersiva'}
           </p>
 
-          {/* Progress line */}
-          <div className="mt-12 h-px w-28 overflow-hidden rounded-full bg-white/10">
+          {/* Progress line — parallax layer C */}
+          <div
+            className="mt-12 h-px w-28 overflow-hidden rounded-full bg-white/10"
+            style={{
+              transform: 'translate(calc(var(--px, 0px) * 0.7), calc(var(--py, 0px) * 0.5))',
+              transition: 'transform 80ms linear',
+            }}
+          >
             <div
               className="h-full rounded-full"
               style={{
@@ -669,7 +720,10 @@ export default function UniversalViewer({
             }}
           >
             {!prefersReducedMotion && tPhase === 'in' ? (
-              <p className="text-[11px] font-bold uppercase tracking-widest text-white/30">
+              <p
+                className="text-[11px] font-bold uppercase tracking-widest text-white/30"
+                style={{ transform: 'translate(calc(var(--px, 0px) * 0.6), calc(var(--py, 0px) * 0.4))', transition: 'transform 80ms linear' }}
+              >
                 Preparando estancia...
               </p>
             ) : null}
@@ -697,6 +751,7 @@ export default function UniversalViewer({
                 asset={activeAsset}
                 primaryColor={primaryColor}
                 measureMode={isMeasuring}
+                spacePreviewMap={spacePreviewMap}
                 onHotspotClick={handleHotspotClick}
                 onAnalyticsEvent={onAnalyticsEvent}
               />

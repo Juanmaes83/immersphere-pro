@@ -1,7 +1,7 @@
 ﻿import { useEffect, useRef, useState } from 'react';
 import { PanoramaEngine360 } from '@/engines/PanoramaEngine360';
 import MeasurementOverlay from '@/components/viewer/MeasurementOverlay';
-import type { Hotspot, ViewerAsset, ViewerEvent } from '@/types/viewer';
+import type { Hotspot, SpacePreview, ViewerAsset, ViewerEvent } from '@/types/viewer';
 
 interface PanoramaViewerProps {
   propertyId: string;
@@ -9,6 +9,7 @@ interface PanoramaViewerProps {
   asset: ViewerAsset;
   primaryColor?: string;
   measureMode?: boolean;
+  spacePreviewMap?: Record<string, SpacePreview>;
   onHotspotClick: (hotspot: Hotspot) => void;
   onAnalyticsEvent: (event: ViewerEvent) => void;
 }
@@ -119,6 +120,7 @@ export default function PanoramaViewer({
   asset,
   primaryColor = '#7C3AED',
   measureMode = false,
+  spacePreviewMap,
   onHotspotClick,
   onAnalyticsEvent
 }: PanoramaViewerProps): JSX.Element {
@@ -137,6 +139,11 @@ export default function PanoramaViewer({
   const supportsGyro = typeof DeviceOrientationEvent !== 'undefined' && navigator.maxTouchPoints > 0;
   const [vrSupported, setVrSupported] = useState(false);
   const [vrActive, setVrActive] = useState(false);
+
+  // ── Hotspot preview card ─────────────────────────────────────────────────────
+  const [previewHotspotId, setPreviewHotspotId] = useState<string | null>(null);
+  const longPressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const longPressWas   = useRef(false);
 
   useEffect(() => {
     analyticsRef.current = onAnalyticsEvent;
@@ -376,11 +383,62 @@ export default function PanoramaViewer({
         </div>
       ) : null}
 
+      {/* ── Hotspot preview micro-card ─────────────────────────────────── */}
+      {(() => {
+        if (!previewHotspotId || !spacePreviewMap) return null;
+        const hs = asset.hotspots.find((h) => h.id === previewHotspotId);
+        if (!hs?.targetSpaceId) return null;
+        const preview = spacePreviewMap[hs.targetSpaceId];
+        if (!preview) return null;
+        const showAbove = hs.position.y > 50;
+        const assetLabel = preview.assetType === 'panorama_360'
+          ? 'Panorama 360°'
+          : preview.assetType === 'gaussian_splat'
+            ? 'Vista inmersiva'
+            : 'Modelo 3D';
+        return (
+          <div
+            className="pointer-events-none absolute z-40 w-[240px] overflow-hidden rounded-[1.4rem] text-white"
+            style={{
+              left: `clamp(8px, calc(${hs.position.x}% - 120px), calc(100% - 248px))`,
+              top: showAbove
+                ? `calc(${hs.position.y}% - 172px)`
+                : `calc(${hs.position.y}% + 28px)`,
+              background: 'rgba(15,23,42,0.96)',
+              backdropFilter: 'blur(12px)',
+              boxShadow: '0 16px 48px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.08)',
+              animation: 'hs-preview-in 150ms ease forwards',
+            }}
+          >
+            <style>{`
+              @keyframes hs-preview-in {
+                from { opacity: 0; transform: translateY(6px); }
+                to   { opacity: 1; transform: translateY(0); }
+              }
+            `}</style>
+            <div className="aspect-[16/10] w-full overflow-hidden bg-gradient-to-br from-violet-500/50 to-fuchsia-600/40">
+              {preview.thumbnail ? (
+                <img
+                  src={preview.thumbnail}
+                  alt={preview.name}
+                  className="h-full w-full object-cover"
+                />
+              ) : null}
+            </div>
+            <div className="px-4 py-3">
+              <p className="text-sm font-black leading-snug">{preview.name}</p>
+              <p className="mt-0.5 text-[11px] text-white/45">{assetLabel}</p>
+            </div>
+          </div>
+        );
+      })()}
+
       {asset.hotspots.map((hotspot) => {
-        const dotColor = getHotspotDotColor(hotspot.type, primaryColor);
-        const glow     = getHotspotGlow(hotspot.type, primaryColor);
-        const hasPulse = hotspot.type !== 'measurement';
-        const label    = hotspot.type === 'navigation'
+        const dotColor  = getHotspotDotColor(hotspot.type, primaryColor);
+        const glow      = getHotspotGlow(hotspot.type, primaryColor);
+        const hasPulse  = hotspot.type !== 'measurement';
+        const isNavPreview = hotspot.type === 'navigation' && !!hotspot.targetSpaceId && !!spacePreviewMap;
+        const label     = hotspot.type === 'navigation'
           ? `${hotspot.label} ›`
           : hotspot.label;
 
@@ -388,7 +446,27 @@ export default function PanoramaViewer({
           <button
             key={hotspot.id}
             type="button"
-            onClick={() => handleHotspotClick(hotspot)}
+            onClick={() => {
+              if (longPressWas.current) { longPressWas.current = false; return; }
+              handleHotspotClick(hotspot);
+            }}
+            onMouseEnter={() => { if (isNavPreview) setPreviewHotspotId(hotspot.id); }}
+            onMouseLeave={() => { if (isNavPreview) setPreviewHotspotId(null); }}
+            onTouchStart={() => {
+              if (!isNavPreview) return;
+              longPressWas.current = false;
+              longPressTimer.current = setTimeout(() => {
+                longPressWas.current = true;
+                setPreviewHotspotId(hotspot.id);
+              }, 350);
+            }}
+            onTouchEnd={() => {
+              if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+              if (longPressWas.current) setTimeout(() => setPreviewHotspotId(null), 1800);
+            }}
+            onTouchMove={() => {
+              if (longPressTimer.current) { clearTimeout(longPressTimer.current); longPressTimer.current = null; }
+            }}
             className="group absolute z-20 flex min-h-[44px] -translate-x-1/2 -translate-y-1/2 items-center gap-2 rounded-full py-2 pl-2 pr-4 text-xs font-black text-white transition-all duration-200 motion-safe:hover:scale-110 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/40"
             style={{
               left: `${hotspot.position.x}%`,
