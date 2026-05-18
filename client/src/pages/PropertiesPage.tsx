@@ -117,6 +117,7 @@ export default function PropertiesPage(): JSX.Element {
     bathrooms: 1,
     coverImage: '',
     panoramaUrl: '',
+    floorplanUrl: '',
     address: '',
     latitude: null,
     longitude: null,
@@ -206,6 +207,7 @@ export default function PropertiesPage(): JSX.Element {
       bathrooms: 1,
       coverImage: '',
       panoramaUrl: '',
+      floorplanUrl: '',
       address: '',
       latitude: null,
       longitude: null,
@@ -493,6 +495,7 @@ export default function PropertiesPage(): JSX.Element {
       bathrooms: Number(form.bathrooms ?? 0),
       coverImage: String(form.coverImage ?? '').trim(),
       panoramaUrl: String(form.panoramaUrl ?? '').trim(),
+      floorplanUrl: String(form.floorplanUrl ?? '').trim(),
       address: String(form.address ?? '').trim(),
       latitude: form.latitude ?? null,
       longitude: form.longitude ?? null,
@@ -514,6 +517,7 @@ export default function PropertiesPage(): JSX.Element {
       bathrooms: property.bathrooms ?? 0,
       coverImage: property.coverImage ?? '',
       panoramaUrl: property.panoramaUrl ?? '',
+      floorplanUrl: property.floorplanUrl ?? '',
       address: property.address ?? '',
       latitude: property.latitude ?? null,
       longitude: property.longitude ?? null
@@ -897,6 +901,19 @@ export default function PropertiesPage(): JSX.Element {
               value={form.panoramaUrl ?? ''}
               onChange={(event) => setForm((current) => ({ ...current, panoramaUrl: event.target.value }))}
               placeholder="/demo/panorama-living-room.jpg"
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+            />
+          </label>
+
+          <label className="mt-4 block">
+            <span className="mb-2 block text-sm font-black text-slate-700">
+              URL plano de planta <span className="font-semibold text-slate-400">(opcional — activa la vista de plano interactivo)</span>
+            </span>
+            <input
+              type="text"
+              value={form.floorplanUrl ?? ''}
+              onChange={(event) => setForm((current) => ({ ...current, floorplanUrl: event.target.value }))}
+              placeholder="https://res.cloudinary.com/.../plano.jpg"
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
             />
           </label>

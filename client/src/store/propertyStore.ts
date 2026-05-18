@@ -31,6 +31,12 @@ interface ApiSpace {
   // Prisma stores dimensions as JSON.stringify'd string; the normalizer parses it back.
   dimensions: { width: number | null; height: number | null; depth: number | null } | string | null;
   assets: ApiAsset[];
+  // W2 storytelling / CTA / floorplan fields (Prisma returns these directly)
+  storySubheadline?: string;
+  storyHighlight?: string;
+  ctaLabel?: string;
+  ctaSubtext?: string;
+  floorplanPin?: { x: number; y: number } | null;
 }
 
 interface ApiProperty {
@@ -117,6 +123,7 @@ export interface CreatePropertyPayload {
   bathrooms?: number;
   coverImage?: string;
   panoramaUrl?: string;
+  floorplanUrl?: string;
   address?: string;
   latitude?: number | null;
   longitude?: number | null;
@@ -275,7 +282,13 @@ function normalizeSpace(space: ApiSpace): Space {
       }
       return space.dimensions as { width: number | null; height: number | null; depth: number | null };
     })(),
-    assets: (Array.isArray(space.assets) ? space.assets : []).map(normalizeAsset)
+    assets: (Array.isArray(space.assets) ? space.assets : []).map(normalizeAsset),
+    // W2 fields — backend returns strings with @default(""), coerce empty string to undefined
+    ...(space.storySubheadline ? { storySubheadline: space.storySubheadline } : {}),
+    ...(space.storyHighlight   ? { storyHighlight:   space.storyHighlight   } : {}),
+    ...(space.ctaLabel         ? { ctaLabel:         space.ctaLabel         } : {}),
+    ...(space.ctaSubtext       ? { ctaSubtext:        space.ctaSubtext       } : {}),
+    ...(space.floorplanPin != null ? { floorplanPin: space.floorplanPin } : {}),
   };
 }
 
@@ -312,8 +325,8 @@ function createDemoPanoramaUrl(title: string): string {
         <line x1="1536" y1="0" x2="1536" y2="1024" stroke="#ffffff" stroke-width="1"/>
       </g>
       <text x="1024" y="470" text-anchor="middle" font-family="Arial, sans-serif" font-size="72" font-weight="800" fill="#ffffff">${safeTitle}</text>
-      <text x="1024" y="540" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#a5f3fc">Panorama 360 demo seguro</text>
-      <text x="1024" y="600" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#cbd5e1">Sustituir por imagen equirectangular real en Fase 5</text>
+      <text x="1024" y="540" text-anchor="middle" font-family="Arial, sans-serif" font-size="34" font-weight="700" fill="#a5f3fc">Experiencia inmersiva 360°</text>
+      <text x="1024" y="600" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" fill="#cbd5e1">Sube tu panorama 360° desde el panel de administracion</text>
     </svg>
   `;
 
