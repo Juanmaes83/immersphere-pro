@@ -4,7 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
 import { api, unwrapApiResponse, getApiErrorMessage } from '@/services/api';
 import { usePropertyStore } from '@/store/propertyStore';
-import type { CreateAssetPayload, CreatePropertyPayload, CreateSpacePayload, ImmersiveProperty } from '@/store/propertyStore';
+import type { CreateAssetPayload, CreatePropertyPayload, CreateSpacePayload, UpdateSpacePayload, ImmersiveProperty } from '@/store/propertyStore';
 import type { Hotspot } from '@/types/viewer';
 import type { LeadRecord, UploadAssetResponse } from '@/types/api';
 import { EmptyState } from '@/components/ui/EmptyState';
@@ -134,6 +134,16 @@ export default function PropertiesPage(): JSX.Element {
     status: 'ACTIVE',
     dimensions: { width: null, height: null, depth: null }
   });
+  // W2 extra fields — narrative, CTA, floorplan pin (sent to API; stored once backend supports them)
+  const [spaceWowForm, setSpaceWowForm] = useState({
+    storySubheadline: '',
+    storyHighlight: '',
+    ctaLabel: '',
+    ctaSubtext: '',
+    floorplanPinX: '',
+    floorplanPinY: ''
+  });
+  const [showSpaceWow, setShowSpaceWow] = useState(false);
   const [assetForm, setAssetForm] = useState<CreateAssetPayload>({
     type: 'panorama_360',
     url: '',
@@ -221,6 +231,8 @@ export default function PropertiesPage(): JSX.Element {
       status: 'ACTIVE',
       dimensions: { width: null, height: null, depth: null }
     });
+    setSpaceWowForm({ storySubheadline: '', storyHighlight: '', ctaLabel: '', ctaSubtext: '', floorplanPinX: '', floorplanPinY: '' });
+    setShowSpaceWow(false);
     setEditingSpace(null);
   }
 
@@ -616,6 +628,17 @@ export default function PropertiesPage(): JSX.Element {
       status: space.status,
       dimensions: space.dimensions ?? { width: null, height: null, depth: null }
     });
+    setSpaceWowForm({
+      storySubheadline: space.storySubheadline ?? '',
+      storyHighlight:   space.storyHighlight ?? '',
+      ctaLabel:         space.ctaLabel ?? '',
+      ctaSubtext:       space.ctaSubtext ?? '',
+      floorplanPinX:    space.floorplanPin?.x != null ? String(space.floorplanPin.x) : '',
+      floorplanPinY:    space.floorplanPin?.y != null ? String(space.floorplanPin.y) : ''
+    });
+    setShowSpaceWow(
+      !!(space.storySubheadline || space.storyHighlight || space.ctaLabel || space.ctaSubtext || space.floorplanPin)
+    );
 
     setMessage('Editando estancia seleccionada.');
   }
@@ -636,12 +659,24 @@ export default function PropertiesPage(): JSX.Element {
       return;
     }
 
+    // W2 narrative + CTA + floorplan pin extras
+    const wowExtras: Record<string, unknown> = {};
+    if (spaceWowForm.storySubheadline.trim()) wowExtras['storySubheadline'] = spaceWowForm.storySubheadline.trim();
+    if (spaceWowForm.storyHighlight.trim())   wowExtras['storyHighlight']   = spaceWowForm.storyHighlight.trim();
+    if (spaceWowForm.ctaLabel.trim())         wowExtras['ctaLabel']         = spaceWowForm.ctaLabel.trim();
+    if (spaceWowForm.ctaSubtext.trim())       wowExtras['ctaSubtext']       = spaceWowForm.ctaSubtext.trim();
+    const pinX = parseFloat(spaceWowForm.floorplanPinX);
+    const pinY = parseFloat(spaceWowForm.floorplanPinY);
+    if (!isNaN(pinX) && !isNaN(pinY)) {
+      wowExtras['floorplanPin'] = { x: Math.max(0, Math.min(100, pinX)), y: Math.max(0, Math.min(100, pinY)) };
+    }
+
     try {
       if (editingSpace && editingSpace.propertyId === propertyId) {
-        await updateSpace(propertyId, editingSpace.spaceId, payload);
+        await updateSpace(propertyId, editingSpace.spaceId, { ...payload, ...wowExtras } as UpdateSpacePayload);
         setMessage('Estancia actualizada correctamente.');
       } else {
-        await createSpace(propertyId, payload);
+        await createSpace(propertyId, { ...payload, ...wowExtras } as CreateSpacePayload);
         setMessage('Estancia creada correctamente.');
       }
 
@@ -1173,6 +1208,89 @@ export default function PropertiesPage(): JSX.Element {
                     <button disabled={isLoading} type="submit" className="rounded-2xl bg-slate-950 px-5 py-3 text-sm font-black text-white hover:bg-violet-700 disabled:opacity-60">
                       {editingSpace?.propertyId === property.id ? 'Guardar estancia' : 'Crear estancia'}
                     </button>
+
+                    {/* ── W2: Narrativa · CTA · Plano ──────────────────────── */}
+                    <div className="md:col-span-4 border-t border-slate-100 pt-3 mt-1">
+                      <button
+                        type="button"
+                        onClick={() => { setShowSpaceWow((v) => !v); }}
+                        className="flex w-full items-center justify-between text-[0.68rem] font-black uppercase tracking-[0.2em] text-slate-400 hover:text-violet-600"
+                      >
+                        <span>Narrativa · CTA · Plano</span>
+                        <span className="text-xs">{showSpaceWow ? '▲' : '▼'}</span>
+                      </button>
+
+                      {showSpaceWow ? (
+                        <div className="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
+                          <label className="block">
+                            <span className="mb-1.5 block text-xs font-black text-slate-600">Titular editorial</span>
+                            <input
+                              type="text"
+                              value={spaceWowForm.storySubheadline}
+                              onChange={(e) => { setSpaceWowForm((f) => ({ ...f, storySubheadline: e.target.value })); }}
+                              placeholder="La luz entra desde primera hora"
+                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-violet-400"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-1.5 block text-xs font-black text-slate-600">Microcaption</span>
+                            <input
+                              type="text"
+                              value={spaceWowForm.storyHighlight}
+                              onChange={(e) => { setSpaceWowForm((f) => ({ ...f, storyHighlight: e.target.value })); }}
+                              placeholder="Diseñado para vivir y compartir"
+                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-violet-400"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-1.5 block text-xs font-black text-slate-600">CTA del espacio</span>
+                            <input
+                              type="text"
+                              value={spaceWowForm.ctaLabel}
+                              onChange={(e) => { setSpaceWowForm((f) => ({ ...f, ctaLabel: e.target.value })); }}
+                              placeholder="Solicitar visita"
+                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-violet-400"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-1.5 block text-xs font-black text-slate-600">Subtexto CTA</span>
+                            <input
+                              type="text"
+                              value={spaceWowForm.ctaSubtext}
+                              onChange={(e) => { setSpaceWowForm((f) => ({ ...f, ctaSubtext: e.target.value })); }}
+                              placeholder="Sin compromiso · respuesta 24h"
+                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-violet-400"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-1.5 block text-xs font-black text-slate-600">Pin plano — X <span className="font-semibold text-slate-400">(0-100%)</span></span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={spaceWowForm.floorplanPinX}
+                              onChange={(e) => { setSpaceWowForm((f) => ({ ...f, floorplanPinX: e.target.value })); }}
+                              placeholder="50"
+                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-violet-400"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-1.5 block text-xs font-black text-slate-600">Pin plano — Y <span className="font-semibold text-slate-400">(0-100%)</span></span>
+                            <input
+                              type="number"
+                              min={0}
+                              max={100}
+                              step={1}
+                              value={spaceWowForm.floorplanPinY}
+                              onChange={(e) => { setSpaceWowForm((f) => ({ ...f, floorplanPinY: e.target.value })); }}
+                              placeholder="50"
+                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-violet-400"
+                            />
+                          </label>
+                        </div>
+                      ) : null}
+                    </div>
                   </form>
 
                   <div className="mt-4 grid grid-cols-1 gap-3">
