@@ -87,6 +87,8 @@ export interface Space {
   ctaSubtext?: string;
   /** Position of this space's pin on the property floorplan, as percentage coords (0-100). */
   floorplanPin?: { x: number; y: number };
+  /** Seconds this space is shown during the cinematic auto-advance tour. Default: 10. */
+  guidedDuration?: number;
 }
 
 export interface ViewerEvent {

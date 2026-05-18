@@ -205,7 +205,7 @@ export default function UniversalViewer({
   const storyTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Cinematic tour ───────────────────────────────────────────────────────────
-  const CINEMATIC_MS = 10_000; // 10s per space — no per-space config yet
+  // Per-space duration: activeSpace.guidedDuration (seconds) × 1000, fallback 10s
   const [isCinematic,      setIsCinematic]      = useState(false);
   const [cinematicPaused,  setCinematicPaused]  = useState(false);
   const [showCinematicEnd, setShowCinematicEnd] = useState(false);
@@ -401,12 +401,13 @@ export default function UniversalViewer({
     };
   }, []);
 
-  // Cinematic auto-advance — fires after CINEMATIC_MS if playing
+  // Cinematic auto-advance — duration from activeSpace.guidedDuration (seconds), fallback 10s
   useEffect(() => {
     if (!isCinematic || cinematicPaused || showCinematicEnd || prefersReducedMotion) {
       if (cinematicTimerRef.current) clearTimeout(cinematicTimerRef.current);
       return;
     }
+    const spaceDurationMs = (activeSpace?.guidedDuration ?? 10) * 1000;
     if (cinematicTimerRef.current) clearTimeout(cinematicTimerRef.current);
     cinematicTimerRef.current = setTimeout(() => {
       const curIdx = sortedSpaces.findIndex((s) => s.id === activeSpaceId);
@@ -417,7 +418,7 @@ export default function UniversalViewer({
         const nextSpace = sortedSpaces[curIdx + 1]!;
         runTransition(() => { handleSpaceChange(nextSpace.id); }, nextSpace.id);
       }
-    }, CINEMATIC_MS);
+    }, spaceDurationMs);
     return () => {
       if (cinematicTimerRef.current) clearTimeout(cinematicTimerRef.current);
     };
@@ -1103,7 +1104,7 @@ export default function UniversalViewer({
                   opacity: 0.22,
                   width: cpTick ? '100%' : '0%',
                   transition: (cpTick && !cinematicPaused)
-                    ? `width ${CINEMATIC_MS}ms linear`
+                    ? `width ${(activeSpace?.guidedDuration ?? 10) * 1000}ms linear`
                     : 'none',
                 }}
               />
@@ -1251,7 +1252,7 @@ export default function UniversalViewer({
                       opacity: 0.22,
                       width: cpTick ? '100%' : '0%',
                       transition: (cpTick && !cinematicPaused)
-                        ? `width ${CINEMATIC_MS}ms linear`
+                        ? `width ${(activeSpace?.guidedDuration ?? 10) * 1000}ms linear`
                         : 'none',
                     }}
                   />

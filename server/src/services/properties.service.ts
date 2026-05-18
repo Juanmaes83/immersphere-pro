@@ -93,6 +93,8 @@ interface SpaceInput {
   ctaLabel?: string;
   ctaSubtext?: string;
   floorplanPin?: { x: number; y: number } | null;
+  ambientAudio?: string;
+  guidedDuration?: number;
 }
 
 interface PropertyInput {
@@ -232,6 +234,8 @@ function buildSpacesCreate(spaces: SpaceInput[] | undefined) {
     ctaLabel:         space.ctaLabel         ?? '',
     ctaSubtext:       space.ctaSubtext        ?? '',
     floorplanPin:     space.floorplanPin      ?? Prisma.JsonNull,
+    ambientAudio:     space.ambientAudio      ?? '',
+    guidedDuration:   space.guidedDuration    ?? 10,
     assets: {
       create: buildAssetsCreate(space.assets)
     }
@@ -352,6 +356,8 @@ export async function createSpace(tenantId: string, propertyId: string, input: S
       ctaLabel:         input.ctaLabel         ?? '',
       ctaSubtext:       input.ctaSubtext        ?? '',
       floorplanPin:     input.floorplanPin      ?? Prisma.JsonNull,
+      ambientAudio:     input.ambientAudio      ?? '',
+      guidedDuration:   input.guidedDuration    ?? 10,
       assets: {
         create: buildAssetsCreate(input.assets)
       }
@@ -381,6 +387,8 @@ export async function updateSpace(tenantId: string, propertyId: string, spaceId:
     if (input.ctaLabel         !== undefined) data.ctaLabel         = input.ctaLabel         ?? '';
     if (input.ctaSubtext       !== undefined) data.ctaSubtext       = input.ctaSubtext        ?? '';
     if ('floorplanPin' in input)              data.floorplanPin     = (input as SpaceInput).floorplanPin ?? Prisma.JsonNull;
+    if (input.ambientAudio     !== undefined) data.ambientAudio     = input.ambientAudio     ?? '';
+    if (input.guidedDuration   !== undefined) data.guidedDuration   = input.guidedDuration   ?? 10;
 
     if (shouldReplaceAssets) {
       data.assets = {

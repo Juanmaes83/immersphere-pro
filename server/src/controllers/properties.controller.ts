@@ -53,7 +53,9 @@ const spaceSchema = z.object({
   storyHighlight:   z.string().optional(),
   ctaLabel:         z.string().optional(),
   ctaSubtext:       z.string().optional(),
-  floorplanPin:     z.object({ x: z.number(), y: z.number() }).nullable().optional()
+  floorplanPin:     z.object({ x: z.number(), y: z.number() }).nullable().optional(),
+  ambientAudio:     z.string().optional(),
+  guidedDuration:   z.number().int().positive().optional()
 });
 
 const spaceUpdateSchema = z.object({
@@ -66,7 +68,9 @@ const spaceUpdateSchema = z.object({
   storyHighlight:   z.string().optional(),
   ctaLabel:         z.string().optional(),
   ctaSubtext:       z.string().optional(),
-  floorplanPin:     z.object({ x: z.number(), y: z.number() }).nullable().optional()
+  floorplanPin:     z.object({ x: z.number(), y: z.number() }).nullable().optional(),
+  ambientAudio:     z.string().optional(),
+  guidedDuration:   z.number().int().positive().optional()
 });
 
 const propertySchema = z.object({

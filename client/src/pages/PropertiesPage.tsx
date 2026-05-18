@@ -136,14 +136,16 @@ export default function PropertiesPage(): JSX.Element {
     status: 'ACTIVE',
     dimensions: { width: null, height: null, depth: null }
   });
-  // W2 extra fields — narrative, CTA, floorplan pin (sent to API; stored once backend supports them)
+  // W2+W3 extra fields — narrative, CTA, floorplan pin, audio, per-space timing
   const [spaceWowForm, setSpaceWowForm] = useState({
     storySubheadline: '',
     storyHighlight: '',
     ctaLabel: '',
     ctaSubtext: '',
     floorplanPinX: '',
-    floorplanPinY: ''
+    floorplanPinY: '',
+    ambientAudio: '',
+    guidedDuration: '10'
   });
   const [showSpaceWow, setShowSpaceWow] = useState(false);
   const [assetForm, setAssetForm] = useState<CreateAssetPayload>({
@@ -234,7 +236,7 @@ export default function PropertiesPage(): JSX.Element {
       status: 'ACTIVE',
       dimensions: { width: null, height: null, depth: null }
     });
-    setSpaceWowForm({ storySubheadline: '', storyHighlight: '', ctaLabel: '', ctaSubtext: '', floorplanPinX: '', floorplanPinY: '' });
+    setSpaceWowForm({ storySubheadline: '', storyHighlight: '', ctaLabel: '', ctaSubtext: '', floorplanPinX: '', floorplanPinY: '', ambientAudio: '', guidedDuration: '10' });
     setShowSpaceWow(false);
     setEditingSpace(null);
   }
@@ -639,7 +641,9 @@ export default function PropertiesPage(): JSX.Element {
       ctaLabel:         space.ctaLabel ?? '',
       ctaSubtext:       space.ctaSubtext ?? '',
       floorplanPinX:    space.floorplanPin?.x != null ? String(space.floorplanPin.x) : '',
-      floorplanPinY:    space.floorplanPin?.y != null ? String(space.floorplanPin.y) : ''
+      floorplanPinY:    space.floorplanPin?.y != null ? String(space.floorplanPin.y) : '',
+      ambientAudio:     space.ambientAudio ?? '',
+      guidedDuration:   String(space.guidedDuration ?? 10)
     });
     setShowSpaceWow(
       !!(space.storySubheadline || space.storyHighlight || space.ctaLabel || space.ctaSubtext || space.floorplanPin)
@@ -675,6 +679,9 @@ export default function PropertiesPage(): JSX.Element {
     if (!isNaN(pinX) && !isNaN(pinY)) {
       wowExtras['floorplanPin'] = { x: Math.max(0, Math.min(100, pinX)), y: Math.max(0, Math.min(100, pinY)) };
     }
+    if (spaceWowForm.ambientAudio.trim()) wowExtras['ambientAudio'] = spaceWowForm.ambientAudio.trim();
+    const parsedDuration = parseInt(spaceWowForm.guidedDuration, 10);
+    if (!isNaN(parsedDuration) && parsedDuration > 0) wowExtras['guidedDuration'] = parsedDuration;
 
     try {
       if (editingSpace && editingSpace.propertyId === propertyId) {
@@ -1289,6 +1296,28 @@ export default function PropertiesPage(): JSX.Element {
                               setSpaceWowForm((f) => ({ ...f, floorplanPinX: x, floorplanPinY: y }));
                             }}
                           />
+                          {/* Audio + Guided Duration */}
+                          <label className="block">
+                            <span className="mb-1 block text-xs font-black uppercase tracking-widest text-slate-400">Audio ambiente (URL MP3)</span>
+                            <input
+                              type="text"
+                              value={spaceWowForm.ambientAudio}
+                              onChange={(e) => { setSpaceWowForm((f) => ({ ...f, ambientAudio: e.target.value })); }}
+                              placeholder="https://cdn.ejemplo.com/audio/salon.mp3"
+                              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-violet-400"
+                            />
+                          </label>
+                          <label className="block">
+                            <span className="mb-1 block text-xs font-black uppercase tracking-widest text-slate-400">Duracion tour guiado (segundos)</span>
+                            <input
+                              type="number"
+                              min={3}
+                              max={60}
+                              value={spaceWowForm.guidedDuration}
+                              onChange={(e) => { setSpaceWowForm((f) => ({ ...f, guidedDuration: e.target.value })); }}
+                              className="w-32 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-semibold outline-none focus:border-violet-400"
+                            />
+                          </label>
                         </div>
                       ) : null}
                     </div>

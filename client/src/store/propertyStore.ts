@@ -37,6 +37,9 @@ interface ApiSpace {
   ctaLabel?: string;
   ctaSubtext?: string;
   floorplanPin?: { x: number; y: number } | null;
+  // W3 audio + per-space timing
+  ambientAudio?: string;
+  guidedDuration?: number;
 }
 
 interface ApiProperty {
@@ -289,6 +292,9 @@ function normalizeSpace(space: ApiSpace): Space {
     ...(space.ctaLabel         ? { ctaLabel:         space.ctaLabel         } : {}),
     ...(space.ctaSubtext       ? { ctaSubtext:        space.ctaSubtext       } : {}),
     ...(space.floorplanPin != null ? { floorplanPin: space.floorplanPin } : {}),
+    // W3 audio + per-space timing
+    ...(space.ambientAudio ? { ambientAudio: space.ambientAudio } : {}),
+    guidedDuration: typeof space.guidedDuration === 'number' ? space.guidedDuration : 10,
   };
 }
 

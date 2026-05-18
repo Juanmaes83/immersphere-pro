@@ -92,6 +92,8 @@ model Space {
   ctaLabel         String  @default("")
   ctaSubtext       String  @default("")
   floorplanPin     Json?
+  ambientAudio     String  @default("")
+  guidedDuration   Int     @default(10)
   assets     Asset[]
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
