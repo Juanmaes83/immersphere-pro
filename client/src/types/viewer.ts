@@ -75,6 +75,8 @@ export interface Space {
   status: SpaceStatus;
   dimensions: SpaceDimensions;
   assets: ViewerAsset[];
+  /** Optional URL to an ambient audio MP3 for this space (e.g. '/audio/lounge.mp3'). */
+  ambientAudio?: string;
 }
 
 export interface ViewerEvent {

@@ -196,6 +196,15 @@ export default function UniversalViewer({
   const viewerRef  = useRef<HTMLElement>(null);
   const sessionId  = useRef(`s-${Date.now()}-${Math.random().toString(16).slice(2)}`);
 
+  // ── Ambient audio engine ─────────────────────────────────────────────────────
+  const audioRef       = useRef<HTMLAudioElement | null>(null);
+  const audioMutedRef  = useRef(false);
+  const fadeOutRafId   = useRef(0);
+  const fadeInRafId    = useRef(0);
+  const [audioMuted,   setAudioMuted]   = useState(false);
+  const [audioReady,   setAudioReady]   = useState(false);
+  const [audioEnabled, setAudioEnabled] = useState(false);
+
   const activeSpace = sortedSpaces.find((space) => space.id === activeSpaceId) ?? sortedSpaces[0];
   const activeAsset = selectPrimaryAsset(activeSpace);
 
@@ -275,6 +284,91 @@ export default function UniversalViewer({
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [prefersReducedMotion]);
+
+  // Sync muted ref so the audio effect closure can read the latest value without re-triggering
+  useEffect(() => {
+    audioMutedRef.current = audioMuted;
+    if (audioRef.current) audioRef.current.muted = audioMuted;
+  }, [audioMuted]);
+
+  // Ambient audio crossfade — activates only after first user interaction
+  useEffect(() => {
+    if (!audioEnabled) return;
+
+    const FADE_MS = prefersReducedMotion ? 150 : 800;
+    const TARGET_VOL = 0.28;
+    const url = activeSpace?.ambientAudio;
+
+    // Cancel any in-progress fades
+    cancelAnimationFrame(fadeOutRafId.current);
+    cancelAnimationFrame(fadeInRafId.current);
+
+    // Fade out and release old audio
+    const oldAudio = audioRef.current;
+    if (oldAudio) {
+      const startVol = oldAudio.volume;
+      const t0 = performance.now();
+      const doFadeOut = (now: number): void => {
+        const p = Math.min((now - t0) / FADE_MS, 1);
+        oldAudio.volume = startVol * (1 - p);
+        if (p < 1) {
+          fadeOutRafId.current = requestAnimationFrame(doFadeOut);
+        } else {
+          oldAudio.pause();
+          oldAudio.src = '';
+        }
+      };
+      fadeOutRafId.current = requestAnimationFrame(doFadeOut);
+      audioRef.current = null;
+    }
+
+    if (!url) {
+      setAudioReady(false);
+      return;
+    }
+
+    const audio = new Audio(url);
+    audio.loop = true;
+    audio.volume = 0;
+    audio.muted = audioMutedRef.current;
+    audio.onerror = (): void => { setAudioReady(false); };
+    audioRef.current = audio;
+
+    const playPromise = audio.play();
+    if (playPromise) {
+      playPromise.then(() => {
+        if (audioRef.current !== audio) return; // superseded
+        setAudioReady(true);
+        const t0 = performance.now();
+        const doFadeIn = (now: number): void => {
+          if (audioRef.current !== audio) return;
+          const p = Math.min((now - t0) / FADE_MS, 1);
+          audio.volume = TARGET_VOL * p;
+          if (p < 1) { fadeInRafId.current = requestAnimationFrame(doFadeIn); }
+        };
+        fadeInRafId.current = requestAnimationFrame(doFadeIn);
+      }).catch(() => { setAudioReady(false); });
+    }
+
+    return () => {
+      cancelAnimationFrame(fadeOutRafId.current);
+      cancelAnimationFrame(fadeInRafId.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [audioEnabled, activeSpace?.ambientAudio]);
+
+  // Cleanup audio on unmount
+  useEffect(() => {
+    return () => {
+      cancelAnimationFrame(fadeOutRafId.current);
+      cancelAnimationFrame(fadeInRafId.current);
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current.src = '';
+        audioRef.current = null;
+      }
+    };
+  }, []);
 
   // Prewarm prev/next and hotspot-target panorama assets so transitions feel instant
   useEffect(() => {
@@ -535,6 +629,7 @@ export default function UniversalViewer({
     <section
       ref={viewerRef}
       className={`relative overflow-hidden rounded-[1.6rem] bg-slate-950 text-white ${className} ${isFullscreen ? 'fixed inset-0 z-[9999] rounded-none' : ''}`}
+      onPointerDown={() => { if (!audioEnabled) setAudioEnabled(true); }}
     >
       {/* ── Branded loading screen (seconds 0–2) ──────────────────────────── */}
       {showBrandedLoading ? (
@@ -701,6 +796,21 @@ export default function UniversalViewer({
               className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white/70 transition hover:bg-white/15"
             >
               {isFullscreen ? '⊠ Salir' : '⛶ Presentar'}
+            </button>
+          ) : null}
+
+          {audioReady ? (
+            <button
+              type="button"
+              onClick={() => { setAudioMuted((m) => !m); }}
+              title={audioMuted ? 'Activar ambiente' : 'Silenciar ambiente'}
+              className={`rounded-full px-4 py-2 text-sm font-black transition ${
+                audioMuted
+                  ? 'bg-white/10 text-white/40 hover:bg-white/15 hover:text-white/70'
+                  : 'bg-violet-600/70 text-white hover:bg-violet-600'
+              }`}
+            >
+              {audioMuted ? '🔇' : '🔊'} Ambiente
             </button>
           ) : null}
         </div>
