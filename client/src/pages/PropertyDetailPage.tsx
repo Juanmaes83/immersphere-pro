@@ -393,22 +393,46 @@ function PropertyLeadsList({ propertyId, leadCount }: { propertyId: string; lead
   );
 }
 
-function PropertyQRCode({ propertyId, primaryColor }: { propertyId: string; primaryColor: string }): JSX.Element {
+function PropertyQRCode({
+  propertyId,
+  primaryColor,
+  propertyTitle
+}: {
+  propertyId: string;
+  primaryColor: string;
+  propertyTitle?: string;
+}): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const fullscreenCanvasRef = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
+  const [showFullscreen, setShowFullscreen] = useState(false);
+  const [linkCopiedQR, setLinkCopiedQR] = useState(false);
+  const agencyName = useAuthStore((s) => s.user?.tenant.name);
+
+  const tourUrl = `${window.location.origin}/property/${propertyId}`;
 
   useEffect(() => {
-    const url = `${window.location.origin}/property/${propertyId}`;
-    if (canvasRef.current) {
-      QRCode.toCanvas(canvasRef.current, url, {
-        width: 180,
-        margin: 2,
-        color: { dark: '#0f172a', light: '#ffffff' }
-      })
-        .then(() => setReady(true))
-        .catch(() => {});
-    }
-  }, [propertyId]);
+    if (!canvasRef.current) return;
+    QRCode.toCanvas(canvasRef.current, tourUrl, {
+      width: 180, margin: 2,
+      color: { dark: '#0f172a', light: '#ffffff' }
+    }).then(() => setReady(true)).catch(() => {});
+  }, [tourUrl]);
+
+  useEffect(() => {
+    if (!showFullscreen || !fullscreenCanvasRef.current) return;
+    QRCode.toCanvas(fullscreenCanvasRef.current, tourUrl, {
+      width: 280, margin: 2,
+      color: { dark: '#0f172a', light: '#ffffff' }
+    }).catch(() => {});
+  }, [showFullscreen, tourUrl]);
+
+  useEffect(() => {
+    if (!showFullscreen) return;
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowFullscreen(false); };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [showFullscreen]);
 
   function handleDownload(): void {
     const canvas = canvasRef.current;
@@ -419,32 +443,115 @@ function PropertyQRCode({ propertyId, primaryColor }: { propertyId: string; prim
     link.click();
   }
 
+  function handleCopyLink(): void {
+    void navigator.clipboard.writeText(tourUrl).then(() => {
+      setLinkCopiedQR(true);
+      setTimeout(() => setLinkCopiedQR(false), 1800);
+    });
+  }
+
   return (
-    <div className="mt-5 overflow-hidden rounded-[1.4rem] bg-slate-950">
-      <div className="flex items-center justify-between px-5 pt-4 pb-1">
-        <p className="text-[10px] font-black uppercase tracking-[0.22em]" style={{ color: primaryColor }}>
-          QR · Tour inmersivo
-        </p>
-        <span className="rounded-full px-2.5 py-0.5 text-[10px] font-black text-black" style={{ backgroundColor: primaryColor }}>
-          SCAN
-        </span>
-      </div>
-      <div className="flex justify-center px-5 py-4">
-        <div className="rounded-xl bg-white p-3 shadow-lg">
-          <canvas ref={canvasRef} className={ready ? '' : 'opacity-0'} />
+    <>
+      {/* ── Widget compacto (aside) ─────────────────────────────────────── */}
+      <div className="mt-5 overflow-hidden rounded-[1.4rem] bg-slate-950">
+        <div className="flex items-center justify-between px-5 pt-4 pb-1">
+          <p className="text-[10px] font-black uppercase tracking-[0.22em]" style={{ color: primaryColor }}>
+            QR · Tour inmersivo
+          </p>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowFullscreen(true)}
+              title="Pantalla completa para reuniones"
+              className="rounded-full border border-white/15 px-2 py-0.5 text-[11px] text-white/50 transition hover:border-white/35 hover:text-white"
+            >
+              ⛶
+            </button>
+            <span className="rounded-full px-2.5 py-0.5 text-[10px] font-black text-black" style={{ backgroundColor: primaryColor }}>
+              SCAN
+            </span>
+          </div>
+        </div>
+        <div className="flex justify-center px-5 py-4">
+          <div className="rounded-xl bg-white p-3 shadow-lg">
+            <canvas ref={canvasRef} className={ready ? '' : 'opacity-0'} />
+          </div>
+        </div>
+        <div className="px-5 pb-4">
+          <p className="mb-2.5 text-center text-[10px] text-white/40">Escanea para abrir el tour</p>
+          <button
+            type="button"
+            onClick={handleDownload}
+            className="w-full rounded-xl border border-white/10 px-4 py-2.5 text-xs font-black text-white/70 transition hover:border-white/25 hover:text-white"
+          >
+            ↓ Descargar PNG
+          </button>
         </div>
       </div>
-      <div className="px-5 pb-4">
-        <p className="mb-2.5 text-center text-[10px] text-white/40">Escanea para abrir el tour</p>
-        <button
-          type="button"
-          onClick={handleDownload}
-          className="w-full rounded-xl border border-white/10 px-4 py-2.5 text-xs font-black text-white/70 transition hover:border-white/25 hover:text-white"
+
+      {/* ── Modal fullscreen premium ───────────────────────────────────── */}
+      {showFullscreen ? (
+        <div
+          className="fixed inset-0 z-[200] flex items-center justify-center px-5 backdrop-blur-md"
+          style={{ backgroundColor: 'rgba(2,6,23,0.93)' }}
+          onClick={() => setShowFullscreen(false)}
         >
-          ↓ Descargar PNG
-        </button>
-      </div>
-    </div>
+          <div
+            className="w-full max-w-[520px] overflow-hidden rounded-[2rem] bg-slate-900 shadow-2xl ring-1 ring-white/10"
+            style={{ boxShadow: '0 40px 80px rgba(0,0,0,0.7)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="border-b border-white/[0.07] px-8 pt-8 pb-6 text-white">
+              <div className="flex items-start justify-between gap-4">
+                <div className="min-w-0">
+                  {agencyName ? (
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em]" style={{ color: primaryColor }}>
+                      {agencyName}
+                    </p>
+                  ) : null}
+                  <h2 className="mt-2 truncate text-2xl font-black leading-snug tracking-tight">
+                    {propertyTitle ?? 'Tour inmersivo'}
+                  </h2>
+                  <p className="mt-2 text-sm text-white/40">
+                    Escanea y recorre la vivienda desde tu móvil
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowFullscreen(false)}
+                  className="shrink-0 rounded-full p-2.5 text-white/35 transition hover:bg-white/10 hover:text-white"
+                  aria-label="Cerrar"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+
+            {/* QR */}
+            <div className="flex flex-col items-center px-8 py-9">
+              <div className="rounded-2xl bg-white p-5 shadow-xl" style={{ boxShadow: '0 8px 32px rgba(0,0,0,0.35)' }}>
+                <canvas ref={fullscreenCanvasRef} />
+              </div>
+              <p className="mt-5 text-[11px] font-bold uppercase tracking-[0.22em] text-white/25">
+                Experiencia inmersiva · Tour virtual 360°
+              </p>
+            </div>
+
+            {/* Footer CTA */}
+            <div className="border-t border-white/[0.07] px-8 py-6">
+              <button
+                type="button"
+                onClick={handleCopyLink}
+                className="w-full rounded-2xl border border-white/15 px-5 py-3.5 text-sm font-black text-white/60 transition hover:border-white/30 hover:text-white"
+              >
+                {linkCopiedQR ? '✓ Enlace copiado' : '🔗 Copiar enlace'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -840,7 +947,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 📱 Ver en móvil
               </button>
               {!embed ? (
-                <PropertyQRCode propertyId={property.id} primaryColor={primaryColor} />
+                <PropertyQRCode propertyId={property.id} primaryColor={primaryColor} propertyTitle={property.title} />
               ) : null}
             </aside>
           </div>
