@@ -20,6 +20,7 @@ import DashboardPage from '@/pages/DashboardPage';
 import SettingsPage from '@/pages/SettingsPage';
 import LeadsPage from '@/pages/LeadsPage';
 import PropertiesPage from '@/pages/PropertiesPage';
+import PropertyCreateWizardPage from '@/pages/PropertyCreateWizardPage';
 import HelpPage from '@/pages/HelpPage';
 
 function useDarkMode(): [boolean, () => void] {
@@ -321,6 +322,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/billing/cancelled" element={<BillingCancelledPage />} />
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/properties" element={<ProtectedRoute><PropertiesPage /></ProtectedRoute>} />
+        <Route path="/properties/new" element={<ProtectedRoute><PropertyCreateWizardPage /></ProtectedRoute>} />
         <Route path="/leads" element={<ProtectedRoute><LeadsPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />

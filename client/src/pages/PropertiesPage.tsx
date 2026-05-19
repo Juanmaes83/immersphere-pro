@@ -1,6 +1,6 @@
 ﻿import { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import type { ChangeEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
 import { api, unwrapApiResponse, getApiErrorMessage } from '@/services/api';
 import { usePropertyStore } from '@/store/propertyStore';
@@ -833,6 +833,34 @@ export default function PropertiesPage(): JSX.Element {
     <main className="mx-auto max-w-7xl px-5 py-10">
       <p className="text-sm font-black uppercase tracking-[0.22em]" style={colorStyle}>Mis propiedades</p>
       <h1 className="mt-3 text-5xl font-black tracking-tight">Propiedades</h1>
+
+      {/* ── Quick-start wizard banner ───────────────────────────────────────── */}
+      {!editingPropertyId && (
+        <Link
+          to="/properties/new"
+          className="mt-6 flex items-center gap-4 rounded-[1.5rem] border border-slate-200 bg-white px-6 py-4 shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-800"
+        >
+          <span
+            className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl text-white shadow"
+            style={bgStyle}
+          >
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
+              <path d="M12 5v14M5 12h14" />
+            </svg>
+          </span>
+          <span className="min-w-0 flex-1">
+            <span className="block font-black text-slate-900 dark:text-slate-100">
+              Crear nuevo recorrido
+            </span>
+            <span className="block text-xs font-semibold text-slate-500">
+              Wizard guiado · sube panoramas · publica en menos de 15 min
+            </span>
+          </span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5 shrink-0 text-slate-400">
+            <polyline points="9 18 15 12 9 6" />
+          </svg>
+        </Link>
+      )}
 
       <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-[420px_1fr]">
         <form onSubmit={handleSubmit} className="rounded-[1.8rem] bg-white p-6 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
