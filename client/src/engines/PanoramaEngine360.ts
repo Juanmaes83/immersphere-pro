@@ -120,6 +120,22 @@ export class PanoramaEngine360 implements RendererLifecycle {
       return;
     }
 
+    // ── Stage 1: fire-and-forget blurred preview (Cloudinary only) ───────────
+    // Tiny q_15,w_256 version loads in ~50–150 ms and gives instant visual feedback.
+    // If full-res arrives first the preview is discarded silently.
+    const previewUrl = this.buildCloudinaryPreview(imageUrl);
+    if (previewUrl) {
+      this.loadTexture(previewUrl)
+        .then((tex) => {
+          if (this.isDisposed || this.mesh) { tex.dispose(); return; }
+          tex.colorSpace = THREE.SRGBColorSpace;
+          this.applyTexture(tex);
+          this.startRenderLoop();
+        })
+        .catch(() => { /* preview failure is silent — full-res follows */ });
+    }
+
+    // ── Stage 2: await full-resolution texture ────────────────────────────────
     try {
       const texture = await this.loadTexture(imageUrl);
 
@@ -129,27 +145,50 @@ export class PanoramaEngine360 implements RendererLifecycle {
       }
 
       texture.colorSpace = THREE.SRGBColorSpace;
-
-      const geometry = new THREE.SphereGeometry(500, 96, 64);
-      geometry.scale(-1, 1, 1);
-
-      const material = new THREE.MeshBasicMaterial({ map: texture });
-
-      if (this.mesh) {
-        this.scene.remove(this.mesh);
-        this.mesh.geometry.dispose();
-        this.mesh.material.map?.dispose();
-        this.mesh.material.dispose();
-      }
-
-      this.mesh = new THREE.Mesh(geometry, material);
-      this.scene.add(this.mesh);
-
-      this.startRenderLoop();
+      this.applyTexture(texture);
+      this.startRenderLoop(); // safe to call again — replaces loop if preview had started it
       this.onReady?.();
     } catch (error) {
       this.emitError(error instanceof Error ? error : new Error('Error cargando panorama.'));
     }
+  }
+
+  /**
+   * Apply a texture to the sphere — creates the mesh on first call,
+   * swaps the texture in-place on subsequent calls (preview → full-res upgrade).
+   * Disposes the old texture to prevent GPU memory leaks.
+   */
+  private applyTexture(texture: THREE.Texture): void {
+    if (this.mesh) {
+      // In-place swap: keep geometry, just replace the map
+      const old = this.mesh.material.map;
+      this.mesh.material.map = texture;
+      this.mesh.material.needsUpdate = true;
+      old?.dispose();
+    } else {
+      const geometry = new THREE.SphereGeometry(500, 96, 64);
+      geometry.scale(-1, 1, 1);
+      this.mesh = new THREE.Mesh(geometry, new THREE.MeshBasicMaterial({ map: texture }));
+      this.scene.add(this.mesh);
+    }
+  }
+
+  /**
+   * Build a Cloudinary URL that serves a tiny (256px wide), heavily blurred,
+   * low-quality preview. Returns null for non-Cloudinary or already-transformed URLs.
+   *
+   * Pattern: /upload/{optional-transforms}/v{version}/...
+   * We insert our transforms only when the segment after /upload/ starts with v+digits.
+   */
+  private buildCloudinaryPreview(url: string): string | null {
+    if (!url.includes('res.cloudinary.com')) return null;
+    const uploadIdx = url.indexOf('/upload/');
+    if (uploadIdx === -1) return null;
+    const after = url.slice(uploadIdx + 8);
+    // Only add transforms when the URL has no existing transforms (starts with version segment)
+    if (!/^v\d/.test(after)) return null;
+    const before = url.slice(0, uploadIdx + 8);
+    return `${before}q_15,w_256,e_blur:800/${after}`;
   }
 
   public resize(): void {

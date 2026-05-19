@@ -357,13 +357,56 @@ export default function PanoramaViewer({
         }
         .hs-ring { animation: hs-breathe 3.2s ease-in-out infinite; }
         @media (prefers-reduced-motion: reduce) { .hs-ring { animation: none; opacity: 0.18; } }
+
+        /* Skeleton shimmer sweep — single horizontal light pass */
+        @keyframes sk-sweep {
+          0%   { transform: translateX(-100%); }
+          100% { transform: translateX(200%); }
+        }
+        .sk-sweep {
+          animation: sk-sweep 2.4s cubic-bezier(0.4,0,0.6,1) infinite;
+        }
+        @media (prefers-reduced-motion: reduce) { .sk-sweep { animation: none; } }
       `}</style>
       <div ref={containerRef} className="absolute inset-0" />
 
+      {/* ── Skeleton loading state — shows until onReady fires ─────────────── */}
       {!isReady && !errorMessage ? (
-        <div className="absolute inset-0 flex items-center justify-center bg-slate-950 text-white">
-          <div className="rounded-2xl border border-white/10 bg-white/10 px-5 py-4 text-sm font-bold backdrop-blur">
-            Cargando panorama 360°...
+        <div className="absolute inset-0 overflow-hidden bg-slate-950">
+          {/* Base gradient — mimics the dark tones of a luxury interior panorama */}
+          <div
+            className="absolute inset-0"
+            style={{
+              background: 'radial-gradient(ellipse 120% 80% at 50% 40%, #1e1b2e 0%, #0f0f1a 55%, #080810 100%)',
+            }}
+          />
+
+          {/* Shimmer sweep — single light pass */}
+          <div className="absolute inset-0 overflow-hidden">
+            <div
+              className="sk-sweep absolute inset-y-0 w-1/3"
+              style={{
+                background: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.028) 50%, transparent 100%)',
+              }}
+            />
+          </div>
+
+          {/* Center content — space name (if available) + subtle indicator */}
+          <div className="absolute inset-0 flex flex-col items-center justify-center gap-5">
+            {/* Space name from preview map */}
+            {spacePreviewMap?.[spaceId]?.name ? (
+              <p className="text-[11px] font-bold uppercase tracking-[0.32em] text-white/18">
+                {spacePreviewMap[spaceId].name}
+              </p>
+            ) : null}
+
+            {/* Thin animated progress line */}
+            <div className="h-px w-16 overflow-hidden rounded-full bg-white/[0.08]">
+              <div
+                className="sk-sweep h-full w-1/2 rounded-full"
+                style={{ background: `linear-gradient(90deg, transparent, ${primaryColor}55, transparent)` }}
+              />
+            </div>
           </div>
         </div>
       ) : null}

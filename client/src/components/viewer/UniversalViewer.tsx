@@ -169,6 +169,10 @@ export default function UniversalViewer({
   const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null);
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
+  /** Spatial breadcrumb trail — records each space visited in order, capped at 12 */
+  const [visitHistory, setVisitHistory] = useState<string[]>(
+    () => [(initialSpaceId ?? firstSpaceId)].filter(Boolean)
+  );
 
   // ── Guided tour ─────────────────────────────────────────────────────────────
   const [isGuidedTour, setIsGuidedTour]     = useState(false);
@@ -628,6 +632,13 @@ export default function UniversalViewer({
       }
     }
 
+    // Append to spatial breadcrumb trail (no consecutive duplicates, cap at 12)
+    setVisitHistory((prev) => {
+      if (prev[prev.length - 1] === spaceId) return prev;
+      const next = [...prev, spaceId];
+      return next.length > 12 ? next.slice(-12) : next;
+    });
+
     setIsMeasuring(false);
     setShowDollhouse(false);
     setActiveSpaceId(spaceId);
@@ -825,6 +836,39 @@ export default function UniversalViewer({
             </p>
           ) : null}
           <h2 className="mt-2 text-3xl font-black">{activeSpace.name}</h2>
+
+          {/* ── Spatial breadcrumb trail — visible from 2nd space visited ── */}
+          {visitHistory.length >= 2 ? (
+            <div className="mt-1.5 flex items-center gap-1 overflow-hidden">
+              {visitHistory.slice(-5).map((sid, idx, arr) => {
+                const sp = sortedSpaces.find((s) => s.id === sid);
+                if (!sp) return null;
+                const isLast = idx === arr.length - 1;
+                return (
+                  <span key={`${sid}-${idx}`} className="flex min-w-0 items-center gap-1">
+                    {idx > 0 ? (
+                      <span className="shrink-0 text-[10px] leading-none text-white/15">›</span>
+                    ) : null}
+                    <button
+                      type="button"
+                      disabled={isLast}
+                      onClick={() => {
+                        if (!isLast) runTransition(() => handleSpaceChange(sid), sid);
+                      }}
+                      className={`max-w-[72px] truncate text-[11px] font-bold transition ${
+                        isLast
+                          ? 'cursor-default text-white/45'
+                          : 'text-white/22 hover:text-white/50'
+                      }`}
+                    >
+                      {sp.name}
+                    </button>
+                  </span>
+                );
+              })}
+            </div>
+          ) : null}
+
           {!removeBranding ? (
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">
               {activeAsset.type === 'panorama_360'
