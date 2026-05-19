@@ -1425,7 +1425,7 @@ export default function PropertiesPage(): JSX.Element {
                                 <div className="flex gap-2">
                                   {([
                                     { value: 'panorama_360', label: 'Panorama 360', hint: 'JPG / WebP' },
-                                    { value: 'gaussian_splat', label: 'Escaneo 3D', hint: 'SPZ / SPLAT / PLY' },
+                                    { value: 'gaussian_splat', label: 'Escaneo 3D', hint: 'SPLAT / PLY' },
                                     { value: 'mesh', label: 'Modelo 3D', hint: 'GLB' }
                                   ] as const).map(({ value, label, hint }) => (
                                     <button

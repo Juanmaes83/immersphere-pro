@@ -1,6 +1,7 @@
-﻿import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { GaussianSplatRenderer } from '@/engines/GaussianSplatRenderer';
 import MeasurementOverlay from '@/components/viewer/MeasurementOverlay';
+import { t } from '@/i18n/dictionary';
 import type { RemovedSplatZone, ViewerAsset, ViewerEvent } from '@/types/viewer';
 
 // Future: extend to viewerMode: 'public' | 'admin' | 'embed' | 'kiosk'
@@ -12,8 +13,14 @@ interface GaussianSplatViewerProps {
   measureMode?: boolean;
   /** When false (default): shows only the immersive 3D canvas — no editor, no upload, no tech badges. */
   isAdminMode?: boolean;
+  lang?: string;
   onAnalyticsEvent: (event: ViewerEvent) => void;
 }
+
+// Formats actually supported end-to-end (backend multer + SparkJS renderer).
+// .spz / .sog / .json are NOT accepted by the backend — do not advertise them.
+const ACCEPTED_FORMATS = '.ply,.splat';
+const ALLOWED_EXTENSIONS = ['.ply', '.splat'];
 
 function createViewerEvent(
   type: ViewerEvent['type'],
@@ -33,10 +40,6 @@ function createViewerEvent(
   };
 }
 
-function getAcceptedSplatFormats(): string {
-  return '.ply,.splat,.spz,.sog,.json,.glb';
-}
-
 export default function GaussianSplatViewer({
   propertyId,
   spaceId,
@@ -44,17 +47,20 @@ export default function GaussianSplatViewer({
   primaryColor = '#7C3AED',
   measureMode = false,
   isAdminMode = false,
+  lang,
   onAnalyticsEvent
 }: GaussianSplatViewerProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const rendererRef = useRef<GaussianSplatRenderer | null>(null);
   const objectUrlRef = useRef<string | null>(null);
   const analyticsRef = useRef(onAnalyticsEvent);
+  const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [runtimeUrl, setRuntimeUrl] = useState(asset.url);
   const [runtimeLabel, setRuntimeLabel] = useState(asset.url.split('/').pop() ?? asset.format);
   const [isReady, setIsReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [slowLoading, setSlowLoading] = useState(false);
   const [editorMode, setEditorMode] = useState(false);
   const [clipEnabled, setClipEnabled] = useState(false);
   const [removedZones, setRemovedZones] = useState<RemovedSplatZone[]>([]);
@@ -90,12 +96,20 @@ export default function GaussianSplatViewer({
 
     setIsReady(false);
     setErrorMessage(null);
+    setSlowLoading(false);
+
+    // Show a gentle "this is taking longer" message after 10 s
+    slowTimerRef.current = setTimeout(() => {
+      setSlowLoading(true);
+    }, 10_000);
 
     try {
       const renderer = new GaussianSplatRenderer({
         container,
         assetUrl: runtimeUrl,
         onReady: () => {
+          if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
+          setSlowLoading(false);
           setIsReady(true);
           setErrorMessage(null);
           analyticsRef.current(
@@ -107,6 +121,8 @@ export default function GaussianSplatViewer({
           );
         },
         onError: (error) => {
+          if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
+          setSlowLoading(false);
           setIsReady(false);
           setErrorMessage(error.message);
           analyticsRef.current(
@@ -126,12 +142,15 @@ export default function GaussianSplatViewer({
       window.addEventListener('resize', handleResize);
 
       return () => {
+        if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
         window.removeEventListener('resize', handleResize);
         renderer.dispose();
         rendererRef.current = null;
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : 'No se pudo inicializar PlayCanvas.';
+      if (slowTimerRef.current) clearTimeout(slowTimerRef.current);
+      const message = error instanceof Error ? error.message : 'Renderer init failed.';
+      setSlowLoading(false);
       setIsReady(false);
       setErrorMessage(message);
     }
@@ -150,12 +169,11 @@ export default function GaussianSplatViewer({
     const file = event.target.files?.[0];
     if (!file) return;
 
-    const allowedExtensions = ['.ply', '.splat', '.spz', '.sog', '.json', '.glb'];
     const lowerName = file.name.toLowerCase();
-    const isAllowed = allowedExtensions.some((extension) => lowerName.endsWith(extension));
+    const isAllowed = ALLOWED_EXTENSIONS.some((ext) => lowerName.endsWith(ext));
 
     if (!isAllowed) {
-      setErrorMessage('Formato no soportado. Usa .ply, .splat, .spz, .sog, .json o .glb.');
+      setErrorMessage(t(lang, 'splat_format_error'));
       return;
     }
 
@@ -243,12 +261,12 @@ export default function GaussianSplatViewer({
       >
         <span className={compact ? 'text-xl' : 'text-3xl'}>📂</span>
         <span className="block text-sm font-black text-white">
-          Subir .ply / .splat / .spz / .sog
+          {t(lang, 'splat_upload_cta')}
         </span>
-        <span className="text-xs text-white/40">Haz clic o arrastra el archivo aquí</span>
+        <span className="text-xs text-white/40">{t(lang, 'splat_upload_hint')}</span>
         <input
           type="file"
-          accept={getAcceptedSplatFormats()}
+          accept={ACCEPTED_FORMATS}
           onChange={handleFileChange}
           className="sr-only"
         />
@@ -272,8 +290,21 @@ export default function GaussianSplatViewer({
           {/* Estado: cargando */}
           {!isReady && !errorMessage ? (
             <div className="absolute inset-0 z-20 flex items-center justify-center bg-slate-950/90">
-              <div className="rounded-2xl border border-white/10 bg-white/10 px-6 py-4 text-sm font-bold backdrop-blur">
-                {isAdminMode ? 'Cargando Gaussian Splat con SparkJS…' : 'Cargando vista inmersiva…'}
+              <div className="flex flex-col items-center gap-4 rounded-2xl border border-white/10 bg-white/10 px-6 py-5 text-center backdrop-blur">
+                <div
+                  className="h-8 w-8 animate-spin rounded-full border-[3px] border-white/10"
+                  style={{ borderTopColor: primaryColor }}
+                />
+                <div>
+                  <p className="text-sm font-bold text-white">
+                    {t(lang, 'splat_loading')}
+                  </p>
+                  {slowLoading ? (
+                    <p className="mt-1.5 text-xs text-white/45">
+                      {t(lang, 'splat_loading_slow')}
+                    </p>
+                  ) : null}
+                </div>
               </div>
             </div>
           ) : null}
@@ -286,40 +317,34 @@ export default function GaussianSplatViewer({
                 <div className="w-full max-w-sm space-y-4 text-center">
                   <div className="rounded-3xl border border-white/10 bg-white/5 p-6 backdrop-blur">
                     <p className="text-5xl">🫧</p>
-                    <p className="mt-3 text-lg font-black">Sube tu Gaussian Splat</p>
+                    <p className="mt-3 text-lg font-black">{t(lang, 'splat_admin_fallback_title')}</p>
                     <p className="mt-2 text-sm leading-6 text-white/60">
-                      El archivo de demo no está disponible desde este dominio.
-                      Sube tu propio{' '}
-                      <span className="font-bold text-fuchsia-300">.splat</span> o{' '}
-                      <span className="font-bold text-fuchsia-300">.spz</span> para verlo aquí.
+                      {t(lang, 'splat_admin_fallback_body')}
                     </p>
                     <p className="mt-2 text-xs text-white/30">{errorMessage}</p>
                   </div>
                   <div className="rounded-3xl border border-dashed border-fuchsia-400/40 bg-fuchsia-500/10 p-5 backdrop-blur">
                     <p className="mb-3 text-xs font-black uppercase tracking-[0.2em] text-fuchsia-300">
-                      Subir archivo local
+                      {t(lang, 'splat_admin_upload_label')}
                     </p>
                     <UploadZone />
                     <p className="mt-3 text-xs text-white/40">
-                      Captura con{' '}
-                      <span className="text-white/70">Luma AI</span> ·{' '}
-                      <span className="text-white/70">Polycam</span> ·{' '}
-                      <span className="text-white/70">Postshot</span>
+                      {t(lang, 'splat_capture_hint')}
                     </p>
                   </div>
                 </div>
               </div>
             ) : (
-              /* PUBLIC — premium fallback, no technical language, no upload */
+              /* PUBLIC — friendly fallback, no technical language, no upload */
               <div className="absolute inset-0 z-20 flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-950 to-slate-950 p-6">
                 <div className="w-full max-w-xs space-y-5 text-center">
                   <p className="text-5xl opacity-40">✦</p>
                   <div>
                     <p className="text-lg font-black text-white">
-                      Vista inmersiva no disponible
+                      {t(lang, 'splat_unavailable')}
                     </p>
                     <p className="mt-2 text-sm leading-6 text-white/50">
-                      No hemos podido cargar esta vista. Por favor, inténtalo de nuevo.
+                      {t(lang, 'splat_unavailable_body')}
                     </p>
                   </div>
                   <button
@@ -328,7 +353,7 @@ export default function GaussianSplatViewer({
                     className="w-full rounded-2xl px-5 py-3 text-sm font-black text-white transition hover:opacity-90 active:scale-95"
                     style={{ backgroundColor: primaryColor }}
                   >
-                    Reintentar
+                    {t(lang, 'splat_retry')}
                   </button>
                 </div>
               </div>
@@ -363,10 +388,10 @@ export default function GaussianSplatViewer({
           {isAdminMode && isReady && !errorMessage ? (
             <div className="absolute bottom-4 left-4 z-40 rounded-2xl border border-white/10 bg-black/60 px-4 py-3 backdrop-blur">
               <p className="text-[0.6rem] font-black uppercase tracking-[0.2em] text-fuchsia-200">
-                Gaussian Splat · SparkJS
+                {t(lang, 'splat_admin_title')} · SparkJS
               </p>
               <p className="mt-0.5 text-xl font-black">{formatLabel}</p>
-              <p className="mt-0.5 text-[0.65rem] text-white/50">WASD + ratón para navegar</p>
+              <p className="mt-0.5 text-[0.65rem] text-white/50">{t(lang, 'splat_controls_hint')}</p>
             </div>
           ) : null}
 
@@ -386,10 +411,10 @@ export default function GaussianSplatViewer({
           {/* ── Header desktop (oculto en mobile) ── */}
           <div className="hidden border-b border-white/10 px-5 py-4 lg:block">
             <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">
-              Gaussian Splat Editor
+              {t(lang, 'splat_admin_title')}
             </p>
             <p className="mt-1 text-[0.68rem] leading-5 text-white/40">
-              Previsualización, edición básica y conexión con SuperSplat
+              {t(lang, 'splat_admin_subtitle')}
             </p>
           </div>
 
@@ -404,7 +429,7 @@ export default function GaussianSplatViewer({
                   : 'text-white/40 hover:text-white/70'
               }`}
             >
-              <span>📂</span> Archivo
+              <span>📂</span> {t(lang, 'splat_tab_file')}
             </button>
             <button
               type="button"
@@ -415,7 +440,7 @@ export default function GaussianSplatViewer({
                   : 'text-white/40 hover:text-white/70'
               }`}
             >
-              <span>✏️</span> Editor
+              <span>✏️</span> {t(lang, 'splat_tab_editor')}
             </button>
           </div>
 
@@ -426,7 +451,7 @@ export default function GaussianSplatViewer({
           <div className={`p-5 ${activeTab === 'upload' ? 'block' : 'hidden'} lg:block`}>
             <div className="rounded-2xl bg-white/10 p-4">
               <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">
-                Asset local
+                {t(lang, 'splat_local_asset')}
               </p>
               <p className="mt-2 truncate text-sm font-bold text-white/80">{runtimeLabel}</p>
               <div className="mt-3">
@@ -442,16 +467,16 @@ export default function GaussianSplatViewer({
           <div className={`px-5 pb-6 ${activeTab === 'editor' ? 'block' : 'hidden'} lg:block lg:pt-0`}>
             <div className="rounded-2xl bg-white/10 p-4">
               <p className="text-xs font-black uppercase tracking-[0.2em] text-fuchsia-200">
-                Editor básico
+                {t(lang, 'splat_basic_editor')}
               </p>
 
               {!isReady && !errorMessage ? (
                 <p className="mt-3 text-xs text-white/40">
-                  Disponible cuando el splat termine de cargar.
+                  {t(lang, 'splat_editor_loading_hint')}
                 </p>
               ) : !isReady && errorMessage ? (
                 <p className="mt-3 text-xs text-white/40">
-                  Sube un archivo .splat local para activar el editor.
+                  {t(lang, 'splat_editor_no_file_hint')}
                 </p>
               ) : (
                 <div className="mt-4 space-y-3">
@@ -460,55 +485,55 @@ export default function GaussianSplatViewer({
                     onClick={() => { setEditorMode((current) => !current); }}
                     title={
                       editorMode
-                        ? 'Haz clic en el splat para ocultar zonas. Clic de nuevo para salir.'
-                        : 'Activa el modo de borrado por esferas SDF.'
+                        ? t(lang, 'splat_exit_selection')
+                        : t(lang, 'splat_select_gaussians')
                     }
                     className="w-full rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
                     style={{ backgroundColor: editorMode ? '#DC2626' : primaryColor }}
                   >
-                    {editorMode ? 'Salir de selección' : 'Seleccionar gaussianas'}
+                    {editorMode ? t(lang, 'splat_exit_selection') : t(lang, 'splat_select_gaussians')}
                   </button>
 
                   <button
                     type="button"
                     onClick={handleToggleClip}
-                    title="Muestra un plano de recorte visual sobre el splat."
+                    title={clipEnabled ? t(lang, 'splat_disable_clip') : t(lang, 'splat_enable_clip')}
                     className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80 transition hover:bg-white/10"
                   >
-                    {clipEnabled ? 'Desactivar clipping' : 'Activar plano de clipping'}
+                    {clipEnabled ? t(lang, 'splat_disable_clip') : t(lang, 'splat_enable_clip')}
                   </button>
 
                   <button
                     type="button"
                     onClick={resetEditor}
-                    title="Elimina todas las zonas ocultas y desactiva el plano de clipping."
+                    title={t(lang, 'splat_reset')}
                     className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80 transition hover:bg-white/10"
                   >
-                    Reset editor
+                    {t(lang, 'splat_reset')}
                   </button>
 
                   <div className="space-y-2">
                     <button
                       type="button"
                       onClick={() => { window.open('https://superspl.at/editor', '_blank', 'noopener,noreferrer'); }}
-                      title="Abre SuperSplat para limpiar, recortar y optimizar el splat."
+                      title={t(lang, 'splat_open_supersplat')}
                       className="w-full rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
                       style={{ backgroundColor: primaryColor }}
                     >
-                      Editar en SuperSplat →
+                      {t(lang, 'splat_open_supersplat')}
                     </button>
 
                     <button
                       type="button"
                       onClick={() => { window.open('https://superspl.at/scene/6a0c3ccf', '_blank', 'noopener,noreferrer'); }}
-                      title="Abre la escena de ejemplo en SuperSplat."
+                      title={t(lang, 'splat_preview_supersplat')}
                       className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80 transition hover:bg-white/10"
                     >
-                      Previsualizar en SuperSplat →
+                      {t(lang, 'splat_preview_supersplat')}
                     </button>
 
                     <p className="text-center text-xs text-white/40">
-                      Guarda y vuelve a subir el resultado
+                      {t(lang, 'splat_supersplat_note')}
                     </p>
                   </div>
                 </div>
@@ -517,13 +542,13 @@ export default function GaussianSplatViewer({
               {/* Contador de zonas */}
               <div className="mt-4 rounded-2xl bg-black/25 p-4">
                 <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">
-                  Zonas ocultadas
+                  {t(lang, 'splat_zones_label')}
                 </p>
                 <p className="mt-1 text-2xl font-black">{removedCount}</p>
               </div>
 
               <p className="mt-4 text-xs leading-5 text-white/45">
-                Editor experimental conectado a flujo SuperSplat. Las zonas eliminadas usan esferas SDF con opacidad 0 sobre el SplatMesh.
+                {t(lang, 'splat_editor_note')}
               </p>
             </div>
           </div>

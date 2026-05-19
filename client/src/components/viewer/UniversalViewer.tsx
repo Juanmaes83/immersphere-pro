@@ -1305,6 +1305,7 @@ export default function UniversalViewer({
                   primaryColor={primaryColor}
                   measureMode={isMeasuring}
                   isAdminMode={false}
+                  lang={language}
                   onAnalyticsEvent={onAnalyticsEvent}
                 />
               </Suspense>
