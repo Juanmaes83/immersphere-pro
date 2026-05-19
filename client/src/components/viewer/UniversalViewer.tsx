@@ -4,6 +4,7 @@ import DollhouseViewer from '@/components/viewer/DollhouseViewer';
 import FloorplanViewer from '@/components/viewer/FloorplanViewer';
 import GaussianSplatViewer from '@/components/viewer/GaussianSplatViewer';
 import LeadCaptureModal from '@/components/viewer/LeadCaptureModal';
+import MinimapOverlay from '@/components/viewer/MinimapOverlay';
 import PanoramaViewer from '@/components/viewer/PanoramaViewer';
 
 const GlbViewer = lazy(() => import('@/components/viewer/GlbViewer'));
@@ -216,6 +217,11 @@ export default function UniversalViewer({
   const [cpTick,           setCpTick]           = useState(false); // drives progress animation
   const cinematicTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Contextual minimap ───────────────────────────────────────────────────────
+  /** True while the minimap should be visible (briefly after space change) */
+  const [showMinimap,    setShowMinimap]    = useState(false);
+  const minimapTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
   // ── Ambient audio engine ─────────────────────────────────────────────────────
   const audioRef       = useRef<HTMLAudioElement | null>(null);
   const audioMutedRef  = useRef(false);
@@ -391,7 +397,7 @@ export default function UniversalViewer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioEnabled, activeSpace?.ambientAudio]);
 
-  // Cleanup audio + cinematic on unmount
+  // Cleanup audio + cinematic + minimap on unmount
   useEffect(() => {
     return () => {
       cancelAnimationFrame(fadeOutRafId.current);
@@ -402,6 +408,7 @@ export default function UniversalViewer({
         audioRef.current = null;
       }
       if (cinematicTimerRef.current) clearTimeout(cinematicTimerRef.current);
+      if (minimapTimerRef.current)   clearTimeout(minimapTimerRef.current);
     };
   }, []);
 
@@ -643,6 +650,14 @@ export default function UniversalViewer({
     setShowDollhouse(false);
     setActiveSpaceId(spaceId);
     setActiveHotspot(null);
+
+    // Contextual minimap: flash the floorplan briefly to orient the user.
+    // Only when a floorplan exists, not in dollhouse/plano mode, not reduced-motion.
+    if (floorplanUrl && !showDollhouse && !prefersReducedMotion) {
+      if (minimapTimerRef.current) clearTimeout(minimapTimerRef.current);
+      setShowMinimap(true);
+      minimapTimerRef.current = setTimeout(() => setShowMinimap(false), 3500);
+    }
 
     const event = createViewerEvent('space_change', {
       spaceId,
@@ -960,6 +975,9 @@ export default function UniversalViewer({
               onClick={() => {
                 setIsMeasuring(false);
                 setShowDollhouse((prev) => !prev);
+                // Hide minimap when entering/exiting the floorplan view
+                setShowMinimap(false);
+                if (minimapTimerRef.current) clearTimeout(minimapTimerRef.current);
               }}
               className={`rounded-full px-4 py-2 text-sm font-black transition ${
                 showDollhouse
@@ -1157,6 +1175,18 @@ export default function UniversalViewer({
             )}
           </ViewerErrorBoundary>
           </div>{/* end micro-scale wrapper */}
+
+          {/* ── Contextual minimap — spatial orientation after navigation ──── */}
+          {floorplanUrl && !showDollhouse ? (
+            <MinimapOverlay
+              floorplanUrl={floorplanUrl}
+              spaces={sortedSpaces}
+              activeSpaceId={activeSpace.id}
+              visible={showMinimap}
+              primaryColor={primaryColor}
+              prefersReducedMotion={prefersReducedMotion}
+            />
+          ) : null}
 
           {/* ── Cinematic progress line — top edge, very subtle ───────────── */}
           {isCinematic && !showCinematicEnd ? (
