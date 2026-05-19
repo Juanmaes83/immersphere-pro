@@ -1,6 +1,19 @@
 {
   "rewrites": [
     {
+      "_comment": "Bot crawlers (WhatsApp, Telegram, Twitter/X, LinkedIn, etc.) get server-side OG HTML",
+      "source": "/property/:id",
+      "has": [
+        {
+          "type": "header",
+          "key": "user-agent",
+          "value": "(?i)(facebookexternalhit|whatsapp|twitterbot|linkedinbot|telegrambot|slackbot-linkexpanding|slackbot|discordbot|vkshare|pinterest|tumblrbot|baiduspider|yandexbot|applebot|rogerbot|embedly|quora|outbrain|showyoubot|w3c_validator|facebot|ia_archiver)"
+        }
+      ],
+      "destination": "/api/property/:id"
+    },
+    {
+      "_comment": "All other routes → SPA (catches /property/:id for real users + every other client-side route)",
       "source": "/(.*)",
       "destination": "/index.html"
     }

@@ -2,13 +2,16 @@
 /**
  * Vercel Edge Function — Dynamic OG image generator.
  *
- * Route: GET /api/og?title=<property-title>
+ * Route: GET /api/og?title=<title>&price=<price>&area=<area>
  *
- * Returns a 1200×630 PNG with Immersphere Pro branding and the property
- * title. Used as og:image fallback when a property has no coverImage.
+ * Returns a 1200×630 PNG with Immersphere Pro branding.
+ * Used as og:image for properties that have no Cloudinary coverImage.
+ * Also used directly by /api/property/[id].ts as the fallback image URL.
  *
- * Deployed automatically by Vercel as an Edge Function (no Next.js needed).
- * API functions take priority over the catch-all rewrite in vercel.json.
+ * Params:
+ *  - title  (required) Property title, max 65 chars
+ *  - price  (optional) Numeric price in EUR
+ *  - area   (optional) Surface area in m²
  */
 
 import { ImageResponse } from '@vercel/og';
@@ -19,10 +22,24 @@ export const config = {
 
 export default function handler(req: Request): ImageResponse {
   const { searchParams } = new URL(req.url);
+
   const rawTitle = searchParams.get('title') ?? 'Tour Virtual';
-  // Truncate to avoid overflow; font size adjusts for longer titles
+  // Truncate to avoid overflow; font size scales down for longer titles
   const title = rawTitle.slice(0, 65);
   const fontSize = title.length > 40 ? '44px' : title.length > 25 ? '52px' : '62px';
+
+  // Optional metadata line
+  const rawPrice = searchParams.get('price');
+  const rawArea  = searchParams.get('area');
+
+  const priceStr = rawPrice
+    ? new Intl.NumberFormat('es-ES').format(Number(rawPrice)) + ' €'
+    : null;
+  const areaStr  = rawArea ? `${rawArea} m²` : null;
+
+  const metaLine = [priceStr, areaStr, 'Tour Inmersivo 360°']
+    .filter(Boolean)
+    .join('  ·  ');
 
   return new ImageResponse(
     (
@@ -78,16 +95,17 @@ export default function handler(req: Request): ImageResponse {
           {title}
         </div>
 
-        {/* Tagline */}
+        {/* Meta line: price · area · tour type */}
         <div
           style={{
             color: '#94a3b8',
-            fontSize: '20px',
+            fontSize: '22px',
+            fontWeight: '600',
             marginTop: '24px',
             letterSpacing: '0.02em',
           }}
         >
-          Tour virtual inmersivo · immersphere.io
+          {metaLine}
         </div>
       </div>
     ),

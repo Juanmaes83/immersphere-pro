@@ -583,6 +583,30 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
     });
   }
 
+  async function handleNativeShare(): Promise<void> {
+    const url = `${window.location.origin}/property/${propertyId}`;
+    const shareData: ShareData = {
+      title: `${property?.title ?? ''} · Tour inmersivo 360°`,
+      text: `${property?.title ?? ''} — Explora el tour virtual inmersivo.`,
+      url,
+    };
+    try {
+      if (
+        typeof navigator.share === 'function' &&
+        navigator.canShare?.(shareData)
+      ) {
+        await navigator.share(shareData);
+      } else {
+        // Fallback: copy to clipboard (same feedback as handleCopyLink)
+        await navigator.clipboard.writeText(url);
+        setLinkCopied(true);
+        setTimeout(() => setLinkCopied(false), 1800);
+      }
+    } catch {
+      // User cancelled the native share sheet — no action needed
+    }
+  }
+
   function handleCopyIframe(): void {
     const embedUrl = `${window.location.origin}/embed/${propertyId}`;
     const code = `<iframe src="${embedUrl}" width="100%" height="600" frameborder="0" allow="fullscreen" loading="lazy"></iframe>`;
@@ -901,6 +925,15 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                   Contactar agente
                 </button>
               )}
+              {!embed ? (
+                <button
+                  type="button"
+                  onClick={() => { void handleNativeShare(); }}
+                  className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700"
+                >
+                  ↗ Compartir tour
+                </button>
+              ) : null}
               <button
                 type="button"
                 onClick={handleCopyLink}
