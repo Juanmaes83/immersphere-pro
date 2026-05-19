@@ -4,6 +4,7 @@ interface LeadCaptureModalProps {
   propertyId: string;
   hotspotLabel: string;
   primaryColor: string;
+  agencyName?: string;
   onClose: () => void;
   onSubmitted: () => void;
 }
@@ -22,6 +23,7 @@ export default function LeadCaptureModal({
   propertyId,
   hotspotLabel,
   primaryColor,
+  agencyName,
   onClose,
   onSubmitted
 }: LeadCaptureModalProps): JSX.Element {
@@ -85,9 +87,17 @@ export default function LeadCaptureModal({
         <div className="border-b border-white/10 px-6 py-5">
           <div className="flex items-start justify-between gap-4">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
-                Solicitud de contacto
+              <p
+                className="text-xs font-black uppercase tracking-[0.2em]"
+                style={{ color: agencyName ? primaryColor : '#a78bfa' }}
+              >
+                {agencyName ?? 'Solicitud de contacto'}
               </p>
+              {agencyName ? (
+                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/35 mt-0.5">
+                  Solicitud de contacto
+                </p>
+              ) : null}
               <h2 className="mt-1 text-xl font-black leading-snug">{hotspotLabel}</h2>
             </div>
             <button

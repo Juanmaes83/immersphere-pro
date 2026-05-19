@@ -396,18 +396,19 @@ function PropertyLeadsList({ propertyId, leadCount }: { propertyId: string; lead
 function PropertyQRCode({
   propertyId,
   primaryColor,
-  propertyTitle
+  propertyTitle,
+  agencyName
 }: {
   propertyId: string;
   primaryColor: string;
   propertyTitle?: string;
+  agencyName?: string;
 }): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fullscreenCanvasRef = useRef<HTMLCanvasElement>(null);
   const [ready, setReady] = useState(false);
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [linkCopiedQR, setLinkCopiedQR] = useState(false);
-  const agencyName = useAuthStore((s) => s.user?.tenant.name);
 
   const tourUrl = `${window.location.origin}/property/${propertyId}`;
 
@@ -857,6 +858,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 primaryColor={primaryColor}
                 removeBranding={property.removeBranding}
                 propertyTitle={property.title}
+                agencyName={property.tenantName || undefined}
                 floorplanUrl={property.floorplanUrl || undefined}
                 className="mt-8"
                 onAnalyticsEvent={handleAnalyticsEvent}
@@ -981,7 +983,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 📱 Ver en móvil
               </button>
               {!embed ? (
-                <PropertyQRCode propertyId={property.id} primaryColor={primaryColor} propertyTitle={property.title} />
+                <PropertyQRCode propertyId={property.id} primaryColor={primaryColor} propertyTitle={property.title} agencyName={property.tenantName || undefined} />
               ) : null}
             </aside>
           </div>

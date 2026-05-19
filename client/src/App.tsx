@@ -261,11 +261,17 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
       <MobileBottomNav />
       <footer className="border-t border-slate-200 bg-white py-6 dark:border-slate-700 dark:bg-slate-900">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-5 sm:flex-row">
-          <p className="text-xs font-bold text-slate-400">
-            Powered by <span className="font-black text-slate-600 dark:text-slate-300">Immersphere Pro</span>
-            <span className="mx-2 text-slate-200 dark:text-slate-700">·</span>
-            <Link to="/ayuda" className="font-black text-slate-500 hover:underline dark:text-slate-400">Ayuda</Link>
-          </p>
+          {!user?.tenant.removeBranding ? (
+            <p className="text-xs font-bold text-slate-400">
+              Powered by <span className="font-black text-slate-600 dark:text-slate-300">Immersphere Pro</span>
+              <span className="mx-2 text-slate-200 dark:text-slate-700">·</span>
+              <Link to="/ayuda" className="font-black text-slate-500 hover:underline dark:text-slate-400">Ayuda</Link>
+            </p>
+          ) : (
+            <p className="text-xs font-bold text-slate-400">
+              <Link to="/ayuda" className="font-black text-slate-500 hover:underline dark:text-slate-400">Ayuda</Link>
+            </p>
+          )}
           <p className="text-xs font-bold text-slate-400">
             Idea by <span className="font-black text-slate-700 dark:text-slate-300">Rubik Sota</span>
             <a href="tel:+34629554870" className="ml-2 font-black text-slate-700 hover:underline dark:text-slate-300">629 554 870</a>

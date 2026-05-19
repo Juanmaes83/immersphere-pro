@@ -828,6 +828,7 @@ export default function UniversalViewer({
           propertyId={propertyId}
           hotspotLabel={leadModalLabel}
           primaryColor={primaryColor}
+          agencyName={agencyName}
           onClose={() => setShowLeadModal(false)}
           onSubmitted={() => { handleLeadSubmitted(); }}
         />
