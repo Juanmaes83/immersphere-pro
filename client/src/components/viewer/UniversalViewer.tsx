@@ -236,10 +236,12 @@ export default function UniversalViewer({
   const [prefersReducedMotion, setPrefersReducedMotion]   = useState(
     () => window.matchMedia('(prefers-reduced-motion: reduce)').matches
   );
-  const transitionLock  = useRef(false);
-  const pendingSpaceRef = useRef<string | null>(null);
-  const pendingSwapRef  = useRef<(() => void) | null>(null);
-  const isTouchDevice   = useRef(window.matchMedia('(pointer: coarse)').matches);
+  const transitionLock       = useRef(false);
+  const pendingSpaceRef      = useRef<string | null>(null);
+  const pendingSwapRef       = useRef<(() => void) | null>(null);
+  const isTouchDevice        = useRef(window.matchMedia('(pointer: coarse)').matches);
+  /** Set before calling runTransition to control cinematic zoom intensity */
+  const transitionIntentRef  = useRef<'hotspot' | 'nav' | ''>('');
 
   const viewerRef       = useRef<HTMLElement>(null);
   const sessionId       = useRef(getOrCreateSessionId());
@@ -646,6 +648,7 @@ export default function UniversalViewer({
       sessionId: sessionId.current
     });
 
+    transitionIntentRef.current = 'nav'; // cinematic zoom for guided tour steps
     runTransition(() => {
       setGuidedTourIdx(newIdx);
       setActiveSpaceId(nextSpace.id);
@@ -671,6 +674,7 @@ export default function UniversalViewer({
       swapFn();
       setTPhase('in');
       setTimeout(() => {
+        transitionIntentRef.current = ''; // clear before idle render so scale resets cleanly
         setTPhase('idle');
         transitionLock.current = false;
         const pendingId = pendingSpaceRef.current;
@@ -769,6 +773,7 @@ export default function UniversalViewer({
 
     // Navigation hotspots: switch space directly — do not open info panel
     if (hotspot.type === 'navigation' && hotspot.targetSpaceId) {
+      transitionIntentRef.current = 'hotspot'; // cinematic zoom-in before transition
       runTransition(() => { handleSpaceChange(hotspot.targetSpaceId!); }, hotspot.targetSpaceId);
       return;
     }
@@ -834,6 +839,15 @@ export default function UniversalViewer({
   const currentSpaceIdx = sortedSpaces.findIndex((s) => s.id === activeSpace.id);
   const prevSpace = currentSpaceIdx > 0 ? sortedSpaces[currentSpaceIdx - 1] : null;
   const nextSpace = currentSpaceIdx < sortedSpaces.length - 1 ? sortedSpaces[currentSpaceIdx + 1] : null;
+
+  // ── Cinematic zoom intent — drives the micro-scale wrapper ───────────────────
+  // Uses a ref (not state) so the value is always current when the re-render triggered
+  // by tPhase state change fires. Hotspot/nav get a more pronounced zoom than direct nav.
+  const _cinIntent    = transitionIntentRef.current;
+  const _isCinZoom    = tPhase !== 'idle' && !prefersReducedMotion && (_cinIntent === 'hotspot' || _cinIntent === 'nav');
+  const _scaleOut     = _isCinZoom ? 1.042 : 1.018;
+  const _blurOut      = _isCinZoom ? '9px'  : '6px';
+  const _brightnessOut = _isCinZoom ? 0.5    : 0.7;
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -1208,9 +1222,12 @@ export default function UniversalViewer({
           {/* Micro-scale wrapper — subtle parallax on desktop only, not on mobile/reduced-motion */}
           <div
             style={!prefersReducedMotion ? {
-              transform: tPhase === 'out' ? 'scale(1.018)' : 'scale(1)',
+              // _scaleOut: 1.042 for hotspot/nav intent, 1.018 for regular transitions.
+              // During 'in' phase the element starts at whatever _scaleOut was (CSS holds last value)
+              // and transitions to scale(1) — giving the "breathing open" zoom-out on entry.
+              transform: tPhase === 'out' ? `scale(${_scaleOut})` : 'scale(1)',
               filter: tPhase === 'out'
-                ? 'blur(6px) brightness(0.7)'
+                ? `blur(${_blurOut}) brightness(${_brightnessOut})`
                 : tPhase === 'in'
                   ? 'blur(2px) brightness(0.85)'
                   : 'blur(0px) brightness(1)',
@@ -1417,7 +1434,7 @@ export default function UniversalViewer({
               {prevSpace ? (
                 <button
                   type="button"
-                  onClick={() => { runTransition(() => handleSpaceChange(prevSpace.id), prevSpace.id); }}
+                  onClick={() => { transitionIntentRef.current = 'nav'; runTransition(() => handleSpaceChange(prevSpace.id), prevSpace.id); }}
                   className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-slate-950/70 px-4 py-3 text-sm font-black text-white backdrop-blur-sm transition hover:bg-slate-950/90 active:scale-95"
                 >
                   <span className="text-lg leading-none">←</span>
@@ -1429,7 +1446,7 @@ export default function UniversalViewer({
               {nextSpace ? (
                 <button
                   type="button"
-                  onClick={() => { runTransition(() => handleSpaceChange(nextSpace.id), nextSpace.id); }}
+                  onClick={() => { transitionIntentRef.current = 'nav'; runTransition(() => handleSpaceChange(nextSpace.id), nextSpace.id); }}
                   className="pointer-events-auto flex items-center gap-2 rounded-2xl bg-slate-950/70 px-4 py-3 text-sm font-black text-white backdrop-blur-sm transition hover:bg-slate-950/90 active:scale-95"
                   style={{ borderLeft: `3px solid ${primaryColor}` }}
                 >
