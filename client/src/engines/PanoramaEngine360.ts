@@ -20,6 +20,7 @@ export class PanoramaEngine360 implements RendererLifecycle {
   private readonly minFov: number;
   private readonly maxFov: number;
   private readonly onReady?: () => void;
+  private readonly onPreviewReady?: () => void;
   private readonly onError?: (error: Error) => void;
   private readonly onViewChange?: (state: PanoramaViewState) => void;
 
@@ -74,6 +75,7 @@ export class PanoramaEngine360 implements RendererLifecycle {
     this.minFov = config.minFov ?? 35;
     this.maxFov = config.maxFov ?? 95;
     this.onReady = config.onReady;
+    this.onPreviewReady = config.onPreviewReady;
     this.onError = config.onError;
     this.onViewChange = config.onViewChange;
 
@@ -127,10 +129,13 @@ export class PanoramaEngine360 implements RendererLifecycle {
     if (previewUrl) {
       this.loadTexture(previewUrl)
         .then((tex) => {
+          // Discard preview if disposed or if full-res already arrived (mesh exists)
           if (this.isDisposed || this.mesh) { tex.dispose(); return; }
           tex.colorSpace = THREE.SRGBColorSpace;
           this.applyTexture(tex);
           this.startRenderLoop();
+          // Notify the UI that a blurred preview is now visible in the canvas
+          this.onPreviewReady?.();
         })
         .catch(() => { /* preview failure is silent — full-res follows */ });
     }

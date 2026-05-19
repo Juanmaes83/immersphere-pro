@@ -174,6 +174,9 @@ export interface PanoramaEngineConfig {
   minFov?: number;
   maxFov?: number;
   onReady?: () => void;
+  /** Fires once when the first (low-res preview) texture is applied to the sphere.
+   *  Use this to start fading out the skeleton overlay before full-res is ready. */
+  onPreviewReady?: () => void;
   onError?: (error: Error) => void;
   onViewChange?: (state: PanoramaViewState) => void;
 }

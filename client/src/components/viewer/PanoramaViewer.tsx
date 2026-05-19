@@ -133,6 +133,13 @@ export default function PanoramaViewer({
   const runtimeImageUrl = getRuntimePanoramaUrl(asset, propertyId);
   const [isReady, setIsReady] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+
+  // ── Progressive loading skeleton states ──────────────────────────────────────
+  /** True once the blurred Cloudinary preview is rendered in the canvas */
+  const [previewReady, setPreviewReady] = useState(false);
+  /** Controls DOM presence of skeleton — removed 650 ms after it fades to 0 */
+  const [skeletonMounted, setSkeletonMounted] = useState(true);
+  const skeletonFadeTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [currentFov, setCurrentFov] = useState(75);
   const [gyroActive, setGyroActive] = useState(false);
   const [gyroPermDenied, setGyroPermDenied] = useState(false);
@@ -152,6 +159,16 @@ export default function PanoramaViewer({
   useEffect(() => {
     hotspotClickRef.current = onHotspotClick;
   }, [onHotspotClick]);
+
+  // Remove skeleton from DOM 650 ms after it starts fading (triggered by previewReady or isReady)
+  useEffect(() => {
+    if (!previewReady && !isReady) return;
+    if (skeletonFadeTimer.current) clearTimeout(skeletonFadeTimer.current);
+    skeletonFadeTimer.current = setTimeout(() => { setSkeletonMounted(false); }, 650);
+    return () => {
+      if (skeletonFadeTimer.current) clearTimeout(skeletonFadeTimer.current);
+    };
+  }, [previewReady, isReady]);
 
   useEffect(() => {
     if (!navigator.xr) return;
@@ -187,6 +204,7 @@ export default function PanoramaViewer({
         initialYaw: 0,
         initialPitch: 0,
         initialFov: currentFovRef.current,
+        onPreviewReady: () => { setPreviewReady(true); },
         onReady: () => {
           setIsReady(true);
           setErrorMessage(null);
@@ -370,9 +388,19 @@ export default function PanoramaViewer({
       `}</style>
       <div ref={containerRef} className="absolute inset-0" />
 
-      {/* ── Skeleton loading state — shows until onReady fires ─────────────── */}
-      {!isReady && !errorMessage ? (
-        <div className="absolute inset-0 overflow-hidden bg-slate-950">
+      {/* ── Skeleton loading state ────────────────────────────────────────────
+           Mounted until 650 ms after the first texture (preview or full-res) hits
+           the canvas. opacity transitions to 0 as soon as previewReady fires so
+           the blurred panorama beneath becomes visible while full-res still loads.
+           pointer-events-none: canvas below receives events during the fade.    */}
+      {skeletonMounted && !errorMessage ? (
+        <div
+          className="pointer-events-none absolute inset-0 overflow-hidden bg-slate-950"
+          style={{
+            opacity: previewReady || isReady ? 0 : 1,
+            transition: 'opacity 600ms ease',
+          }}
+        >
           {/* Base gradient — mimics the dark tones of a luxury interior panorama */}
           <div
             className="absolute inset-0"
