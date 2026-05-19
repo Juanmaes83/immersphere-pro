@@ -37,6 +37,15 @@ type PropertyData = {
   coverImage: string;
   status: string;
   isPasswordProtected?: boolean;
+  price?: number;
+  area?: number;
+  rooms?: number;
+  bathrooms?: number;
+  tenant?: {
+    name?: string;
+    removeBranding?: boolean;
+    primaryColor?: string;
+  };
 };
 
 type PropertyApiResponse = {
@@ -62,35 +71,60 @@ function escapeHtml(str: string): string {
     .replace(/'/g, '&#39;');
 }
 
+/**
+ * Apply a Cloudinary transform so the OG image is exactly 1200×630.
+ * c_fill  — crop to fill the canvas (no letterboxing)
+ * w_1200,h_630 — standard social-share dimensions
+ * q_auto,f_auto — best quality + format for the requesting client
+ *
+ * Non-Cloudinary URLs are returned unchanged.
+ */
+function toCloudinaryOg(raw: string): string {
+  if (
+    raw.includes('res.cloudinary.com') &&
+    raw.includes('/image/upload/')
+  ) {
+    return raw.replace(
+      '/image/upload/',
+      '/image/upload/c_fill,w_1200,h_630,q_auto,f_auto/'
+    );
+  }
+  return raw;
+}
+
 function buildOgTags(opts: {
-  title: string;
+  ogTitle: string;
   description: string;
   image: string;
+  imageAlt: string;
   canonicalUrl: string;
+  siteName: string;
 }): string {
-  const title = escapeHtml(opts.title);
+  const title       = escapeHtml(opts.ogTitle);
   const description = escapeHtml(opts.description.slice(0, 200));
   const canonicalUrl = escapeHtml(opts.canonicalUrl);
-  const siteName = 'Immersphere Pro';
+  const siteName    = escapeHtml(opts.siteName);
+  const imageAlt    = escapeHtml(opts.imageAlt);
 
   const imageBlock = opts.image
-    ? `  <meta property="og:image" content="${escapeHtml(opts.image)}">
-  <meta property="og:image:width" content="1200">
+    ? `  <meta property="og:image"        content="${escapeHtml(opts.image)}">
+  <meta property="og:image:width"  content="1200">
   <meta property="og:image:height" content="630">
-  <meta name="twitter:image" content="${escapeHtml(opts.image)}">
-  <meta name="twitter:card" content="summary_large_image">`
+  <meta property="og:image:alt"    content="${imageAlt}">
+  <meta name="twitter:image"       content="${escapeHtml(opts.image)}">
+  <meta name="twitter:card"        content="summary_large_image">`
     : `  <meta name="twitter:card" content="summary">`;
 
   return `  <!-- Open Graph — injected by Vercel Edge Middleware -->
   <link rel="canonical" href="${canonicalUrl}">
   <meta name="description" content="${description}">
-  <meta property="og:type" content="website">
-  <meta property="og:site_name" content="${siteName}">
-  <meta property="og:url" content="${canonicalUrl}">
-  <meta property="og:title" content="${title}">
+  <meta property="og:type"        content="website">
+  <meta property="og:site_name"   content="${siteName}">
+  <meta property="og:url"         content="${canonicalUrl}">
+  <meta property="og:title"       content="${title}">
   <meta property="og:description" content="${description}">
 ${imageBlock}
-  <meta name="twitter:title" content="${title}">
+  <meta name="twitter:title"       content="${title}">
   <meta name="twitter:description" content="${description}">`;
 }
 
@@ -198,18 +232,42 @@ export default async function middleware(request: Request): Promise<Response | u
 
     // Step 3 — build and inject OG tags
     const canonicalUrl = `${url.origin}${url.pathname}`;
-    const title = property.title || 'Propiedad';
+    const propertyTitle = property.title || 'Propiedad';
     const description = (
       property.description || 'Tour virtual inmersivo en Immersphere Pro'
     ).trim();
 
-    // Use coverImage when available; fall back to the branded OG image generator.
-    // /api/og is a Vercel Edge Function that returns a 1200×630 PNG.
-    const fallbackOgImage = `${url.origin}/api/og?title=${encodeURIComponent(title)}`;
-    const image = property.coverImage || fallbackOgImage;
+    // ── Enriched og:title: "Title · 350.000 € · Tour Inmersivo 360°"
+    const priceStr = property.price
+      ? new Intl.NumberFormat('es-ES').format(property.price) + ' €'
+      : '';
+    const ogTitle = [propertyTitle, priceStr, 'Tour Inmersivo 360°']
+      .filter(Boolean)
+      .join(' · ');
 
-    const ogTags = buildOgTags({ title, description, image, canonicalUrl });
-    const enrichedHtml = injectOgIntoHtml(indexHtml, title, ogTags);
+    // ── og:site_name respects white-label removeBranding
+    const siteName = property.tenant?.removeBranding
+      ? (property.tenant?.name || 'Tour Inmersivo')
+      : 'Immersphere Pro';
+
+    // ── OG image: Cloudinary-transformed to exactly 1200×630
+    // Fallback: branded generator /api/og with price + area for richer image
+    const fallbackParams = new URLSearchParams({ title: propertyTitle });
+    if (property.price) fallbackParams.set('price', String(property.price));
+    if (property.area)  fallbackParams.set('area',  String(property.area));
+    const fallbackOgImage = `${url.origin}/api/og?${fallbackParams.toString()}`;
+    const rawImage = property.coverImage || fallbackOgImage;
+    const image = toCloudinaryOg(rawImage);
+
+    const ogTags = buildOgTags({
+      ogTitle,
+      description,
+      image,
+      imageAlt: ogTitle,
+      canonicalUrl,
+      siteName,
+    });
+    const enrichedHtml = injectOgIntoHtml(indexHtml, propertyTitle, ogTags);
 
     return new Response(enrichedHtml, {
       status: 200,
