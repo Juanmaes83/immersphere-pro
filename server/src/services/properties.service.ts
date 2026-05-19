@@ -102,6 +102,7 @@ interface PropertyInput {
   description?: string;
   type?: PropertyType;
   status?: PropertyStatus;
+  language?: string;
   price?: number;
   area?: number;
   rooms?: number;
@@ -458,6 +459,7 @@ export async function createProperty(tenantId: string, input: PropertyInput) {
       description: input.description ?? '',
       type: input.type ?? PropertyType.APARTMENT,
       status: input.status ?? PropertyStatus.DRAFT,
+      language: input.language ?? 'es',
       price: input.price ?? 0,
       area: input.area ?? 0,
       rooms: input.rooms ?? 0,
@@ -499,6 +501,7 @@ export async function updateProperty(tenantId: string, propertyId: string, input
         description: input.description ?? '',
         type: input.type ?? PropertyType.APARTMENT,
         status: input.status ?? PropertyStatus.DRAFT,
+        ...(input.language !== undefined ? { language: input.language } : {}),
         price: input.price ?? 0,
         area: input.area ?? 0,
         rooms: input.rooms ?? 0,

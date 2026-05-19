@@ -1,10 +1,12 @@
 ﻿import { useEffect, useRef, useState } from 'react';
+import { t } from '@/i18n/dictionary';
 
 interface LeadCaptureModalProps {
   propertyId: string;
   hotspotLabel: string;
   primaryColor: string;
   agencyName?: string;
+  lang?: string;
   onClose: () => void;
   onSubmitted: () => void;
 }
@@ -24,6 +26,7 @@ export default function LeadCaptureModal({
   hotspotLabel,
   primaryColor,
   agencyName,
+  lang,
   onClose,
   onSubmitted
 }: LeadCaptureModalProps): JSX.Element {
@@ -46,7 +49,7 @@ export default function LeadCaptureModal({
     setFieldError(null);
 
     if (!EMAIL_RE.test(email.trim())) {
-      setFieldError('Introduce un email válido.');
+      setFieldError(t(lang, 'email_error'));
       return;
     }
 
@@ -91,11 +94,11 @@ export default function LeadCaptureModal({
                 className="text-xs font-black uppercase tracking-[0.2em]"
                 style={{ color: agencyName ? primaryColor : '#a78bfa' }}
               >
-                {agencyName ?? 'Solicitud de contacto'}
+                {agencyName ?? t(lang, 'contact_request')}
               </p>
               {agencyName ? (
                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-white/35 mt-0.5">
-                  Solicitud de contacto
+                  {t(lang, 'contact_request')}
                 </p>
               ) : null}
               <h2 className="mt-1 text-xl font-black leading-snug">{hotspotLabel}</h2>
@@ -104,7 +107,7 @@ export default function LeadCaptureModal({
               type="button"
               onClick={onClose}
               className="shrink-0 rounded-full p-2 text-white/40 transition hover:bg-white/10 hover:text-white"
-              aria-label="Cerrar"
+              aria-label={t(lang, 'close')}
             >
               ✕
             </button>
@@ -121,9 +124,9 @@ export default function LeadCaptureModal({
               >
                 ✓
               </div>
-              <h3 className="mt-5 text-2xl font-black">¡Recibido!</h3>
+              <h3 className="mt-5 text-2xl font-black">{t(lang, 'received_title')}</h3>
               <p className="mt-3 text-sm leading-6 text-white/60">
-                Tu solicitud ha sido registrada. Un agente se pondrá en contacto contigo pronto.
+                {t(lang, 'received_body')}
               </p>
               <button
                 type="button"
@@ -131,7 +134,7 @@ export default function LeadCaptureModal({
                 className="mt-6 rounded-full px-6 py-3 text-sm font-black text-white transition hover:opacity-90"
                 style={{ backgroundColor: primaryColor }}
               >
-                Cerrar
+                {t(lang, 'close')}
               </button>
             </div>
           ) : (
@@ -139,14 +142,14 @@ export default function LeadCaptureModal({
               <div className="space-y-4">
                 <div>
                   <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-white/50">
-                    Email *
+                    {t(lang, 'email_label')}
                   </label>
                   <input
                     ref={emailRef}
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    placeholder="tu@email.com"
+                    placeholder={t(lang, 'email_placeholder')}
                     required
                     disabled={state === 'submitting'}
                     className="w-full rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 text-sm font-semibold text-white placeholder:text-white/25 outline-none focus:border-violet-500 focus:bg-white/10 disabled:opacity-50"
@@ -155,13 +158,13 @@ export default function LeadCaptureModal({
 
                 <div>
                   <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-white/50">
-                    Teléfono
+                    {t(lang, 'phone_label')}
                   </label>
                   <input
                     type="tel"
                     value={phone}
                     onChange={(e) => setPhone(e.target.value)}
-                    placeholder="+34 600 000 000"
+                    placeholder={t(lang, 'phone_placeholder')}
                     disabled={state === 'submitting'}
                     className="w-full rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 text-sm font-semibold text-white placeholder:text-white/25 outline-none focus:border-violet-500 focus:bg-white/10 disabled:opacity-50"
                   />
@@ -169,12 +172,12 @@ export default function LeadCaptureModal({
 
                 <div>
                   <label className="mb-1.5 block text-xs font-bold uppercase tracking-[0.14em] text-white/50">
-                    Mensaje
+                    {t(lang, 'message_label')}
                   </label>
                   <textarea
                     value={notes}
                     onChange={(e) => setNotes(e.target.value)}
-                    placeholder="Estoy interesado en esta propiedad..."
+                    placeholder={t(lang, 'message_placeholder')}
                     rows={3}
                     disabled={state === 'submitting'}
                     className="w-full resize-none rounded-2xl border border-white/10 bg-white/[0.07] px-4 py-3 text-sm font-semibold text-white placeholder:text-white/25 outline-none focus:border-violet-500 focus:bg-white/10 disabled:opacity-50"
@@ -187,7 +190,7 @@ export default function LeadCaptureModal({
 
                 {state === 'error' ? (
                   <p className="text-sm font-bold text-red-400">
-                    No se ha podido enviar. Inténtalo de nuevo.
+                    {t(lang, 'send_error')}
                   </p>
                 ) : null}
               </div>
@@ -198,11 +201,11 @@ export default function LeadCaptureModal({
                 className="mt-5 w-full rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50"
                 style={{ backgroundColor: primaryColor }}
               >
-                {state === 'submitting' ? 'Enviando…' : 'Solicitar información'}
+                {state === 'submitting' ? t(lang, 'sending') : t(lang, 'submit_cta')}
               </button>
 
               <p className="mt-3 text-center text-xs text-white/30">
-                Tus datos solo se usarán para contactarte sobre esta propiedad.
+                {t(lang, 'privacy_note')}
               </p>
             </form>
           )}

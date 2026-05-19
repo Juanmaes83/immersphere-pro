@@ -49,6 +49,7 @@ interface ApiProperty {
   description: string;
   type: string;
   status: string;
+  language?: string;
   price: number;
   area: number;
   rooms: number;
@@ -82,6 +83,7 @@ export interface ImmersiveProperty {
   title: string;
   type: string;
   status: string;
+  language: string;
   price: number;
   area: number;
   rooms: number;
@@ -123,6 +125,7 @@ export interface CreatePropertyPayload {
   description?: string;
   type?: string;
   status?: string;
+  language?: string;
   price?: number;
   area?: number;
   rooms?: number;
@@ -448,6 +451,7 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
       title: property.title,
       type: property.type ?? '',
       status: property.status ?? '',
+      language: property.language ?? 'es',
       price: 0,
       area: 0,
       rooms: 0,
@@ -480,6 +484,7 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
     title: property.title,
     type: property.type,
     status: property.status,
+    language: property.language ?? 'es',
     price: property.price,
     area: property.area,
     rooms: property.rooms,

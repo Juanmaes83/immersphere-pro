@@ -116,6 +116,8 @@ export interface UniversalViewerProps {
   primaryColor?: string;
   removeBranding?: boolean;
   className?: string;
+  /** 'es' | 'en' — controls the viewer UI language. Defaults to 'es'. */
+  language?: string;
   /** Shown in the branded loading screen (seconds 0-2). Falls back to first space name. */
   propertyTitle?: string;
   /** Optional agency / studio name shown below the property title during load. */

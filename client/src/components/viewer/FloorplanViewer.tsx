@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { Space } from '@/types/viewer';
+import { t } from '@/i18n/dictionary';
 
 interface FloorplanViewerProps {
   floorplanUrl: string;
@@ -7,6 +8,7 @@ interface FloorplanViewerProps {
   activeSpaceId: string;
   primaryColor: string;
   onSpaceClick: (spaceId: string) => void;
+  lang?: string;
 }
 
 export default function FloorplanViewer({
@@ -14,7 +16,8 @@ export default function FloorplanViewer({
   spaces,
   activeSpaceId,
   primaryColor,
-  onSpaceClick
+  onSpaceClick,
+  lang
 }: FloorplanViewerProps): JSX.Element {
   const [hoveredId, setHoveredId] = useState<string | null>(null);
   const pinnedSpaces = spaces.filter((s) => s.floorplanPin != null);
@@ -25,7 +28,7 @@ export default function FloorplanViewer({
       <div className="relative inline-block max-h-[480px] max-w-full">
         <img
           src={floorplanUrl}
-          alt="Plano de la vivienda"
+          alt={t(lang, 'floorplan_alt')}
           className="block max-h-[480px] max-w-full rounded-2xl object-contain opacity-90 select-none"
           draggable={false}
         />
@@ -92,10 +95,10 @@ export default function FloorplanViewer({
         {pinnedSpaces.length === 0 ? (
           <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl bg-slate-950/60 backdrop-blur-sm">
             <p className="text-xs font-bold uppercase tracking-[0.2em] text-white/40">
-              Sin pins configurados
+              {t(lang, 'floorplan_no_pins')}
             </p>
             <p className="max-w-[220px] text-center text-[0.7rem] text-white/25">
-              Asigna coordenadas x/y a cada estancia desde el panel de administración
+              {t(lang, 'floorplan_no_pins_help')}
             </p>
           </div>
         ) : null}

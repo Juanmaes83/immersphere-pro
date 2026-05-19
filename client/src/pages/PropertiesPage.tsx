@@ -122,7 +122,8 @@ export default function PropertiesPage(): JSX.Element {
     address: '',
     latitude: null,
     longitude: null,
-    password: ''
+    password: '',
+    language: 'es'
   });
 
   const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
@@ -214,7 +215,8 @@ export default function PropertiesPage(): JSX.Element {
       address: '',
       latitude: null,
       longitude: null,
-      password: ''
+      password: '',
+      language: 'es'
     });
 
     setEditingPropertyId(null);
@@ -502,6 +504,7 @@ export default function PropertiesPage(): JSX.Element {
       address: String(form.address ?? '').trim(),
       latitude: form.latitude ?? null,
       longitude: form.longitude ?? null,
+      language: String(form.language ?? 'es'),
       ...(form.password ? { password: form.password } : {})
     };
   }
@@ -523,7 +526,8 @@ export default function PropertiesPage(): JSX.Element {
       floorplanUrl: property.floorplanUrl ?? '',
       address: property.address ?? '',
       latitude: property.latitude ?? null,
-      longitude: property.longitude ?? null
+      longitude: property.longitude ?? null,
+      language: property.language ?? 'es'
     });
 
     setMessage('Editando propiedad seleccionada.');
@@ -1007,6 +1011,20 @@ export default function PropertiesPage(): JSX.Element {
               placeholder="Contraseña para proteger el tour"
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
             />
+          </label>
+
+          <label className="mt-4 block">
+            <span className="mb-2 block text-sm font-black text-slate-700">
+              Idioma del visor <span className="font-semibold text-slate-400">(interfaz del tour para el comprador)</span>
+            </span>
+            <select
+              value={form.language ?? 'es'}
+              onChange={(event) => setForm((current) => ({ ...current, language: event.target.value }))}
+              className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+            >
+              <option value="es">🇪🇸 Español</option>
+              <option value="en">🇬🇧 English</option>
+            </select>
           </label>
 
           {error ? <div className="mt-4 rounded-2xl bg-red-50 p-3 text-sm font-bold text-red-700">{error}</div> : null}

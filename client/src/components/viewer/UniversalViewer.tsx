@@ -6,6 +6,7 @@ import GaussianSplatViewer from '@/components/viewer/GaussianSplatViewer';
 import LeadCaptureModal from '@/components/viewer/LeadCaptureModal';
 import MinimapOverlay from '@/components/viewer/MinimapOverlay';
 import PanoramaViewer from '@/components/viewer/PanoramaViewer';
+import { t } from '@/i18n/dictionary';
 
 const GlbViewer = lazy(() => import('@/components/viewer/GlbViewer'));
 import { AUTH_STORAGE_KEYS } from '@/services/api';
@@ -127,19 +128,19 @@ function getSpaceDescription(space: Space): string | null {
 }
 
 /** Formats non-null space dimensions as a human-readable string, or null. */
-function formatSpaceDimensions(dims: Space['dimensions']): string | null {
+function formatSpaceDimensions(dims: Space['dimensions'], lang?: string): string | null {
   if (!dims) return null;
   const parts: string[] = [];
-  if (dims.width != null)  parts.push(`ancho ${dims.width} m`);
-  if (dims.height != null) parts.push(`altura ${dims.height} m`);
-  if (dims.depth != null)  parts.push(`fondo ${dims.depth} m`);
+  if (dims.width != null)  parts.push(`${t(lang, 'dim_width')} ${dims.width} m`);
+  if (dims.height != null) parts.push(`${t(lang, 'dim_height')} ${dims.height} m`);
+  if (dims.depth != null)  parts.push(`${t(lang, 'dim_depth')} ${dims.depth} m`);
   return parts.length > 0 ? parts.join(' · ') : null;
 }
 
 // ── Error boundary ──────────────────────────────────────────────────────────
 
 interface EBState { hasError: boolean; error: Error | null }
-interface EBProps  { children: ReactNode }
+interface EBProps  { children: ReactNode; lang?: string }
 
 class ViewerErrorBoundary extends Component<EBProps, EBState> {
   constructor(props: EBProps) {
@@ -157,17 +158,18 @@ class ViewerErrorBoundary extends Component<EBProps, EBState> {
 
   override render(): ReactNode {
     if (this.state.hasError) {
+      const lang = this.props.lang;
       return (
         <div className="flex min-h-[520px] flex-col items-center justify-center gap-4 rounded-[1.5rem] bg-slate-800 p-6 text-center">
           <p className="text-4xl">⚠️</p>
-          <p className="text-sm font-black text-white">Error al cargar el visor</p>
-          <p className="text-xs text-white/50">No pudimos cargar el visor. Inténtalo de nuevo.</p>
+          <p className="text-sm font-black text-white">{t(lang, 'viewer_error')}</p>
+          <p className="text-xs text-white/50">{t(lang, 'viewer_error_body')}</p>
           <button
             type="button"
             onClick={() => { this.setState({ hasError: false, error: null }); }}
             className="rounded-xl bg-white/10 px-4 py-2 text-xs font-bold text-white/70 transition hover:bg-white/20"
           >
-            Reintentar
+            {t(lang, 'retry')}
           </button>
         </div>
       );
@@ -183,6 +185,7 @@ export default function UniversalViewer({
   primaryColor = '#7C3AED',
   removeBranding = false,
   className = '',
+  language,
   propertyTitle,
   agencyName,
   agencyLogoUrl,
@@ -808,18 +811,18 @@ export default function UniversalViewer({
     return (
       <section className={`rounded-[1.6rem] bg-slate-950 p-6 text-white ${className}`}>
         <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">
-          Experiencia inmersiva
+          {t(language, 'immersive_experience')}
         </p>
-        <h2 className="mt-3 text-3xl font-black">Sin estancias configuradas</h2>
+        <h2 className="mt-3 text-3xl font-black">{t(language, 'no_spaces')}</h2>
         <p className="mt-3 text-white/60">
-          Esta propiedad necesita al menos una estancia y un asset para activar el visor.
+          {t(language, 'no_spaces_body')}
         </p>
       </section>
     );
   }
 
   // ── Derived values for tour panel ────────────────────────────────────────────
-  const tourDimensions  = formatSpaceDimensions(activeSpace.dimensions);
+  const tourDimensions  = formatSpaceDimensions(activeSpace.dimensions, language);
   const tourDescription = isGuidedTour ? getSpaceDescription(activeSpace) : null;
   const isLastTourStep  = guidedTourIdx === sortedSpaces.length - 1;
   const tourProgress    = sortedSpaces.length > 0
@@ -885,12 +888,12 @@ export default function UniversalViewer({
               transition: 'transform 80ms linear',
             }}
           >
-            {propertyTitle ?? sortedSpaces[0]?.name ?? 'Experiencia inmersiva'}
+            {propertyTitle ?? sortedSpaces[0]?.name ?? t(language, 'immersive_experience')}
           </h2>
 
           {/* Agency name / subtitle */}
           <p className="mt-3 text-[0.65rem] font-bold uppercase tracking-[0.28em] text-white/35">
-            {agencyName ?? 'Experiencia inmersiva'}
+            {agencyName ?? t(language, 'immersive_experience')}
           </p>
 
           {/* Progress line — parallax layer C */}
@@ -919,6 +922,7 @@ export default function UniversalViewer({
           hotspotLabel={leadModalLabel}
           primaryColor={primaryColor}
           agencyName={agencyName}
+          lang={language}
           onClose={() => setShowLeadModal(false)}
           onSubmitted={() => { handleLeadSubmitted(); }}
         />
@@ -930,15 +934,15 @@ export default function UniversalViewer({
           {/* Tour counter always visible — it's UX, not branding */}
           {isCinematic ? (
             <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">
-              {cinematicPaused ? 'Cinematic · En pausa' : '● Cinematic'} · {currentSpaceIdx + 1} / {sortedSpaces.length}
+              {cinematicPaused ? t(language, 'cinematic_paused_label') : t(language, 'cinematic_live')} · {currentSpaceIdx + 1} / {sortedSpaces.length}
             </p>
           ) : isGuidedTour ? (
             <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">
-              Tour guiado · {guidedTourIdx + 1} / {sortedSpaces.length}
+              {t(language, 'guided_tour')} · {guidedTourIdx + 1} / {sortedSpaces.length}
             </p>
           ) : !removeBranding ? (
             <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">
-              Recorrido inmersivo
+              {t(language, 'immersive_tour')}
             </p>
           ) : null}
           <h2 className="mt-2 text-3xl font-black">{activeSpace.name}</h2>
@@ -978,10 +982,10 @@ export default function UniversalViewer({
           {!removeBranding ? (
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">
               {activeAsset.type === 'panorama_360'
-                ? 'Panorama 360°'
+                ? t(language, 'panorama_360')
                 : activeAsset.type === 'gaussian_splat'
-                  ? 'Vista inmersiva'
-                  : 'Modelo 3D'}
+                  ? t(language, 'immersive_view')
+                  : t(language, 'model_3d')}
             </p>
           ) : null}
         </div>
@@ -1016,16 +1020,16 @@ export default function UniversalViewer({
                       ? 'bg-white/10 text-white/60 hover:bg-white/15'
                       : 'bg-violet-600/70 text-white hover:bg-violet-600'
                   }`}
-                  title={cinematicPaused ? 'Reanudar recorrido' : 'Pausar recorrido'}
+                  title={cinematicPaused ? t(language, 'resume_tour_title') : t(language, 'pause_tour_title')}
                 >
-                  {cinematicPaused ? '▶ Reanudar' : '⏸ Pausa'}
+                  {cinematicPaused ? t(language, 'resume_header') : t(language, 'pause_header')}
                 </button>
                 <button
                   type="button"
                   onClick={stopCinematicTour}
                   className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white/40 transition hover:bg-white/15 hover:text-white/70"
                 >
-                  ✕ Salir
+                  {t(language, 'stop_tour')}
                 </button>
               </>
             ) : isGuidedTour ? (
@@ -1034,7 +1038,7 @@ export default function UniversalViewer({
                 onClick={exitGuidedTour}
                 className="rounded-full bg-amber-400 px-4 py-2 text-sm font-black text-slate-950 transition hover:bg-amber-300"
               >
-                ✕ Salir del tour
+                {t(language, 'exit_tour_header')}
               </button>
             ) : (
               <>
@@ -1043,16 +1047,16 @@ export default function UniversalViewer({
                   onClick={startGuidedTour}
                   className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white/70 transition hover:bg-white/15"
                 >
-                  ▶ Tour
+                  {t(language, 'tour_btn')}
                 </button>
                 {!prefersReducedMotion ? (
                   <button
                     type="button"
                     onClick={startCinematicTour}
                     className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white/70 transition hover:bg-white/15"
-                    title="Recorrido automatico cinematografico"
+                    title={t(language, 'cinematic_auto_title')}
                   >
-                    Cinematic
+                    {t(language, 'cinematic_btn')}
                   </button>
                 ) : null}
               </>
@@ -1085,7 +1089,7 @@ export default function UniversalViewer({
                   : 'bg-white/10 text-white/70 hover:bg-white/15'
               }`}
             >
-              {showDollhouse ? '← Recorrido' : '🗺 Plano'}
+              {showDollhouse ? t(language, 'floorplan_back') : t(language, 'floorplan_open')}
             </button>
           ) : null}
 
@@ -1094,7 +1098,7 @@ export default function UniversalViewer({
             <button
               type="button"
               onClick={toggleFullscreen}
-              title={isFullscreen ? 'Salir de pantalla completa' : 'Pantalla completa'}
+              title={isFullscreen ? t(language, 'fullscreen_exit') : t(language, 'fullscreen_enter')}
               className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white/70 transition hover:bg-white/15"
             >
               {isFullscreen ? '⊠' : '⛶'}
@@ -1106,7 +1110,7 @@ export default function UniversalViewer({
             <button
               type="button"
               onClick={() => { setShowTools((v) => !v); }}
-              title="Herramientas"
+              title={t(language, 'tools_title')}
               className={`rounded-full px-3 py-2 text-sm font-black transition ${
                 showTools
                   ? 'bg-white/20 text-white'
@@ -1131,7 +1135,7 @@ export default function UniversalViewer({
                   }`}
                 >
                   <span>📏</span>
-                  <span>{isMeasuring ? 'Midiendo' : 'Medir espacio'}</span>
+                  <span>{isMeasuring ? t(language, 'measuring') : t(language, 'measure_space')}</span>
                 </button>
                 <button
                   type="button"
@@ -1143,7 +1147,7 @@ export default function UniversalViewer({
                   }`}
                 >
                   <span>✦</span>
-                  <span>{storyMode ? 'Narrativa activa' : 'Narrativa desact.'}</span>
+                  <span>{storyMode ? t(language, 'story_on') : t(language, 'story_off')}</span>
                 </button>
                 {audioReady ? (
                   <button
@@ -1156,7 +1160,7 @@ export default function UniversalViewer({
                     }`}
                   >
                     <span>{audioMuted ? '🔇' : '🔊'}</span>
-                    <span>{audioMuted ? 'Silenciado' : 'Ambiente activo'}</span>
+                    <span>{audioMuted ? t(language, 'audio_muted') : t(language, 'audio_active')}</span>
                   </button>
                 ) : null}
               </div>
@@ -1215,13 +1219,14 @@ export default function UniversalViewer({
                 : 'transform 380ms cubic-bezier(0.4,0,0.2,1), filter 380ms cubic-bezier(0.4,0,0.2,1)',
             } : undefined}
           >
-          <ViewerErrorBoundary key={`eb-${activeSpace.id}`}>
+          <ViewerErrorBoundary key={`eb-${activeSpace.id}`} lang={language}>
             {showDollhouse && floorplanUrl ? (
               <FloorplanViewer
                 floorplanUrl={floorplanUrl}
                 spaces={sortedSpaces}
                 activeSpaceId={activeSpace.id}
                 primaryColor={primaryColor}
+                lang={language}
                 onSpaceClick={(spaceId) => {
                   trackToBackend({
                     propertyId,
@@ -1277,7 +1282,7 @@ export default function UniversalViewer({
                 key={`glb-${activeSpace.id}-${activeAsset.id}`}
                 fallback={
                   <div className="flex min-h-[520px] items-center justify-center rounded-[1.5rem] bg-slate-800">
-                    <p className="text-sm font-bold text-slate-400">Cargando modelo 3D...</p>
+                    <p className="text-sm font-bold text-slate-400">{t(language, 'loading_3d')}</p>
                   </div>
                 }
               >
@@ -1331,7 +1336,7 @@ export default function UniversalViewer({
                 {propertyTitle ?? activeSpace.name}
               </h3>
               <p className="text-[0.7rem] font-bold uppercase tracking-[0.28em] text-white/30">
-                Recorrido completo
+                {t(language, 'tour_complete')}
               </p>
               <button
                 type="button"
@@ -1339,7 +1344,7 @@ export default function UniversalViewer({
                 className="mt-2 rounded-2xl px-6 py-4 text-sm font-black text-white transition hover:opacity-90"
                 style={{ backgroundColor: primaryColor }}
               >
-                Solicitar visita
+                {t(language, 'request_visit')}
               </button>
               <button
                 type="button"
@@ -1356,14 +1361,14 @@ export default function UniversalViewer({
                 }}
                 className="text-sm font-bold text-white/40 transition hover:text-white/70"
               >
-                Explorar de nuevo
+                {t(language, 'explore_again')}
               </button>
               <button
                 type="button"
                 onClick={stopCinematicTour}
                 className="text-xs font-bold text-white/20 transition hover:text-white/45"
               >
-                Salir del recorrido
+                {t(language, 'exit_journey_text')}
               </button>
             </div>
           ) : null}
@@ -1446,14 +1451,14 @@ export default function UniversalViewer({
             <>
               <div className="rounded-2xl bg-white/10 p-4">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
-                  {cinematicPaused ? 'Cinematic · En pausa' : '● Cinematic'}
+                  {cinematicPaused ? t(language, 'cinematic_paused_label') : t(language, 'cinematic_live')}
                 </p>
                 <div className="mt-3 flex items-center justify-between text-xs font-bold text-white/50">
-                  <span>Estancia {currentSpaceIdx + 1} de {sortedSpaces.length}</span>
+                  <span>{t(language, 'space_of', { n: currentSpaceIdx + 1, m: sortedSpaces.length })}</span>
                   {cinematicPaused ? (
-                    <span className="text-amber-400/60">Pausado</span>
+                    <span className="text-amber-400/60">{t(language, 'cinematic_status_paused')}</span>
                   ) : (
-                    <span className="text-violet-300/50">Auto</span>
+                    <span className="text-violet-300/50">{t(language, 'cinematic_status_auto')}</span>
                   )}
                 </div>
                 <div className="mt-2 h-[2px] w-full overflow-hidden rounded-full bg-white/[0.06]">
@@ -1487,7 +1492,7 @@ export default function UniversalViewer({
                       : 'bg-white/10 text-white/70 hover:bg-white/15'
                   }`}
                 >
-                  {cinematicPaused ? '▶ Reanudar' : '⏸ Pausar'}
+                  {cinematicPaused ? t(language, 'resume') : t(language, 'pause')}
                 </button>
               </div>
 
@@ -1496,7 +1501,7 @@ export default function UniversalViewer({
                 onClick={stopCinematicTour}
                 className="mt-3 w-full rounded-2xl bg-white/5 px-4 py-2 text-xs font-bold text-white/40 transition hover:bg-white/10 hover:text-white/60"
               >
-                {'✕'} Salir del recorrido
+                {t(language, 'exit_journey')}
               </button>
             </>
           ) : /* GUIDED TOUR PANEL — shown when tour active and no hotspot is open */
@@ -1504,10 +1509,10 @@ export default function UniversalViewer({
             <>
               <div className="rounded-2xl bg-white/10 p-4">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
-                  Tour guiado
+                  {t(language, 'guided_tour')}
                 </p>
                 <div className="mt-3 flex items-center justify-between text-xs font-bold text-white/50">
-                  <span>Estancia {guidedTourIdx + 1} de {sortedSpaces.length}</span>
+                  <span>{t(language, 'space_of', { n: guidedTourIdx + 1, m: sortedSpaces.length })}</span>
                   <span>{Math.round(tourProgress)}%</span>
                 </div>
                 <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-white/10">
@@ -1532,7 +1537,7 @@ export default function UniversalViewer({
                   onClick={() => { stepGuidedTour(-1); }}
                   className="flex-1 rounded-2xl bg-white/10 px-4 py-3 text-sm font-black text-white/70 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-30"
                 >
-                  ← Anterior
+                  {t(language, 'prev_space')}
                 </button>
                 {isLastTourStep ? (
                   <button
@@ -1541,7 +1546,7 @@ export default function UniversalViewer({
                     className="flex-1 rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
                     style={{ backgroundColor: primaryColor }}
                   >
-                    Solicitar información
+                    {t(language, 'request_info')}
                   </button>
                 ) : (
                   <button
@@ -1550,7 +1555,7 @@ export default function UniversalViewer({
                     className="flex-1 rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
                     style={{ backgroundColor: primaryColor }}
                   >
-                    Siguiente →
+                    {t(language, 'next_space')}
                   </button>
                 )}
               </div>
@@ -1560,7 +1565,7 @@ export default function UniversalViewer({
                 onClick={exitGuidedTour}
                 className="mt-3 w-full rounded-2xl bg-white/5 px-4 py-2 text-xs font-bold text-white/40 transition hover:bg-white/10 hover:text-white/60"
               >
-                ✕ Salir del tour
+                {t(language, 'exit_tour')}
               </button>
             </>
           ) : (
@@ -1568,15 +1573,15 @@ export default function UniversalViewer({
             <>
               <div className="rounded-2xl bg-white/10 p-4">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
-                  Estancia activa
+                  {t(language, 'active_space_label')}
                 </p>
                 <h3 className="mt-3 text-2xl font-black">{activeSpace.name}</h3>
                 <p className="mt-2 text-sm text-white/55">
                   {activeAsset.type === 'panorama_360'
-                    ? 'Panorama 360°'
+                    ? t(language, 'panorama_360')
                     : activeAsset.type === 'gaussian_splat'
-                      ? 'Vista inmersiva'
-                      : 'Modelo 3D'}
+                      ? t(language, 'immersive_view')
+                      : t(language, 'model_3d')}
                   {activeSpace.dimensions?.width != null && activeSpace.dimensions?.depth != null
                     ? ` · ${activeSpace.dimensions.width} × ${activeSpace.dimensions.depth} m`
                     : ''}
@@ -1585,7 +1590,7 @@ export default function UniversalViewer({
 
               <div className="mt-5 rounded-2xl bg-white/10 p-4">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
-                  Información
+                  {t(language, 'information')}
                 </p>
 
                 {activeHotspot ? (
@@ -1597,7 +1602,7 @@ export default function UniversalViewer({
                     {activeHotspot.metric ? (
                       <div className="mt-4 rounded-2xl bg-black/25 p-4">
                         <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">
-                          Dato
+                          {t(language, 'metric_label')}
                         </p>
                         <p className="mt-1 text-xl font-black">{activeHotspot.metric}</p>
                       </div>
@@ -1609,7 +1614,7 @@ export default function UniversalViewer({
                         className="mt-4 w-full rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90"
                         style={{ backgroundColor: primaryColor }}
                       >
-                        Solicitar información
+                        {t(language, 'submit_cta')}
                       </button>
                     ) : null}
                     {/* Return to tour if guided tour is still active */}
@@ -1619,7 +1624,7 @@ export default function UniversalViewer({
                         onClick={() => setActiveHotspot(null)}
                         className="mt-3 w-full rounded-2xl bg-white/10 px-4 py-2 text-xs font-black text-white/60 transition hover:bg-white/15"
                       >
-                        ← Volver al tour
+                        {t(language, 'back_to_tour')}
                       </button>
                     ) : null}
                   </div>
@@ -1638,7 +1643,7 @@ export default function UniversalViewer({
                     ) : null}
                     {(activeAsset?.hotspots?.length ?? 0) > 0 ? (
                       <p className="mt-5 text-xs text-white/25">
-                        Selecciona un punto del espacio para ver detalles
+                        {t(language, 'select_hotspot')}
                       </p>
                     ) : null}
                   </div>
@@ -1646,8 +1651,8 @@ export default function UniversalViewer({
                   /* Minimal fallback — no story content configured */
                   <p className="mt-4 text-xs leading-6 text-white/30">
                     {(activeAsset?.hotspots?.length ?? 0) > 0
-                      ? 'Selecciona un punto del espacio para ver detalles'
-                      : 'Explora la estancia con el visor 360°'}
+                      ? t(language, 'select_hotspot')
+                      : t(language, 'explore_360')}
                   </p>
                 )}
               </div>
@@ -1656,7 +1661,7 @@ export default function UniversalViewer({
               {activeSpace.ctaLabel ? (
                 <div className="mt-5 border-t border-white/[0.06] pt-5">
                   <p className="mb-3 text-[0.58rem] font-bold uppercase tracking-[0.3em] text-white/30">
-                    Próximo paso
+                    {t(language, 'next_step')}
                   </p>
                   <button
                     type="button"
@@ -1700,7 +1705,7 @@ export default function UniversalViewer({
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
-                  Punto destacado
+                  {t(language, 'featured_point')}
                 </p>
                 <h3 className="mt-1 text-xl font-black leading-snug">{activeHotspot.label}</h3>
               </div>
@@ -1708,7 +1713,7 @@ export default function UniversalViewer({
                 type="button"
                 onClick={() => { setActiveHotspot(null); }}
                 className="shrink-0 rounded-full p-2 text-white/40 transition hover:bg-white/10 hover:text-white"
-                aria-label="Cerrar"
+                aria-label={t(language, 'close')}
               >
                 ✕
               </button>
@@ -1718,7 +1723,7 @@ export default function UniversalViewer({
             ) : null}
             {activeHotspot.metric ? (
               <div className="mt-4 rounded-2xl bg-black/30 p-4">
-                <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">Dato</p>
+                <p className="text-xs font-bold uppercase tracking-[0.16em] text-white/40">{t(language, 'metric_label')}</p>
                 <p className="mt-1 text-xl font-black">{activeHotspot.metric}</p>
               </div>
             ) : null}
@@ -1729,7 +1734,7 @@ export default function UniversalViewer({
                 className="mt-5 w-full rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90"
                 style={{ backgroundColor: primaryColor }}
               >
-                Solicitar información
+                {t(language, 'submit_cta')}
               </button>
             ) : null}
           </div>
