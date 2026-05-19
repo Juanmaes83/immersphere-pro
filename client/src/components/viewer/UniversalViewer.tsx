@@ -589,7 +589,10 @@ export default function UniversalViewer({
       return;
     }
     transitionLock.current = true;
-    const ms = prefersReducedMotion ? 80 : isTouchDevice.current ? 120 : 160;
+    // Cinematic durations: fade-out 400ms → swap → fade-in 400ms
+    // Touch is slightly faster (300ms) to feel responsive; reduced-motion is instant
+    const msOut = prefersReducedMotion ? 0 : isTouchDevice.current ? 300 : 400;
+    const msIn  = prefersReducedMotion ? 0 : isTouchDevice.current ? 280 : 380;
     setTPhase('out');
     setTimeout(() => {
       swapFn();
@@ -604,8 +607,8 @@ export default function UniversalViewer({
         if (pendingId && pendingFn) {
           runTransition(pendingFn, pendingId);
         }
-      }, ms);
-    }, ms);
+      }, msIn);
+    }, msOut);
   }
 
   // ── Navigation ───────────────────────────────────────────────────────────────
@@ -1016,23 +1019,33 @@ export default function UniversalViewer({
             className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-[1.5rem] bg-slate-950"
             style={{
               opacity: tPhase !== 'idle' ? 1 : 0,
-              transition: `opacity ${prefersReducedMotion ? 80 : isTouchDevice.current ? 120 : 160}ms ease-in-out`,
+              transition: prefersReducedMotion
+                ? 'none'
+                : tPhase === 'out'
+                  ? `opacity ${isTouchDevice.current ? 300 : 400}ms cubic-bezier(0.4,0,0.2,1)`
+                  : `opacity ${isTouchDevice.current ? 280 : 380}ms cubic-bezier(0.4,0,0.2,1)`,
             }}
           >
             {!prefersReducedMotion && tPhase === 'in' ? (
               <p
-                className="text-[11px] font-bold uppercase tracking-widest text-white/30"
-                style={{ transform: 'translate(calc(var(--px, 0px) * 0.6), calc(var(--py, 0px) * 0.4))', transition: 'transform 80ms linear' }}
+                className="text-[11px] font-bold uppercase tracking-[0.28em] text-white/25"
+                style={{
+                  transform: 'translate(calc(var(--px, 0px) * 0.6), calc(var(--py, 0px) * 0.4))',
+                  transition: 'transform 80ms linear',
+                  animation: 'fade-label 380ms ease forwards',
+                }}
               >
-                Preparando estancia...
+                {/* Space name appears briefly during the black frame */}
               </p>
             ) : null}
           </div>
           {/* Micro-scale wrapper — subtle parallax on desktop only, not on mobile/reduced-motion */}
           <div
             style={!prefersReducedMotion && !isTouchDevice.current ? {
-              transform: tPhase === 'out' ? 'scale(1.012)' : 'scale(1)',
-              transition: 'transform 160ms ease-out',
+              transform: tPhase === 'out' ? 'scale(1.018)' : 'scale(1)',
+              transition: tPhase === 'out'
+                ? 'transform 400ms cubic-bezier(0.4,0,0.2,1)'
+                : 'transform 380ms cubic-bezier(0.4,0,0.2,1)',
             } : undefined}
           >
           <ViewerErrorBoundary key={`eb-${activeSpace.id}`}>
