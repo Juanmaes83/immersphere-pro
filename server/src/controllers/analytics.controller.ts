@@ -4,6 +4,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { createViewerEvent, getPropertyAnalyticsSummary, getTenantAnalyticsSummary } from '../services/analytics.service.js';
 
 const ALLOWED_EVENT_TYPES = new Set([
+  // ── Legacy names (kept for backward-compat with existing DB rows) ──────────
   'viewer_open',
   'space_change',
   'hotspot_click',
@@ -13,7 +14,20 @@ const ALLOWED_EVENT_TYPES = new Set([
   'viewer_whatsapp_click',
   'tour_start',
   'tour_step',
-  'tour_complete'
+  'tour_complete',
+  // ── Current naming convention (emitted by client from PR3 onwards) ────────
+  'viewer_opened',
+  'space_viewed',
+  'hotspot_clicked',
+  'cta_clicked',
+  'lead_submitted',
+  'guided_tour_started',
+  'guided_tour_completed',
+  'floorplan_opened',
+  'pin_clicked',
+  'share_clicked',
+  'qr_opened',
+  'space_time'
 ]);
 
 export async function createViewerEventController(

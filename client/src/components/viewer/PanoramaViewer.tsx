@@ -12,6 +12,7 @@ interface PanoramaViewerProps {
   spacePreviewMap?: Record<string, SpacePreview>;
   onHotspotClick: (hotspot: Hotspot) => void;
   onAnalyticsEvent: (event: ViewerEvent) => void;
+  onAssetLoadError?: (params: { assetId: string; assetUrl: string; assetType: string; message: string }) => void;
 }
 
 function createViewerEvent(
@@ -122,7 +123,8 @@ export default function PanoramaViewer({
   measureMode = false,
   spacePreviewMap,
   onHotspotClick,
-  onAnalyticsEvent
+  onAnalyticsEvent,
+  onAssetLoadError
 }: PanoramaViewerProps): JSX.Element {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const engineRef = useRef<PanoramaEngine360 | null>(null);
@@ -183,17 +185,12 @@ export default function PanoramaViewer({
     if (!container) return;
 
     if (!supportsWebGL()) {
-      const event = createViewerEvent('viewer_error', {
-        spaceId,
-        assetId: asset.id,
-        data: {
-          reason: 'webgl_not_supported',
-          propertyId
-        }
-      });
-
+      const msg = 'webgl_not_supported';
       setErrorMessage('Este navegador no soporta WebGL. Se muestra fallback estático.');
-      analyticsRef.current(event);
+      analyticsRef.current(createViewerEvent('viewer_error', {
+        spaceId, assetId: asset.id, data: { reason: msg, propertyId }
+      }));
+      onAssetLoadError?.({ assetId: asset.id, assetUrl: asset.url, assetType: asset.type, message: msg });
       return;
     }
 
@@ -223,17 +220,10 @@ export default function PanoramaViewer({
         onError: (error) => {
           setIsReady(false);
           setErrorMessage(error.message);
-
-          analyticsRef.current(
-            createViewerEvent('viewer_error', {
-              spaceId,
-              assetId: asset.id,
-              data: {
-                propertyId,
-                message: error.message
-              }
-            })
-          );
+          analyticsRef.current(createViewerEvent('viewer_error', {
+            spaceId, assetId: asset.id, data: { propertyId, message: error.message }
+          }));
+          onAssetLoadError?.({ assetId: asset.id, assetUrl: asset.url, assetType: asset.type, message: error.message });
         },
         onViewChange: (state) => {
           currentFovRef.current = state.fov;
@@ -258,20 +248,12 @@ export default function PanoramaViewer({
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'No se pudo inicializar el visor 360°.';
-
       setIsReady(false);
       setErrorMessage(message);
-
-      analyticsRef.current(
-        createViewerEvent('viewer_error', {
-          spaceId,
-          assetId: asset.id,
-          data: {
-            propertyId,
-            message
-          }
-        })
-      );
+      analyticsRef.current(createViewerEvent('viewer_error', {
+        spaceId, assetId: asset.id, data: { propertyId, message }
+      }));
+      onAssetLoadError?.({ assetId: asset.id, assetUrl: asset.url, assetType: asset.type, message });
     }
   }, [asset.id, asset.type, propertyId, runtimeImageUrl, spaceId]);
 

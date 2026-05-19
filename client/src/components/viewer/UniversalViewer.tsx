@@ -25,7 +25,43 @@ const API_BASE = (
   'http://localhost:4000/api'
 ).replace(/\/$/, '');
 
+// ── sessionId — persists for the browser tab lifetime via sessionStorage ─────
+
+function getOrCreateSessionId(): string {
+  const KEY = 'immersphere_session_id';
+  let id = sessionStorage.getItem(KEY);
+  if (!id) {
+    id = `s-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    sessionStorage.setItem(KEY, id);
+  }
+  return id;
+}
+
+// ── Client-side dedupe — prevents accidental rapid re-fires ──────────────────
+
+/** Events exempt from deduplication (every occurrence is meaningful). */
+const NO_DEDUPE = new Set(['lead_submitted', 'guided_tour_completed']);
+const DEDUPE_WINDOW_MS = 5000;
+const _dedupeCache = new Map<string, number>();
+
+function isDupe(type: string, propertyId: string, spaceId?: unknown, hotspotId?: unknown): boolean {
+  if (NO_DEDUPE.has(type)) return false;
+  const key = [type, propertyId, String(spaceId ?? ''), String(hotspotId ?? '')].join('::');
+  const now = Date.now();
+  const last = _dedupeCache.get(key);
+  if (last !== undefined && now - last < DEDUPE_WINDOW_MS) return true;
+  _dedupeCache.set(key, now);
+  return false;
+}
+
+// ── Fire-and-forget analytics POST ───────────────────────────────────────────
+
 function trackToBackend(payload: Record<string, unknown>): void {
+  const { type, propertyId, spaceId, hotspotId } = payload as {
+    type?: string; propertyId?: string; spaceId?: string; hotspotId?: string;
+  };
+  if (type && propertyId && isDupe(type, propertyId, spaceId, hotspotId)) return;
+
   const token = window.localStorage.getItem(AUTH_STORAGE_KEYS.accessToken);
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   if (token) headers['Authorization'] = `Bearer ${token}`;
@@ -202,8 +238,10 @@ export default function UniversalViewer({
   const pendingSwapRef  = useRef<(() => void) | null>(null);
   const isTouchDevice   = useRef(window.matchMedia('(pointer: coarse)').matches);
 
-  const viewerRef  = useRef<HTMLElement>(null);
-  const sessionId  = useRef(`s-${Date.now()}-${Math.random().toString(16).slice(2)}`);
+  const viewerRef       = useRef<HTMLElement>(null);
+  const sessionId       = useRef(getOrCreateSessionId());
+  const spaceEnteredAt  = useRef<number>(Date.now());
+  const activeSpaceIdRef = useRef<string>(initialSpaceId ?? '');
 
   // ── Storytelling mode ────────────────────────────────────────────────────────
   const [storyMode,    setStoryMode]    = useState(true);
@@ -238,10 +276,12 @@ export default function UniversalViewer({
   // Track initial viewer open
   useEffect(() => {
     if (!activeSpace) return;
+    spaceEnteredAt.current = Date.now();
+    activeSpaceIdRef.current = activeSpace.id;
     trackToBackend({
       propertyId,
       spaceId: activeSpace.id,
-      type: 'viewer_open',
+      type: 'viewer_opened',
       sessionId: sessionId.current
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -255,6 +295,9 @@ export default function UniversalViewer({
     document.addEventListener('fullscreenchange', onFullscreenChange);
     return () => document.removeEventListener('fullscreenchange', onFullscreenChange);
   }, []);
+
+  // Keep refs current for cleanup callbacks
+  useEffect(() => { activeSpaceIdRef.current = activeSpaceId; }, [activeSpaceId]);
 
   // Branded loading: start progress bar after first paint, then fade out
   useEffect(() => {
@@ -398,9 +441,21 @@ export default function UniversalViewer({
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [audioEnabled, activeSpace?.ambientAudio]);
 
-  // Cleanup audio + cinematic + minimap on unmount
+  // Cleanup audio + cinematic + minimap + space_time on unmount
   useEffect(() => {
     return () => {
+      // Fire space_time for the last space before unmount (fire-and-forget)
+      const durationMs = Date.now() - spaceEnteredAt.current;
+      const sid = activeSpaceIdRef.current;
+      if (durationMs > 500 && sid) {
+        trackToBackend({
+          propertyId,
+          spaceId: sid,
+          type: 'space_time',
+          payload: { durationMs, fromSpaceId: sid },
+          sessionId: sessionId.current
+        });
+      }
       cancelAnimationFrame(fadeOutRafId.current);
       cancelAnimationFrame(fadeInRafId.current);
       if (audioRef.current) {
@@ -411,6 +466,7 @@ export default function UniversalViewer({
       if (cinematicTimerRef.current) clearTimeout(cinematicTimerRef.current);
       if (minimapTimerRef.current)   clearTimeout(minimapTimerRef.current);
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Cinematic auto-advance — duration from activeSpace.guidedDuration (seconds), fallback 10s
@@ -514,7 +570,7 @@ export default function UniversalViewer({
     trackToBackend({
       propertyId,
       spaceId: firstSpace.id,
-      type: 'tour_start',
+      type: 'guided_tour_started',
       label: firstSpace.name,
       payload,
       sessionId: sessionId.current
@@ -569,6 +625,8 @@ export default function UniversalViewer({
 
     const isLast     = newIdx === sortedSpaces.length - 1;
     const eventType: ViewerEvent['type'] = isLast ? 'tour_complete' : 'tour_step';
+    // Map to current naming convention for backend; local event type stays for onAnalyticsEvent
+    const backendType = isLast ? 'guided_tour_completed' : 'tour_step';
     const payload = {
       step: newIdx + 1,
       totalSteps: sortedSpaces.length,
@@ -579,7 +637,7 @@ export default function UniversalViewer({
     trackToBackend({
       propertyId,
       spaceId: nextSpace.id,
-      type: eventType,
+      type: backendType,
       label: nextSpace.name,
       payload,
       sessionId: sessionId.current
@@ -660,6 +718,19 @@ export default function UniversalViewer({
       minimapTimerRef.current = setTimeout(() => setShowMinimap(false), 3500);
     }
 
+    // space_time: emit duration for the space we are leaving
+    const durationMs = Date.now() - spaceEnteredAt.current;
+    if (durationMs > 500 && activeSpaceIdRef.current) {
+      trackToBackend({
+        propertyId,
+        spaceId: activeSpaceIdRef.current,
+        type: 'space_time',
+        payload: { durationMs, fromSpaceId: activeSpaceIdRef.current, toSpaceId: spaceId },
+        sessionId: sessionId.current
+      });
+    }
+    spaceEnteredAt.current = Date.now();
+
     const event = createViewerEvent('space_change', {
       spaceId,
       data: { propertyId, spaceName: nextSpace.name }
@@ -668,7 +739,7 @@ export default function UniversalViewer({
     trackToBackend({
       propertyId,
       spaceId,
-      type: 'space_change',
+      type: 'space_viewed',
       label: nextSpace.name,
       sessionId: sessionId.current
     });
@@ -686,11 +757,10 @@ export default function UniversalViewer({
       propertyId,
       spaceId: activeSpace?.id,
       assetId: activeAsset?.id,
-      type: 'hotspot_click',
+      hotspotId: hotspot.id,
+      type: 'hotspot_clicked',
       label: hotspot.label,
-      payload: hotspot.targetSpaceId
-        ? JSON.stringify({ hotspotType: hotspot.type, targetSpaceId: hotspot.targetSpaceId })
-        : undefined,
+      payload: { hotspotType: hotspot.type, ...(hotspot.targetSpaceId ? { targetSpaceId: hotspot.targetSpaceId } : {}) },
       sessionId: sessionId.current
     });
 
@@ -705,6 +775,13 @@ export default function UniversalViewer({
 
   function handleLeadCtaOpen(): void {
     setShowLeadModal(true);
+    trackToBackend({
+      propertyId,
+      spaceId: activeSpace?.id,
+      type: 'cta_clicked',
+      label: activeHotspot?.label ?? 'Tour guiado',
+      sessionId: sessionId.current
+    });
   }
 
   function handleLeadSubmitted(): void {
@@ -719,7 +796,7 @@ export default function UniversalViewer({
       propertyId,
       spaceId: activeSpace?.id,
       assetId: activeAsset?.id,
-      type: 'lead_cta',
+      type: 'lead_submitted',
       label: activeHotspot?.label ?? 'Tour guiado',
       sessionId: sessionId.current
     });
@@ -988,10 +1065,19 @@ export default function UniversalViewer({
               type="button"
               onClick={() => {
                 setIsMeasuring(false);
-                setShowDollhouse((prev) => !prev);
+                const opening = !showDollhouse;
+                setShowDollhouse(opening);
                 // Hide minimap when entering/exiting the floorplan view
                 setShowMinimap(false);
                 if (minimapTimerRef.current) clearTimeout(minimapTimerRef.current);
+                if (opening) {
+                  trackToBackend({
+                    propertyId,
+                    spaceId: activeSpace?.id,
+                    type: 'floorplan_opened',
+                    sessionId: sessionId.current
+                  });
+                }
               }}
               className={`rounded-full px-4 py-2 text-sm font-black transition ${
                 showDollhouse
@@ -1136,7 +1222,15 @@ export default function UniversalViewer({
                 spaces={sortedSpaces}
                 activeSpaceId={activeSpace.id}
                 primaryColor={primaryColor}
-                onSpaceClick={(spaceId) => { runTransition(() => { handleSpaceChange(spaceId); setShowDollhouse(false); }, spaceId); }}
+                onSpaceClick={(spaceId) => {
+                  trackToBackend({
+                    propertyId,
+                    spaceId,
+                    type: 'pin_clicked',
+                    sessionId: sessionId.current
+                  });
+                  runTransition(() => { handleSpaceChange(spaceId); setShowDollhouse(false); }, spaceId);
+                }}
               />
             ) : showDollhouse ? (
               <DollhouseViewer
@@ -1156,6 +1250,16 @@ export default function UniversalViewer({
                 spacePreviewMap={spacePreviewMap}
                 onHotspotClick={handleHotspotClick}
                 onAnalyticsEvent={onAnalyticsEvent}
+                onAssetLoadError={({ assetId, assetUrl, assetType, message }) => {
+                  trackToBackend({
+                    propertyId,
+                    spaceId: activeSpace.id,
+                    assetId,
+                    type: 'asset_load_error',
+                    payload: { assetUrl, assetType, message },
+                    sessionId: sessionId.current
+                  });
+                }}
               />
             ) : activeAsset.type === 'gaussian_splat' ? (
               <GaussianSplatViewer

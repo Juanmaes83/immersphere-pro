@@ -397,12 +397,14 @@ function PropertyQRCode({
   propertyId,
   primaryColor,
   propertyTitle,
-  agencyName
+  agencyName,
+  onQrOpen
 }: {
   propertyId: string;
   primaryColor: string;
   propertyTitle?: string;
   agencyName?: string;
+  onQrOpen?: () => void;
 }): JSX.Element {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const fullscreenCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -462,7 +464,7 @@ function PropertyQRCode({
           <div className="flex items-center gap-2">
             <button
               type="button"
-              onClick={() => setShowFullscreen(true)}
+              onClick={() => { setShowFullscreen(true); onQrOpen?.(); }}
               title="Pantalla completa para reuniones"
               className="rounded-full border border-white/15 px-2 py-0.5 text-[11px] text-white/50 transition hover:border-white/35 hover:text-white"
             >
@@ -576,11 +578,33 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
     return () => { clearTimeout(t); };
   }, []);
 
+  /** Fire-and-forget analytics event for share interactions. */
+  function trackShareEvent(channel: 'whatsapp' | 'copy' | 'native' | 'qr'): void {
+    if (!property) return;
+    const sessionId = sessionStorage.getItem('immersphere_session_id') ?? undefined;
+    const apiBase = (
+      import.meta.env.VITE_API_BASE_URL ??
+      import.meta.env.VITE_API_URL ??
+      'http://localhost:4000/api'
+    ).replace(/\/$/, '');
+    fetch(`${apiBase}/analytics/events`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        propertyId: property.id,
+        type: channel === 'qr' ? 'qr_opened' : 'share_clicked',
+        payload: { channel },
+        sessionId
+      })
+    }).catch(() => {});
+  }
+
   function handleCopyLink(): void {
     const url = `${window.location.origin}/property/${propertyId}`;
     void navigator.clipboard.writeText(url).then(() => {
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 1800);
+      trackShareEvent('copy');
     });
   }
 
@@ -597,11 +621,13 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
         navigator.canShare?.(shareData)
       ) {
         await navigator.share(shareData);
+        trackShareEvent('native');
       } else {
         // Fallback: copy to clipboard (same feedback as handleCopyLink)
         await navigator.clipboard.writeText(url);
         setLinkCopied(true);
         setTimeout(() => setLinkCopied(false), 1800);
+        trackShareEvent('copy');
       }
     } catch {
       // User cancelled the native share sheet — no action needed
@@ -912,6 +938,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                   href={`https://wa.me/${property.tenantWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`${property.title} — Tour inmersivo 360° · Ver tour: ${ogUrl}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
+                  onClick={() => { trackShareEvent('whatsapp'); }}
                   className="mt-6 flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90"
                   style={{ backgroundColor: '#25D366' }}
                 >
@@ -984,7 +1011,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 📱 Ver en móvil
               </button>
               {!embed ? (
-                <PropertyQRCode propertyId={property.id} primaryColor={primaryColor} propertyTitle={property.title} agencyName={property.tenantLogoText || property.tenantName || undefined} />
+                <PropertyQRCode propertyId={property.id} primaryColor={primaryColor} propertyTitle={property.title} agencyName={property.tenantLogoText || property.tenantName || undefined} onQrOpen={() => { trackShareEvent('qr'); }} />
               ) : null}
             </aside>
           </div>

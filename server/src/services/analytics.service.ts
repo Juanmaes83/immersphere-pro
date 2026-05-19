@@ -59,13 +59,20 @@ interface CountByKey {
   count: number;
 }
 
+/**
+ * NOTE: ViewerEvent.payload is stored as String? in the Prisma schema.
+ * analytics.service.ts stores JSON.stringify(payload) — intentional.
+ * Do NOT change to Json? without a migration.
+ */
 function computeEngagementScore(counts: Record<string, number>): number {
+  // Each event name appears twice: legacy name + current naming convention.
   const score =
-    (counts['viewer_open'] ?? 0) * 1 +
-    (counts['space_change'] ?? 0) * 3 +
+    ((counts['viewer_open'] ?? 0) + (counts['viewer_opened'] ?? 0)) * 1 +
+    ((counts['space_change'] ?? 0) + (counts['space_viewed'] ?? 0)) * 3 +
     (counts['viewer_drag'] ?? 0) * 2 +
-    (counts['hotspot_click'] ?? 0) * 8 +
-    (counts['lead_cta'] ?? 0) * 20;
+    ((counts['hotspot_click'] ?? 0) + (counts['hotspot_clicked'] ?? 0)) * 8 +
+    ((counts['lead_cta'] ?? 0) + (counts['lead_submitted'] ?? 0)) * 20 +
+    (counts['cta_clicked'] ?? 0) * 5;
 
   return Math.min(100, Math.round(score));
 }
@@ -93,10 +100,10 @@ export async function getPropertyAnalyticsSummary(propertyId: string) {
     typeCounts[ev.type] = (typeCounts[ev.type] ?? 0) + 1;
   }
 
-  const hotspotClicks = typeCounts['hotspot_click'] ?? 0;
-  const spaceChanges = typeCounts['space_change'] ?? 0;
-  const leadCtas = typeCounts['lead_cta'] ?? 0;
-  const viewerOpens = typeCounts['viewer_open'] ?? 0;
+  const hotspotClicks = (typeCounts['hotspot_click'] ?? 0) + (typeCounts['hotspot_clicked'] ?? 0);
+  const spaceChanges  = (typeCounts['space_change']  ?? 0) + (typeCounts['space_viewed']     ?? 0);
+  const leadCtas      = (typeCounts['lead_cta']      ?? 0) + (typeCounts['lead_submitted']   ?? 0);
+  const viewerOpens   = (typeCounts['viewer_open']   ?? 0) + (typeCounts['viewer_opened']    ?? 0);
 
   const eventsByType: CountByKey[] = Object.entries(typeCounts)
     .map(([key, count]) => ({ key, count }))
@@ -193,10 +200,10 @@ export async function getTenantAnalyticsSummary(tenantId: string): Promise<Tenan
   for (const ev of allEvents) {
     const b = buckets.get(ev.propertyId) ?? { total: 0, hotspot: 0, lead: 0, space: 0, open: 0 };
     b.total += 1;
-    if (ev.type === 'hotspot_click') b.hotspot += 1;
-    if (ev.type === 'lead_cta') b.lead += 1;
-    if (ev.type === 'space_change') b.space += 1;
-    if (ev.type === 'viewer_open') b.open += 1;
+    if (ev.type === 'hotspot_click' || ev.type === 'hotspot_clicked') b.hotspot += 1;
+    if (ev.type === 'lead_cta'      || ev.type === 'lead_submitted')  b.lead    += 1;
+    if (ev.type === 'space_change'  || ev.type === 'space_viewed')    b.space   += 1;
+    if (ev.type === 'viewer_open'   || ev.type === 'viewer_opened')   b.open    += 1;
     buckets.set(ev.propertyId, b);
   }
 
@@ -223,10 +230,10 @@ export async function getTenantAnalyticsSummary(tenantId: string): Promise<Tenan
     .slice(0, 8);
 
   const totalEvents = allEvents.length;
-  const totalHotspotClicks = allEvents.filter((e: { type: string }) => e.type === 'hotspot_click').length;
-  const totalLeadCtas = allEvents.filter((e: { type: string }) => e.type === 'lead_cta').length;
-  const totalSpaceChanges = allEvents.filter((e: { type: string }) => e.type === 'space_change').length;
-  const totalViewerOpens = allEvents.filter((e: { type: string }) => e.type === 'viewer_open').length;
+  const totalHotspotClicks = allEvents.filter((e: { type: string }) => e.type === 'hotspot_click' || e.type === 'hotspot_clicked').length;
+  const totalLeadCtas      = allEvents.filter((e: { type: string }) => e.type === 'lead_cta'      || e.type === 'lead_submitted').length;
+  const totalSpaceChanges  = allEvents.filter((e: { type: string }) => e.type === 'space_change'  || e.type === 'space_viewed').length;
+  const totalViewerOpens   = allEvents.filter((e: { type: string }) => e.type === 'viewer_open'   || e.type === 'viewer_opened').length;
   const propertiesWithEvents = buckets.size;
 
   const overallEngagementScore = computeEngagementScore({
@@ -237,7 +244,7 @@ export async function getTenantAnalyticsSummary(tenantId: string): Promise<Tenan
   });
 
   const recentLeads = allEvents
-    .filter((e) => e.type === 'lead_cta')
+    .filter((e) => e.type === 'lead_cta' || e.type === 'lead_submitted')
     .slice(0, 10)
     .map((e) => ({
       propertyId: e.propertyId,
