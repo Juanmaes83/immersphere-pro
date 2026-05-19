@@ -2,7 +2,7 @@
 import type { ErrorInfo, ReactNode } from 'react';
 import DollhouseViewer from '@/components/viewer/DollhouseViewer';
 import FloorplanViewer from '@/components/viewer/FloorplanViewer';
-import GaussianSplatViewer from '@/components/viewer/GaussianSplatViewer';
+const GaussianSplatViewer = lazy(() => import('@/components/viewer/GaussianSplatViewer'));
 import LeadCaptureModal from '@/components/viewer/LeadCaptureModal';
 import MinimapOverlay from '@/components/viewer/MinimapOverlay';
 import PanoramaViewer from '@/components/viewer/PanoramaViewer';
@@ -1284,16 +1284,30 @@ export default function UniversalViewer({
                 }}
               />
             ) : activeAsset.type === 'gaussian_splat' ? (
-              <GaussianSplatViewer
+              <Suspense
                 key={`splat-${activeSpace.id}-${activeAsset.id}`}
-                propertyId={propertyId}
-                spaceId={activeSpace.id}
-                asset={activeAsset}
-                primaryColor={primaryColor}
-                measureMode={isMeasuring}
-                isAdminMode={false}
-                onAnalyticsEvent={onAnalyticsEvent}
-              />
+                fallback={
+                  <div className="flex min-h-[520px] items-center justify-center rounded-[1.5rem] bg-slate-950">
+                    <div className="flex flex-col items-center gap-3">
+                      <div
+                        className="h-8 w-8 animate-spin rounded-full border-[3px] border-white/10"
+                        style={{ borderTopColor: primaryColor }}
+                      />
+                      <p className="text-sm font-bold text-white/40">{t(language, 'loading_3d')}</p>
+                    </div>
+                  </div>
+                }
+              >
+                <GaussianSplatViewer
+                  propertyId={propertyId}
+                  spaceId={activeSpace.id}
+                  asset={activeAsset}
+                  primaryColor={primaryColor}
+                  measureMode={isMeasuring}
+                  isAdminMode={false}
+                  onAnalyticsEvent={onAnalyticsEvent}
+                />
+              </Suspense>
             ) : (
               <Suspense
                 key={`glb-${activeSpace.id}-${activeAsset.id}`}
