@@ -54,7 +54,7 @@ const storage = multer.diskStorage({
 const upload = multer({
   storage,
   limits: {
-    fileSize: 100 * 1024 * 1024
+    fileSize: 500 * 1024 * 1024
   },
   fileFilter: (_request, file, callback) => {
     const extension = getSafeExtension(file.originalname);

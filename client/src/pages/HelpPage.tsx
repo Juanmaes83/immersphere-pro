@@ -608,17 +608,21 @@ export default function HelpPage(): JSX.Element {
           <h3 className="mt-12 text-xl font-black text-slate-950 dark:text-white">2. Exporta el archivo correctamente</h3>
           <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             {[
-              { fmt: '.splat', desc: 'Formato más compacto. Compatible con Luma AI y Polycam. Recomendado.', good: true },
-              { fmt: '.ply', desc: 'Formato estándar de la comunidad 3DGS. Funciona con todas las herramientas.', good: true },
-              { fmt: '.spz', desc: 'Formato comprimido de Niantic/SparkJS. Muy pequeño y rápido de cargar.', good: true },
-              { fmt: '.ksplat', desc: 'Formato de GaussianSplats3D. Compatible con SparkJS.', good: true },
+              { fmt: '.splat', desc: 'Formato más compacto. Compatible con Luma AI y Polycam. Recomendado.', status: 'ok' as const },
+              { fmt: '.ply', desc: 'Formato estándar de la comunidad 3DGS. Funciona con todas las herramientas.', status: 'ok' as const },
+              { fmt: '.spz', desc: 'Formato comprimido de Niantic/SparkJS. En integración.', status: 'soon' as const },
+              { fmt: '.ksplat', desc: 'Formato de GaussianSplats3D. En integración.', status: 'soon' as const },
             ].map((f) => (
               <div key={f.fmt} className="rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-900">
                 <p className="text-sm font-black text-slate-950 dark:text-white">{f.fmt}</p>
                 <p className="mt-1 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{f.desc}</p>
-                {f.good && (
+                {f.status === 'ok' ? (
                   <span className="mt-2 inline-block rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-black text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
                     ✓ Soportado
+                  </span>
+                ) : (
+                  <span className="mt-2 inline-block rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-black text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">
+                    ⏳ Próximamente
                   </span>
                 )}
               </div>
@@ -628,44 +632,32 @@ export default function HelpPage(): JSX.Element {
           {/* Subir a Immersphere Pro */}
           <h3 className="mt-12 text-xl font-black text-slate-950 dark:text-white">3. Súbelo a Immersphere Pro</h3>
           <div className="mt-5 rounded-[1.6rem] bg-slate-50 p-7 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
-            <div className="grid gap-4 sm:grid-cols-2">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Opción A — Desde el panel</p>
-                <ol className="mt-4 space-y-3">
-                  {[
-                    'Crea una propiedad nueva o abre una existente',
-                    'En la estancia, pulsa "Añadir asset"',
-                    'Selecciona el tipo "Gaussian Splat"',
-                    'Sube tu archivo .splat o .ply (máx. 100 MB)',
-                    'El visor se activa automáticamente',
-                  ].map((step, i) => (
-                    <li key={step} className="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-black text-white" style={bgStyle}>{i + 1}</span>
-                      {step}
-                    </li>
-                  ))}
-                </ol>
-              </div>
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Opción B — Desde el visor (temporal)</p>
-                <ol className="mt-4 space-y-3">
-                  {[
-                    'Abre el tour de la propiedad',
-                    'Navega a la estancia Gaussian Splat',
-                    'En el panel lateral, pulsa "Subir .ply / .splat / .sog"',
-                    'Selecciona tu archivo local',
-                    'El visor carga el splat al instante (sin subida al servidor)',
-                  ].map((step, i) => (
-                    <li key={step} className="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
-                      <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-black text-white" style={bgStyle}>{i + 1}</span>
-                      {step}
-                    </li>
-                  ))}
-                </ol>
-                <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700 dark:bg-amber-900/20 dark:text-amber-300">
-                  ⚠️ La opción B es solo para previsualización local. Para compartir el tour con clientes, usa la opción A.
-                </p>
-              </div>
+            {/* Paso previo: compresión si es necesario */}
+            <div className="mb-6 rounded-2xl border border-amber-200 bg-amber-50 px-5 py-4 dark:border-amber-800/40 dark:bg-amber-900/20">
+              <p className="text-xs font-black uppercase tracking-[0.14em] text-amber-700 dark:text-amber-400">⚠️ Antes de subir — comprueba el tamaño</p>
+              <p className="mt-2 text-sm leading-6 text-amber-800 dark:text-amber-300">
+                El límite es <strong>500 MB</strong>. Los archivos .ply sin comprimir pueden superarlo fácilmente.
+                Si tu archivo pesa más, comprímelo primero con{' '}
+                <a href="https://superspl.at/editor" target="_blank" rel="noopener noreferrer" className="font-black underline hover:opacity-75">SuperSplat</a>:
+                ábrelo, exporta como <strong>.splat</strong> y ya lo tendrás por debajo del límite.
+              </p>
+            </div>
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Desde el panel de administración</p>
+              <ol className="mt-4 space-y-3">
+                {[
+                  'Crea una propiedad nueva o abre una existente',
+                  'En la estancia, pulsa "Añadir asset"',
+                  'Selecciona el tipo "Gaussian Splat"',
+                  'Sube tu archivo .splat o .ply (máx. 500 MB)',
+                  'El visor se activa automáticamente — ya puedes compartir el tour',
+                ].map((step, i) => (
+                  <li key={step} className="flex gap-3 text-sm text-slate-700 dark:text-slate-300">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-black text-white" style={bgStyle}>{i + 1}</span>
+                    {step}
+                  </li>
+                ))}
+              </ol>
             </div>
           </div>
 
@@ -678,8 +670,8 @@ export default function HelpPage(): JSX.Element {
                 sol: 'Si usas una URL externa, puede que el servidor no permita carga desde otros dominios (CORS). Usa siempre la opción de subir el archivo directamente desde tu ordenador. Los archivos subidos desde tu dispositivo siempre funcionan.',
               },
               {
-                prob: 'El archivo tarda mucho en cargar',
-                sol: 'Los archivos .ply sin comprimir pueden pesar 200 MB+. Usa SuperSplat (superspl.at/editor) para comprimir y limpiar el splat antes de subirlo. El formato .spz es el más compacto.',
+                prob: 'El archivo tarda mucho en cargar o no sube',
+                sol: 'Los archivos .ply sin comprimir pueden pesar 200–800 MB. El límite de subida es 500 MB. Usa SuperSplat (superspl.at/editor) para comprimir: abre tu .ply, expórtalo como .splat y el archivo se reducirá drásticamente. El formato .splat es siempre el más compacto.',
               },
               {
                 prob: 'El splat se ve borroso o con ruido',
