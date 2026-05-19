@@ -170,8 +170,20 @@ export const dict = {
 
     // ── Sharing ───────────────────────────────────────────────────────────
     share_tour_suffix: 'Tour inmersivo 360°',
+    share_tour_suffix_3d: 'Tour inmersivo 3D',
     share_body: 'Explora el tour virtual inmersivo.',
     contact_whatsapp: 'Contactar por WhatsApp',
+    share_btn: '↗ Compartir tour',
+    share_copy_link: '🔗 Copiar link del tour',
+    share_link_copied: '✓ Link copiado',
+    share_download: '↓ Descargar tour',
+    share_generating: 'Generando ZIP…',
+    share_copy_iframe: '</> Copiar código iframe',
+    share_iframe_copied: '✓ Código copiado',
+    share_mobile_view: '📱 Ver en móvil',
+    tour_no_asset: 'Esta propiedad no tiene archivos exportables todavía. Sube un asset primero.',
+    tour_export_error: 'Error al generar el tour. Inténtalo de nuevo.',
+    tour_network_error: 'Error de conexión al generar el tour.',
 
     // ── Gaussian Splat viewer ─────────────────────────────────────────────
     splat_loading: 'Cargando experiencia 3D…',
@@ -336,8 +348,20 @@ export const dict = {
 
     // ── Sharing ───────────────────────────────────────────────────────────
     share_tour_suffix: 'Immersive 360° tour',
+    share_tour_suffix_3d: 'Immersive 3D tour',
     share_body: 'Explore the virtual immersive tour.',
     contact_whatsapp: 'Contact on WhatsApp',
+    share_btn: '↗ Share tour',
+    share_copy_link: '🔗 Copy tour link',
+    share_link_copied: '✓ Link copied',
+    share_download: '↓ Download tour',
+    share_generating: 'Generating ZIP…',
+    share_copy_iframe: '</> Copy iframe code',
+    share_iframe_copied: '✓ Code copied',
+    share_mobile_view: '📱 View on mobile',
+    tour_no_asset: 'This property has no exportable files yet. Upload an asset first.',
+    tour_export_error: 'Error generating tour. Please try again.',
+    tour_network_error: 'Connection error generating tour.',
 
     // ── Gaussian Splat viewer ─────────────────────────────────────────────
     splat_loading: 'Loading 3D experience…',

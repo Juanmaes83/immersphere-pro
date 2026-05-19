@@ -596,7 +596,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
       body: JSON.stringify({
         propertyId: property.id,
         type: channel === 'qr' ? 'qr_opened' : 'share_clicked',
-        payload: { channel },
+        payload: { channel, assetType: hasGaussian ? 'gaussian_splat' : 'panorama_360' },
         sessionId
       })
     }).catch(() => {});
@@ -657,11 +657,11 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
         { headers: token ? { Authorization: `Bearer ${token}` } : {} }
       );
       if (res.status === 404) {
-        setTourErrorMsg('Esta propiedad no tiene archivos exportables todavía. Sube un asset Gaussian Splat primero.');
+        setTourErrorMsg(t(lang, 'tour_no_asset'));
         return;
       }
       if (!res.ok) {
-        setTourErrorMsg('Error al generar el tour. Inténtalo de nuevo.');
+        setTourErrorMsg(t(lang, 'tour_export_error'));
         return;
       }
       const blob = await res.blob();
@@ -676,7 +676,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
       a.remove();
       URL.revokeObjectURL(url);
     } catch {
-      setTourErrorMsg('Error de conexión al generar el tour.');
+      setTourErrorMsg(t(lang, 'tour_network_error'));
     } finally {
       setDownloadingTour(false);
     }
@@ -806,6 +806,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   const property = selectedProperty;
   const primaryColor = property.tenantPrimaryColor || '#7C3AED';
   const lang = property.language ?? 'es';
+  const hasGaussian = property.spaces.some((s) => s.assets.some((a) => a.type === 'gaussian_splat'));
 
   const ogTitle = property.title;
   const rawDesc = (property.description ?? '').replace(/\s+/g, ' ').trim();
@@ -940,7 +941,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
               ) : null}
               {property.tenantWhatsapp?.replace(/\D/g, '').length ? (
                 <a
-                  href={`https://wa.me/${property.tenantWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`${property.title} — Tour inmersivo 360° · Ver tour: ${ogUrl}`)}`}
+                  href={`https://wa.me/${property.tenantWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`${property.title} — ${t(lang, hasGaussian ? 'share_tour_suffix_3d' : 'share_tour_suffix')} · ${ogUrl}`)}`}
                   target="_blank"
                   rel="noopener noreferrer"
                   onClick={() => { trackShareEvent('whatsapp'); }}
@@ -966,7 +967,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                   onClick={() => { void handleNativeShare(); }}
                   className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700"
                 >
-                  ↗ Compartir tour
+                  {t(lang, 'share_btn')}
                 </button>
               ) : null}
               <button
@@ -974,7 +975,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 onClick={handleCopyLink}
                 className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
               >
-                {linkCopied ? '✓ Link copiado' : '🔗 Copiar link del tour'}
+                {linkCopied ? t(lang, 'share_link_copied') : t(lang, 'share_copy_link')}
               </button>
               {isAuthenticated ? (
                 <>
@@ -984,7 +985,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                     disabled={downloadingTour}
                     className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 disabled:opacity-40"
                   >
-                    {downloadingTour ? 'Generando ZIP…' : '↓ Descargar tour'}
+                    {downloadingTour ? t(lang, 'share_generating') : t(lang, 'share_download')}
                   </button>
                   {tourErrorMsg ? (
                     <p className="mt-2 rounded-xl bg-amber-50 px-3 py-2 text-xs leading-5 text-amber-700 ring-1 ring-amber-200">
@@ -996,7 +997,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                     onClick={handleCopyIframe}
                     className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:opacity-40"
                   >
-                    {iframeCopied ? '✓ Código copiado' : '</> Copiar código iframe'}
+                    {iframeCopied ? t(lang, 'share_iframe_copied') : t(lang, 'share_copy_iframe')}
                   </button>
                 </>
               ) : null}
@@ -1013,7 +1014,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 }}
                 className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700"
               >
-                📱 Ver en móvil
+                {t(lang, 'share_mobile_view')}
               </button>
               {!embed ? (
                 <PropertyQRCode propertyId={property.id} primaryColor={primaryColor} propertyTitle={property.title} agencyName={property.tenantLogoText || property.tenantName || undefined} lang={lang} onQrOpen={() => { trackShareEvent('qr'); }} />
@@ -1042,7 +1043,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
       ) : null}
       {property.tenantWhatsapp && !embed ? (
         <a
-          href={`https://wa.me/${property.tenantWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`${property.title} — Tour inmersivo 360° · Ver tour: ${ogUrl}`)}`}
+          href={`https://wa.me/${property.tenantWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`${property.title} — ${t(lang, hasGaussian ? 'share_tour_suffix_3d' : 'share_tour_suffix')} · ${ogUrl}`)}`}
           target="_blank"
           rel="noopener noreferrer"
           aria-label={t(lang, 'contact_whatsapp')}

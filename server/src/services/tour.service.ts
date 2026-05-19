@@ -266,7 +266,7 @@ function buildSplatHtml(propertyTitle: string, splatUrl: string, propertyUrl: st
       display: inline-block; background: rgba(255,255,255,0.08);
       color: rgba(255,255,255,0.7); font-weight: 700; font-size: 0.82rem;
       text-decoration: none; border-radius: 999px; padding: 0.65rem 1.4rem;
-      transition: opacity 0.15s;
+      transition: opacity 0.15s; margin-bottom: 0.5rem;
     }
     .note { font-size: 0.72rem; color: rgba(255,255,255,0.25); margin-top: 1rem; }
     .powered { margin-top: 2.5rem; font-size: 0.7rem; color: rgba(255,255,255,0.18); letter-spacing: 0.12em; }
@@ -276,15 +276,15 @@ function buildSplatHtml(propertyTitle: string, splatUrl: string, propertyUrl: st
   <div class="card">
     <div class="badge">Immersphere Pro · Tour 3D</div>
     <h1>${title}</h1>
-    <p>Explora esta propiedad con tecnología Gaussian Splatting 3D. Requiere conexión a internet para cargar el visor.</p>
-    <a href="https://superspl.at/editor?load=${encoded}" target="_blank" rel="noopener noreferrer" class="btn">
-      Iniciar tour 3D →
+    <p>Explora esta propiedad con tecnología Gaussian Splatting 3D.</p>
+    <a href="${safePropertyUrl}" target="_blank" rel="noopener noreferrer" class="btn">
+      Ver tour inmersivo →
     </a>
     <br>
     ${whatsappNumber
       ? `<a href="https://wa.me/${whatsappNumber.replace(/\D/g, '')}?text=${encodeURIComponent(`Hola, me interesa esta propiedad: ${title}. ¿Podría darme más información?`)}" target="_blank" rel="noopener noreferrer" class="btn" style="background:linear-gradient(135deg,#25D366,#128C7E)">💬 Contactar por WhatsApp</a><br>`
-      : `<a href="${safePropertyUrl}" target="_blank" rel="noopener noreferrer" class="btn-ghost">Ver ficha completa en Immersphere Pro</a>`}
-    <p class="note">Se abrirá el visor 3D en una nueva pestaña. Compatible con Chrome y Edge.</p>
+      : `<a href="${safePropertyUrl}" target="_blank" rel="noopener noreferrer" class="btn-ghost">Ver ficha completa →</a>`}
+    <p class="note">Requiere conexión a internet.</p>
   </div>
   ${removeBranding ? '' : '<p class="powered">Powered by Immersphere Pro</p>'}
 </body>
