@@ -149,6 +149,7 @@ export default function UniversalViewer({
   className = '',
   propertyTitle,
   agencyName,
+  agencyLogoUrl,
   floorplanUrl,
   onAnalyticsEvent
 }: UniversalViewerProps): JSX.Element {
@@ -777,15 +778,27 @@ export default function UniversalViewer({
             transition: 'opacity 500ms ease-in-out'
           }}
         >
-          {/* Accent line — parallax layer A */}
-          <div
-            className="mb-10 h-px w-10 rounded-full"
-            style={{
-              backgroundColor: primaryColor,
-              transform: 'translate(calc(var(--px, 0px) * 1.2), calc(var(--py, 0px) * 0.8))',
-              transition: 'transform 80ms linear',
-            }}
-          />
+          {/* Agency logo or accent line — parallax layer A */}
+          {agencyLogoUrl ? (
+            <img
+              src={agencyLogoUrl}
+              alt={agencyName ?? ''}
+              className="mb-8 max-h-10 max-w-[140px] object-contain opacity-80"
+              style={{
+                transform: 'translate(calc(var(--px, 0px) * 1.2), calc(var(--py, 0px) * 0.8))',
+                transition: 'transform 80ms linear',
+              }}
+            />
+          ) : (
+            <div
+              className="mb-10 h-px w-10 rounded-full"
+              style={{
+                backgroundColor: primaryColor,
+                transform: 'translate(calc(var(--px, 0px) * 1.2), calc(var(--py, 0px) * 0.8))',
+                transition: 'transform 80ms linear',
+              }}
+            />
+          )}
 
           {/* Property title — parallax layer B (lighter) */}
           <h2

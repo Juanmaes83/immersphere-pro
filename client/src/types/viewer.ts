@@ -120,6 +120,8 @@ export interface UniversalViewerProps {
   propertyTitle?: string;
   /** Optional agency / studio name shown below the property title during load. */
   agencyName?: string;
+  /** Optional agency logo URL shown in the branded loading screen when present. */
+  agencyLogoUrl?: string;
   /** Optional URL to a floorplan image (PNG/JPG). Enables the interactive floorplan view. */
   floorplanUrl?: string;
   onAnalyticsEvent: (event: ViewerEvent) => void;

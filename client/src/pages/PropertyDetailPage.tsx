@@ -858,7 +858,8 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 primaryColor={primaryColor}
                 removeBranding={property.removeBranding}
                 propertyTitle={property.title}
-                agencyName={property.tenantName || undefined}
+                agencyName={property.tenantLogoText || property.tenantName || 'Agencia inmobiliaria'}
+                agencyLogoUrl={property.tenantLogoUrl || undefined}
                 floorplanUrl={property.floorplanUrl || undefined}
                 className="mt-8"
                 onAnalyticsEvent={handleAnalyticsEvent}
@@ -983,7 +984,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 📱 Ver en móvil
               </button>
               {!embed ? (
-                <PropertyQRCode propertyId={property.id} primaryColor={primaryColor} propertyTitle={property.title} agencyName={property.tenantName || undefined} />
+                <PropertyQRCode propertyId={property.id} primaryColor={primaryColor} propertyTitle={property.title} agencyName={property.tenantLogoText || property.tenantName || undefined} />
               ) : null}
             </aside>
           </div>
