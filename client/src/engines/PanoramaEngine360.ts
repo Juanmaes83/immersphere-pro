@@ -1,6 +1,16 @@
 import * as THREE from 'three';
 import type { PanoramaEngineConfig, PanoramaViewState, RendererLifecycle } from '@/types/viewer';
 
+// ── Physics constants ────────────────────────────────────────────────────────
+/** Degrees rotated per pixel of drag */
+const DRAG_SENS = 0.12;
+/** Inertia friction per 16 ms frame — lower = longer glide (0.88 ≈ Matterport feel) */
+const INERTIA_FRICTION = 0.88;
+/** Stop inertia when velocity drops below this threshold (deg/ms) */
+const INERTIA_STOP = 0.0008;
+/** FOV change per pixel of pinch-distance delta */
+const PINCH_SENS = 0.10;
+
 export class PanoramaEngine360 implements RendererLifecycle {
   private readonly container: HTMLDivElement;
   private readonly scene: THREE.Scene;
@@ -15,16 +25,43 @@ export class PanoramaEngine360 implements RendererLifecycle {
 
   private mesh: THREE.Mesh<THREE.SphereGeometry, THREE.MeshBasicMaterial> | null = null;
   private isDisposed = false;
+  private gyroscopeActive = false;
+  private xrSession: XRSession | null = null;
+
+  private yaw: number;
+  private pitch: number;
+  private fov: number;
+
+  // ── Drag state ───────────────────────────────────────────────────────────────
   private isPointerDown = false;
   private pointerStartX = 0;
   private pointerStartY = 0;
   private startYaw = 0;
   private startPitch = 0;
-  private yaw: number;
-  private pitch: number;
-  private fov: number;
-  private gyroscopeActive = false;
-  private xrSession: XRSession | null = null;
+  /** Previous frame pointer position for per-frame velocity computation */
+  private lastPointerX = 0;
+  private lastPointerY = 0;
+  private lastMoveTs = 0;
+
+  // ── Inertia ──────────────────────────────────────────────────────────────────
+  /** Current angular velocity in degrees/ms — set on pointerUp, decays with friction */
+  private velocityYaw = 0;
+  private velocityPitch = 0;
+  private inertiaRafId = 0;
+
+  // ── Multi-pointer / pinch-zoom ───────────────────────────────────────────────
+  /** Tracks all active pointer positions keyed by pointerId */
+  private activePointers = new Map<number, { x: number; y: number }>();
+  private lastPinchDist = 0;
+  private isPinching = false;
+
+  // ── Animated FOV ─────────────────────────────────────────────────────────────
+  private fovAnimRafId = 0;
+  /** Wheel zoom accumulates toward this target for smooth continuous scroll */
+  private fovWheelTarget: number | null = null;
+  private fovWheelRafId = 0;
+
+  // ────────────────────────────────────────────────────────────────────────────
 
   public constructor(config: PanoramaEngineConfig) {
     this.container = config.container;
@@ -58,6 +95,7 @@ export class PanoramaEngine360 implements RendererLifecycle {
     this.container.appendChild(this.renderer.domElement);
     this.renderer.domElement.style.touchAction = 'none';
 
+    // Bind handlers
     this.handlePointerDown = this.handlePointerDown.bind(this);
     this.handlePointerMove = this.handlePointerMove.bind(this);
     this.handlePointerUp = this.handlePointerUp.bind(this);
@@ -71,6 +109,8 @@ export class PanoramaEngine360 implements RendererLifecycle {
 
     this.updateCamera();
   }
+
+  // ── Public API (unchanged surface) ──────────────────────────────────────────
 
   public async load(assetUrl?: string): Promise<void> {
     const imageUrl = assetUrl ?? '';
@@ -93,9 +133,7 @@ export class PanoramaEngine360 implements RendererLifecycle {
       const geometry = new THREE.SphereGeometry(500, 96, 64);
       geometry.scale(-1, 1, 1);
 
-      const material = new THREE.MeshBasicMaterial({
-        map: texture
-      });
+      const material = new THREE.MeshBasicMaterial({ map: texture });
 
       if (this.mesh) {
         this.scene.remove(this.mesh);
@@ -116,9 +154,7 @@ export class PanoramaEngine360 implements RendererLifecycle {
 
   public resize(): void {
     if (this.isDisposed) return;
-
     const { width, height } = this.getContainerSize();
-
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
@@ -129,15 +165,11 @@ export class PanoramaEngine360 implements RendererLifecycle {
   public async enableGyroscope(onDenied?: () => void): Promise<void> {
     if (this.gyroscopeActive || this.isDisposed) return;
 
-    // iOS 13+ requires explicit user permission
     const DOE = DeviceOrientationEvent as unknown as { requestPermission?: () => Promise<string> };
     if (typeof DOE.requestPermission === 'function') {
       try {
         const permission = await DOE.requestPermission();
-        if (permission !== 'granted') {
-          onDenied?.();
-          return;
-        }
+        if (permission !== 'granted') { onDenied?.(); return; }
       } catch {
         onDenied?.();
         return;
@@ -154,28 +186,18 @@ export class PanoramaEngine360 implements RendererLifecycle {
     window.removeEventListener('deviceorientation', this.handleDeviceOrientation, true);
   }
 
-  public isGyroscopeActive(): boolean {
-    return this.gyroscopeActive;
-  }
+  public isGyroscopeActive(): boolean { return this.gyroscopeActive; }
 
-  public getRenderer(): THREE.WebGLRenderer {
-    return this.renderer;
-  }
+  public getRenderer(): THREE.WebGLRenderer { return this.renderer; }
 
   public async enterVR(onSessionEnd?: () => void): Promise<void> {
     if (!navigator.xr || this.xrSession || this.isDisposed) return;
-
     const session = await navigator.xr.requestSession('immersive-vr', {
       optionalFeatures: ['local-floor', 'bounded-floor']
     });
-
     this.xrSession = session;
     await this.renderer.xr.setSession(session);
-
-    session.addEventListener('end', () => {
-      this.xrSession = null;
-      onSessionEnd?.();
-    });
+    session.addEventListener('end', () => { this.xrSession = null; onSessionEnd?.(); });
   }
 
   public async exitVR(): Promise<void> {
@@ -184,13 +206,14 @@ export class PanoramaEngine360 implements RendererLifecycle {
     this.xrSession = null;
   }
 
-  public isInVR(): boolean {
-    return this.xrSession !== null;
-  }
+  public isInVR(): boolean { return this.xrSession !== null; }
 
   public dispose(): void {
     this.isDisposed = true;
-
+    // Cancel all animation loops
+    cancelAnimationFrame(this.inertiaRafId);
+    cancelAnimationFrame(this.fovAnimRafId);
+    cancelAnimationFrame(this.fovWheelRafId);
     this.renderer.setAnimationLoop(null);
 
     if (this.xrSession) {
@@ -213,7 +236,6 @@ export class PanoramaEngine360 implements RendererLifecycle {
     }
 
     this.renderer.dispose();
-
     if (this.renderer.domElement.parentElement === this.container) {
       this.container.removeChild(this.renderer.domElement);
     }
@@ -231,26 +253,55 @@ export class PanoramaEngine360 implements RendererLifecycle {
     this.emitViewChange();
   }
 
+  /** Instant FOV change — cancels any ongoing FOV animation */
   public setFov(value: number): void {
+    cancelAnimationFrame(this.fovAnimRafId);
+    cancelAnimationFrame(this.fovWheelRafId);
+    this.fovWheelTarget = null;
     this.fov = THREE.MathUtils.clamp(value, this.minFov, this.maxFov);
     this.camera.fov = this.fov;
     this.camera.updateProjectionMatrix();
     this.emitViewChange();
   }
 
-  public getViewState(): PanoramaViewState {
-    return {
-      yaw: this.yaw,
-      pitch: this.pitch,
-      fov: this.fov
+  /**
+   * Smoothly animate the FOV to `target` over `durationMs` milliseconds
+   * using an ease-out cubic curve. Used by zoom buttons for premium feel.
+   */
+  public animateFovTo(target: number, durationMs = 250): void {
+    cancelAnimationFrame(this.fovAnimRafId);
+    cancelAnimationFrame(this.fovWheelRafId);
+    this.fovWheelTarget = null;
+
+    const clamped = THREE.MathUtils.clamp(target, this.minFov, this.maxFov);
+    const startFov = this.fov;
+    const delta = clamped - startFov;
+    if (Math.abs(delta) < 0.05) return;
+
+    const startTs = performance.now();
+
+    const tick = (now: number): void => {
+      if (this.isDisposed) return;
+      const t = Math.min((now - startTs) / durationMs, 1);
+      // ease-out cubic: decelerates into the target
+      const eased = 1 - Math.pow(1 - t, 3);
+      this.fov = startFov + delta * eased;
+      this.camera.fov = this.fov;
+      this.camera.updateProjectionMatrix();
+      this.emitViewChange();
+      if (t < 1) { this.fovAnimRafId = requestAnimationFrame(tick); }
     };
+
+    this.fovAnimRafId = requestAnimationFrame(tick);
+  }
+
+  public getViewState(): PanoramaViewState {
+    return { yaw: this.yaw, pitch: this.pitch, fov: this.fov };
   }
 
   public getPoint3D(
-    relX: number,
-    relY: number,
-    containerWidth: number,
-    containerHeight: number
+    relX: number, relY: number,
+    containerWidth: number, containerHeight: number
   ): { x: number; y: number; z: number } {
     const ndcX = (relX / containerWidth) * 2 - 1;
     const ndcY = -((relY / containerHeight) * 2 - 1);
@@ -259,6 +310,8 @@ export class PanoramaEngine360 implements RendererLifecycle {
     const dir = raycaster.ray.direction.clone().normalize().multiplyScalar(500);
     return { x: dir.x, y: dir.y, z: dir.z };
   }
+
+  // ── Private — rendering ──────────────────────────────────────────────────────
 
   private loadTexture(imageUrl: string): Promise<THREE.Texture> {
     return new Promise((resolve, reject) => {
@@ -272,13 +325,8 @@ export class PanoramaEngine360 implements RendererLifecycle {
   }
 
   private startRenderLoop(): void {
-    // setAnimationLoop is required for WebXR — it replaces requestAnimationFrame
-    // and lets the browser's XR compositor drive the frame rate in immersive mode.
     this.renderer.setAnimationLoop(() => {
-      if (this.isDisposed) {
-        this.renderer.setAnimationLoop(null);
-        return;
-      }
+      if (this.isDisposed) { this.renderer.setAnimationLoop(null); return; }
       this.render();
     });
   }
@@ -289,32 +337,131 @@ export class PanoramaEngine360 implements RendererLifecycle {
   }
 
   private updateCamera(): void {
-    const phi = THREE.MathUtils.degToRad(90 - this.pitch);
+    const phi   = THREE.MathUtils.degToRad(90 - this.pitch);
     const theta = THREE.MathUtils.degToRad(this.yaw);
-
     const target = new THREE.Vector3(
       500 * Math.sin(phi) * Math.cos(theta),
       500 * Math.cos(phi),
       500 * Math.sin(phi) * Math.sin(theta)
     );
-
     this.camera.lookAt(target);
   }
 
+  // ── Private — pointer handling ───────────────────────────────────────────────
+
   private handlePointerDown(event: PointerEvent): void {
-    this.isPointerDown = true;
-    this.pointerStartX = event.clientX;
-    this.pointerStartY = event.clientY;
-    this.startYaw = this.yaw;
-    this.startPitch = this.pitch;
+    this.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
     this.renderer.domElement.setPointerCapture(event.pointerId);
+
+    const count = this.activePointers.size;
+
+    if (count === 1) {
+      // Single finger / mouse — start drag, kill any running inertia
+      this.isPointerDown = true;
+      this.isPinching = false;
+      this.pointerStartX = event.clientX;
+      this.pointerStartY = event.clientY;
+      this.startYaw = this.yaw;
+      this.startPitch = this.pitch;
+      this.lastPointerX = event.clientX;
+      this.lastPointerY = event.clientY;
+      this.lastMoveTs = performance.now();
+      cancelAnimationFrame(this.inertiaRafId);
+      this.velocityYaw = 0;
+      this.velocityPitch = 0;
+    } else if (count === 2) {
+      // Second finger arrived — switch to pinch
+      this.isPointerDown = false;
+      this.isPinching = true;
+      cancelAnimationFrame(this.inertiaRafId);
+      this.velocityYaw = 0;
+      this.velocityPitch = 0;
+      this.lastPinchDist = this.computePinchDist();
+    }
+  }
+
+  private handlePointerMove(event: PointerEvent): void {
+    if (!this.activePointers.has(event.pointerId) || this.gyroscopeActive) return;
+
+    this.activePointers.set(event.pointerId, { x: event.clientX, y: event.clientY });
+
+    // ── Pinch zoom ─────────────────────────────────────────────────────────────
+    if (this.isPinching && this.activePointers.size === 2) {
+      const dist  = this.computePinchDist();
+      const delta = this.lastPinchDist - dist; // positive = fingers closer = zoom OUT
+      this.lastPinchDist = dist;
+      const nextFov = THREE.MathUtils.clamp(this.fov + delta * PINCH_SENS, this.minFov, this.maxFov);
+      // Direct set during active pinch for 1:1 responsiveness
+      this.fov = nextFov;
+      this.camera.fov = this.fov;
+      this.camera.updateProjectionMatrix();
+      this.emitViewChange();
+      return;
+    }
+
+    if (!this.isPointerDown) return;
+
+    // ── Single-pointer drag ────────────────────────────────────────────────────
+    const now = performance.now();
+    const dt  = Math.max(now - this.lastMoveTs, 4); // floor at 4 ms
+
+    // Per-frame delta → angular velocity (deg/ms)
+    const fdx = event.clientX - this.lastPointerX;
+    const fdy = event.clientY - this.lastPointerY;
+    this.velocityYaw   = (-fdx * DRAG_SENS) / dt;
+    this.velocityPitch = ( fdy * DRAG_SENS) / dt;
+
+    this.lastPointerX = event.clientX;
+    this.lastPointerY = event.clientY;
+    this.lastMoveTs   = now;
+
+    // Absolute position from drag-start (avoids accumulated float error)
+    this.yaw   = this.startYaw - (event.clientX - this.pointerStartX) * DRAG_SENS;
+    this.pitch = THREE.MathUtils.clamp(
+      this.startPitch + (event.clientY - this.pointerStartY) * DRAG_SENS,
+      -85, 85
+    );
+    this.updateCamera();
+    this.emitViewChange();
+  }
+
+  private handlePointerUp(event: PointerEvent): void {
+    this.activePointers.delete(event.pointerId);
+
+    if (this.renderer.domElement.hasPointerCapture(event.pointerId)) {
+      this.renderer.domElement.releasePointerCapture(event.pointerId);
+    }
+
+    if (this.activePointers.size === 0) {
+      // All pointers lifted — launch inertia if we were dragging
+      if (this.isPointerDown) {
+        this.isPointerDown = false;
+        this.startInertia();
+      }
+      this.isPinching = false;
+    } else if (this.activePointers.size === 1 && this.isPinching) {
+      // One finger lifted during pinch — stop pinch, don't resume drag
+      this.isPinching = false;
+      this.isPointerDown = false;
+    }
+  }
+
+  private handleWheel(event: WheelEvent): void {
+    event.preventDefault();
+    // Accumulate the zoom target so rapid scrolling builds up smoothly
+    const base = this.fovWheelTarget ?? this.fov;
+    this.fovWheelTarget = THREE.MathUtils.clamp(base + event.deltaY * 0.04, this.minFov, this.maxFov);
+
+    cancelAnimationFrame(this.fovAnimRafId);
+    cancelAnimationFrame(this.fovWheelRafId);
+    this.tickWheelFov();
   }
 
   private handleDeviceOrientation(event: DeviceOrientationEvent): void {
     if (!this.gyroscopeActive || this.isDisposed) return;
 
     const alpha = event.alpha ?? 0;
-    const beta = event.beta ?? 90;
+    const beta  = event.beta  ?? 90;
     const gamma = event.gamma ?? 0;
     const screenAngle = screen.orientation?.angle ?? 0;
 
@@ -322,58 +469,110 @@ export class PanoramaEngine360 implements RendererLifecycle {
     let newPitch: number;
 
     if (Math.abs(screenAngle) === 90 || Math.abs(screenAngle) === 270) {
-      // Landscape orientation
-      newYaw = -alpha;
+      newYaw   = -alpha;
       newPitch = THREE.MathUtils.clamp(gamma < 0 ? -beta : beta, -85, 85);
     } else {
-      // Portrait orientation (default)
-      newYaw = -alpha;
+      newYaw   = -alpha;
       newPitch = THREE.MathUtils.clamp(90 - beta, -85, 85);
     }
 
-    this.yaw = newYaw;
+    this.yaw   = newYaw;
     this.pitch = newPitch;
     this.updateCamera();
     this.emitViewChange();
   }
 
-  private handlePointerMove(event: PointerEvent): void {
-    if (!this.isPointerDown || this.gyroscopeActive) return;
+  // ── Private — physics ────────────────────────────────────────────────────────
 
-    const deltaX = event.clientX - this.pointerStartX;
-    const deltaY = event.clientY - this.pointerStartY;
+  /**
+   * Launch the inertia deceleration loop.
+   * Called on pointerUp when there is residual angular velocity.
+   * Frame-rate independent via dt-scaled friction.
+   */
+  private startInertia(): void {
+    cancelAnimationFrame(this.inertiaRafId);
+    if (this.isDisposed) return;
+    if (Math.abs(this.velocityYaw) < INERTIA_STOP && Math.abs(this.velocityPitch) < INERTIA_STOP) return;
 
-    this.setYaw(this.startYaw - deltaX * 0.12);
-    this.setPitch(this.startPitch + deltaY * 0.12);
+    let lastTs = performance.now();
+
+    const tick = (now: number): void => {
+      if (this.isDisposed || this.isPointerDown || this.isPinching) return;
+
+      const dt = Math.min(now - lastTs, 50); // cap to prevent huge jump on tab-resume
+      lastTs = now;
+
+      // Apply current velocity
+      this.yaw  += this.velocityYaw   * dt;
+      this.pitch = THREE.MathUtils.clamp(this.pitch + this.velocityPitch * dt, -85, 85);
+      this.updateCamera();
+      this.emitViewChange();
+
+      // Decay velocity — frame-rate independent: k = friction^(dt/16ms)
+      const k = Math.pow(INERTIA_FRICTION, dt / 16);
+      this.velocityYaw   *= k;
+      this.velocityPitch *= k;
+
+      if (Math.abs(this.velocityYaw) > INERTIA_STOP || Math.abs(this.velocityPitch) > INERTIA_STOP) {
+        this.inertiaRafId = requestAnimationFrame(tick);
+      }
+    };
+
+    this.inertiaRafId = requestAnimationFrame(tick);
   }
 
-  private handlePointerUp(event: PointerEvent): void {
-    this.isPointerDown = false;
-
-    if (this.renderer.domElement.hasPointerCapture(event.pointerId)) {
-      this.renderer.domElement.releasePointerCapture(event.pointerId);
+  /**
+   * Smooth wheel-zoom loop: exponential approach toward fovWheelTarget.
+   * Runs until within 0.05° of target. Each new wheel event resets the target.
+   */
+  private tickWheelFov(): void {
+    if (this.isDisposed || this.fovWheelTarget === null) {
+      this.fovWheelRafId = 0;
+      return;
     }
+
+    const delta = this.fovWheelTarget - this.fov;
+
+    if (Math.abs(delta) < 0.05) {
+      this.fov = this.fovWheelTarget;
+      this.fovWheelTarget = null;
+      this.camera.fov = this.fov;
+      this.camera.updateProjectionMatrix();
+      this.emitViewChange();
+      this.fovWheelRafId = 0;
+      return;
+    }
+
+    // Move 20% of remaining gap per frame (~60 fps → smooth deceleration)
+    this.fov += delta * 0.20;
+    this.camera.fov = this.fov;
+    this.camera.updateProjectionMatrix();
+    this.emitViewChange();
+
+    this.fovWheelRafId = requestAnimationFrame(() => this.tickWheelFov());
   }
 
-  private handleWheel(event: WheelEvent): void {
-    event.preventDefault();
-    this.setFov(this.fov + event.deltaY * 0.04);
+  /** Euclidean distance between the two active touch points */
+  private computePinchDist(): number {
+    const pts = [...this.activePointers.values()];
+    if (pts.length < 2) return 0;
+    const [a, b] = pts as [{ x: number; y: number }, { x: number; y: number }];
+    const dx = a.x - b.x;
+    const dy = a.y - b.y;
+    return Math.sqrt(dx * dx + dy * dy);
   }
+
+  // ── Private — utilities ──────────────────────────────────────────────────────
 
   private getContainerSize(): { width: number; height: number } {
-    const width = Math.max(this.container.clientWidth, 320);
-    const height = Math.max(this.container.clientHeight, 240);
-
-    return { width, height };
+    return {
+      width:  Math.max(this.container.clientWidth,  320),
+      height: Math.max(this.container.clientHeight, 240),
+    };
   }
 
-  private emitViewChange(): void {
-    this.onViewChange?.(this.getViewState());
-  }
-
-  private emitError(error: Error): void {
-    this.onError?.(error);
-  }
+  private emitViewChange(): void { this.onViewChange?.(this.getViewState()); }
+  private emitError(error: Error): void { this.onError?.(error); }
 }
 
 export default PanoramaEngine360;

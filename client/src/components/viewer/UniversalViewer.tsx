@@ -1041,11 +1041,16 @@ export default function UniversalViewer({
           </div>
           {/* Micro-scale wrapper — subtle parallax on desktop only, not on mobile/reduced-motion */}
           <div
-            style={!prefersReducedMotion && !isTouchDevice.current ? {
+            style={!prefersReducedMotion ? {
               transform: tPhase === 'out' ? 'scale(1.018)' : 'scale(1)',
+              filter: tPhase === 'out'
+                ? 'blur(6px) brightness(0.7)'
+                : tPhase === 'in'
+                  ? 'blur(2px) brightness(0.85)'
+                  : 'blur(0px) brightness(1)',
               transition: tPhase === 'out'
-                ? 'transform 400ms cubic-bezier(0.4,0,0.2,1)'
-                : 'transform 380ms cubic-bezier(0.4,0,0.2,1)',
+                ? 'transform 400ms cubic-bezier(0.4,0,0.2,1), filter 400ms cubic-bezier(0.4,0,0.2,1)'
+                : 'transform 380ms cubic-bezier(0.4,0,0.2,1), filter 380ms cubic-bezier(0.4,0,0.2,1)',
             } : undefined}
           >
           <ViewerErrorBoundary key={`eb-${activeSpace.id}`}>

@@ -276,26 +276,22 @@ export default function PanoramaViewer({
 
   function handleZoom(delta: number): void {
     const currentState = engineRef.current?.getViewState();
-
     if (!currentState) return;
 
-    engineRef.current?.setFov(currentState.fov + delta);
+    // animateFovTo gives the premium ease-out feel on button press
+    const targetFov = currentState.fov + delta;
+    engineRef.current?.animateFovTo(targetFov, 250);
 
-    const nextState = engineRef.current?.getViewState();
-
-    if (!nextState) return;
-
-    currentFovRef.current = nextState.fov;
-    setCurrentFov(nextState.fov);
+    // Optimistic UI update — the engine will emit onViewChange as it animates
+    const clamped = Math.min(Math.max(targetFov, 35), 95);
+    currentFovRef.current = clamped;
+    setCurrentFov(clamped);
 
     analyticsRef.current(
       createViewerEvent('zoom', {
         spaceId,
         assetId: asset.id,
-        data: {
-          propertyId,
-          fov: nextState.fov
-        }
+        data: { propertyId, fov: clamped }
       })
     );
   }
