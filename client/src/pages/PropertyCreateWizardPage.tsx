@@ -217,6 +217,37 @@ export default function PropertyCreateWizardPage(): JSX.Element {
   const [area, setArea] = useState('');
   const [showExtras, setShowExtras] = useState(false);
 
+  // Step 1 — address + geocoding
+  const [address, setAddress] = useState('');
+  const [geocodedLat, setGeocodedLat] = useState<number | null>(null);
+  const [geocodedLng, setGeocodedLng] = useState<number | null>(null);
+  const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
+
+  const geocodeAddress = useCallback(async (raw: string): Promise<void> => {
+    const query = raw.trim();
+    if (!query) { setGeocodeStatus('idle'); return; }
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+    if (!apiKey) return;
+    setGeocodeStatus('loading');
+    try {
+      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`;
+      const res = await fetch(url);
+      const data = await res.json() as { status: string; results: Array<{ geometry: { location: { lat: number; lng: number } } }> };
+      if (data.status === 'OK' && data.results.length > 0) {
+        const { lat, lng } = data.results[0].geometry.location;
+        setGeocodedLat(lat);
+        setGeocodedLng(lng);
+        setGeocodeStatus('ok');
+      } else {
+        setGeocodedLat(null);
+        setGeocodedLng(null);
+        setGeocodeStatus('error');
+      }
+    } catch {
+      setGeocodeStatus('error');
+    }
+  }, []);
+
   // Step 2 — uploads
   const [uploads, setUploads] = useState<UploadItem[]>([]);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -251,7 +282,10 @@ export default function PropertyCreateWizardPage(): JSX.Element {
         description: description.trim() || undefined,
         price: price ? Number(price) : undefined,
         rooms: rooms ? Number(rooms) : undefined,
-        area: area ? Number(area) : undefined
+        area: area ? Number(area) : undefined,
+        address: address.trim() || undefined,
+        latitude: geocodedLat ?? undefined,
+        longitude: geocodedLng ?? undefined
       };
       const property = await createProperty(payload);
       setPropertyId(property.id);
@@ -530,6 +564,51 @@ export default function PropertyCreateWizardPage(): JSX.Element {
                   autoFocus
                   className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-base font-semibold outline-none transition focus:border-slate-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
                 />
+              </label>
+
+              {/* Address + geocoding */}
+              <label className="mt-4 block">
+                <span className="mb-2 block text-sm font-black text-slate-700 dark:text-slate-300">
+                  Dirección
+                </span>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={address}
+                    onChange={(e) => { setAddress(e.target.value); setGeocodeStatus('idle'); }}
+                    onBlur={() => void geocodeAddress(address)}
+                    placeholder="Ej: Calle Gran Vía 32, Madrid"
+                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 pr-10 text-base font-semibold outline-none transition focus:border-slate-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
+                  />
+                  {/* Geocode status icon */}
+                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
+                    {geocodeStatus === 'loading' && (
+                      <svg className="h-4 w-4 animate-spin text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round"/>
+                      </svg>
+                    )}
+                    {geocodeStatus === 'ok' && (
+                      <svg className="h-4 w-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                        <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                    {geocodeStatus === 'error' && (
+                      <svg className="h-4 w-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                        <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                    )}
+                  </span>
+                </div>
+                {geocodeStatus === 'ok' && (
+                  <p className="mt-1 text-xs font-semibold text-emerald-600">
+                    📍 Ubicación encontrada — el mapa aparecerá en la ficha
+                  </p>
+                )}
+                {geocodeStatus === 'error' && (
+                  <p className="mt-1 text-xs font-semibold text-amber-500">
+                    No se encontró la dirección. La ficha se publicará sin mapa.
+                  </p>
+                )}
               </label>
 
               {/* Property type pills */}
