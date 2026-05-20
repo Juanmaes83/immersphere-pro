@@ -25,18 +25,24 @@ export function loadGoogleMapsScript(): Promise<boolean> {
 export async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
   const ok = await loadGoogleMapsScript();
   if (!ok) return null;
-  return new Promise((resolve) => {
+  try {
+    // Modern Maps JS SDK returns a Promise from geocode() — do NOT use callback form
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const geocoder = new (window as any).google.maps.Geocoder();
-    geocoder.geocode(
-      { address },
-      (results: Array<{ geometry: { location: { lat(): number; lng(): number } } }>, status: string) => {
-        if (status === 'OK' && results?.length) {
-          resolve({ lat: results[0].geometry.location.lat(), lng: results[0].geometry.location.lng() });
-        } else {
-          resolve(null);
-        }
-      }
-    );
-  });
+    const G = (window as any).google;
+    const geocoder = new G.maps.Geocoder() as {
+      geocode(req: { address: string }): Promise<{
+        results: Array<{ geometry: { location: { lat(): number; lng(): number } } }>;
+      }>;
+    };
+    const response = await geocoder.geocode({ address });
+    if (response.results?.length) {
+      return {
+        lat: response.results[0].geometry.location.lat(),
+        lng: response.results[0].geometry.location.lng()
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }

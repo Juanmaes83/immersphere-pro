@@ -544,7 +544,7 @@ export default function PropertiesPage(): JSX.Element {
       return;
     }
 
-    if ((payload.area ?? 0) <= 0) {
+    if (!editingPropertyId && (payload.area ?? 0) <= 0) {
       setMessage('La superficie debe ser mayor que 0 m2.');
       return;
     }
