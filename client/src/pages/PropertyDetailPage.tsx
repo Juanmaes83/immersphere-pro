@@ -1,4 +1,5 @@
 ﻿import { Suspense, lazy, useEffect, useRef, useState } from 'react';
+import PropertyVideoHero from '@/components/PropertyVideoHero';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { Link, useNavigate } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
@@ -903,6 +904,13 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 </p>
                 <p className="mt-4 leading-8 text-slate-600">{property.description}</p>
               </section>
+
+              {/* ── Hero Video — renders only when heroVideoUrl is set ── */}
+              <PropertyVideoHero
+                videoUrl={property.heroVideoUrl ?? ''}
+                posterUrl={property.heroVideoPoster || property.coverImage || undefined}
+                className="mt-8"
+              />
 
               <UniversalViewer
                 propertyId={property.id}

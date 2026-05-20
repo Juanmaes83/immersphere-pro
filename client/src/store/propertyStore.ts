@@ -56,6 +56,8 @@ interface ApiProperty {
   bathrooms: number;
   coverImage: string;
   floorplanUrl: string;
+  heroVideoUrl?: string;
+  heroVideoPoster?: string;
   address: string;
   latitude: number | null;
   longitude: number | null;
@@ -92,6 +94,8 @@ export interface ImmersiveProperty {
   coverImage: string;
   panoramaUrl: string;
   floorplanUrl: string;
+  heroVideoUrl: string;
+  heroVideoPoster: string;
   address: string;
   latitude: number | null;
   longitude: number | null;
@@ -133,6 +137,8 @@ export interface CreatePropertyPayload {
   coverImage?: string;
   panoramaUrl?: string;
   floorplanUrl?: string;
+  heroVideoUrl?: string;
+  heroVideoPoster?: string;
   address?: string;
   latitude?: number | null;
   longitude?: number | null;
@@ -462,6 +468,8 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
       coverImage: property.coverImage ?? '',
       panoramaUrl: '',
       floorplanUrl: '',
+      heroVideoUrl: '',
+      heroVideoPoster: '',
       thumbnailUrl: property.coverImage ?? '',
       address: '',
       latitude: null,
@@ -495,6 +503,8 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
     coverImage,
     panoramaUrl: getPrimaryPanoramaUrl(property.spaces ?? []),
     floorplanUrl: property.floorplanUrl ?? '',
+    heroVideoUrl: property.heroVideoUrl ?? '',
+    heroVideoPoster: property.heroVideoPoster ?? '',
     thumbnailUrl: coverImage || assetThumb,
     address: property.address ?? '',
     latitude: property.latitude ?? null,

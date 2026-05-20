@@ -85,6 +85,8 @@ const propertySchema = z.object({
   coverImage: z.string().optional(),
   panoramaUrl: z.string().optional(),
   floorplanUrl: z.string().optional(),
+  heroVideoUrl: z.string().optional(),
+  heroVideoPoster: z.string().optional(),
   address: z.string().optional(),
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),

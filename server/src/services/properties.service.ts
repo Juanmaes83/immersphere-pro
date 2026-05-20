@@ -110,6 +110,8 @@ interface PropertyInput {
   coverImage?: string;
   panoramaUrl?: string;
   floorplanUrl?: string;
+  heroVideoUrl?: string;
+  heroVideoPoster?: string;
   address?: string;
   latitude?: number | null;
   longitude?: number | null;
@@ -466,6 +468,8 @@ export async function createProperty(tenantId: string, input: PropertyInput) {
       bathrooms: input.bathrooms ?? 0,
       coverImage: input.coverImage ?? '',
       floorplanUrl: input.floorplanUrl ?? '',
+      heroVideoUrl: input.heroVideoUrl ?? '',
+      heroVideoPoster: input.heroVideoPoster ?? '',
       address: input.address ?? '',
       latitude: input.latitude ?? null,
       longitude: input.longitude ?? null,
@@ -508,6 +512,8 @@ export async function updateProperty(tenantId: string, propertyId: string, input
         bathrooms: input.bathrooms ?? 0,
         coverImage: input.coverImage ?? '',
         floorplanUrl: input.floorplanUrl ?? '',
+        heroVideoUrl: input.heroVideoUrl ?? '',
+        heroVideoPoster: input.heroVideoPoster ?? '',
         address: input.address ?? '',
         latitude: input.latitude ?? null,
         longitude: input.longitude ?? null,

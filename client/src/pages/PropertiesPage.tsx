@@ -119,6 +119,8 @@ export default function PropertiesPage(): JSX.Element {
     coverImage: '',
     panoramaUrl: '',
     floorplanUrl: '',
+    heroVideoUrl: '',
+    heroVideoPoster: '',
     address: '',
     latitude: null,
     longitude: null,
@@ -212,6 +214,8 @@ export default function PropertiesPage(): JSX.Element {
       coverImage: '',
       panoramaUrl: '',
       floorplanUrl: '',
+      heroVideoUrl: '',
+      heroVideoPoster: '',
       address: '',
       latitude: null,
       longitude: null,
@@ -501,6 +505,8 @@ export default function PropertiesPage(): JSX.Element {
       coverImage: String(form.coverImage ?? '').trim(),
       panoramaUrl: String(form.panoramaUrl ?? '').trim(),
       floorplanUrl: String(form.floorplanUrl ?? '').trim(),
+      heroVideoUrl: String(form.heroVideoUrl ?? '').trim(),
+      heroVideoPoster: String(form.heroVideoPoster ?? '').trim(),
       address: String(form.address ?? '').trim(),
       latitude: form.latitude ?? null,
       longitude: form.longitude ?? null,
@@ -524,6 +530,8 @@ export default function PropertiesPage(): JSX.Element {
       coverImage: property.coverImage ?? '',
       panoramaUrl: property.panoramaUrl ?? '',
       floorplanUrl: property.floorplanUrl ?? '',
+      heroVideoUrl: property.heroVideoUrl ?? '',
+      heroVideoPoster: property.heroVideoPoster ?? '',
       address: property.address ?? '',
       latitude: property.latitude ?? null,
       longitude: property.longitude ?? null,
@@ -957,6 +965,38 @@ export default function PropertiesPage(): JSX.Element {
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
             />
           </label>
+
+          {/* ── Vídeo principal ───────────────────────────────────────────── */}
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <p className="text-sm font-black text-slate-700">🎬 Vídeo principal <span className="ml-1 font-semibold text-slate-400">(opcional)</span></p>
+            <p className="mt-1 text-xs leading-5 text-slate-400">
+              Refuerza la presentación con un vídeo comercial, dron o walkthrough.<br />
+              Pega una URL MP4 pública — recomendado: Cloudinary o CDN propio.
+            </p>
+            <label className="mt-4 block">
+              <span className="mb-1.5 block text-xs font-black uppercase tracking-[0.12em] text-slate-500">URL vídeo MP4</span>
+              <input
+                type="text"
+                value={form.heroVideoUrl ?? ''}
+                onChange={(event) => setForm((current) => ({ ...current, heroVideoUrl: event.target.value }))}
+                placeholder="https://res.cloudinary.com/.../video.mp4"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+              />
+            </label>
+            <label className="mt-3 block">
+              <span className="mb-1.5 block text-xs font-black uppercase tracking-[0.12em] text-slate-500">Poster / imagen previa <span className="font-normal text-slate-400">(opcional)</span></span>
+              <input
+                type="text"
+                value={form.heroVideoPoster ?? ''}
+                onChange={(event) => setForm((current) => ({ ...current, heroVideoPoster: event.target.value }))}
+                placeholder="https://... (fallback: imagen de portada)"
+                className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
+              />
+            </label>
+            <p className="mt-3 text-xs text-slate-400">
+              ⚠️ Para mejor rendimiento, usa vídeos comprimidos en formato MP4 (H.264, max 50 MB recomendado).
+            </p>
+          </div>
 
           <label className="mt-4 block">
             <span className="mb-2 block text-sm font-black text-slate-700">

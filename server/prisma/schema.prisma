@@ -59,9 +59,11 @@ model Property {
   area        Int      @default(0)
   rooms       Int      @default(0)
   bathrooms   Int      @default(0)
-  coverImage    String   @default("")
-  floorplanUrl  String   @default("")
-  address       String   @default("")
+  coverImage      String   @default("")
+  floorplanUrl    String   @default("")
+  heroVideoUrl    String   @default("")
+  heroVideoPoster String   @default("")
+  address         String   @default("")
   latitude      Float?
   longitude     Float?
   language      String   @default("es")
