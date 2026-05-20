@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { geocodeAddress as geocodeAddressUtil } from '@/utils/googleMaps';
+import AddressAutocomplete from '@/components/AddressAutocomplete';
 import { useNavigate } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
 import { api, unwrapApiResponse, getApiErrorMessage } from '@/services/api';
@@ -568,32 +569,20 @@ export default function PropertyCreateWizardPage(): JSX.Element {
                   Dirección
                 </span>
                 <div className="relative">
-                  <input
-                    type="text"
+                  <AddressAutocomplete
                     value={address}
-                    onChange={(e) => { setAddress(e.target.value); setGeocodeStatus('idle'); }}
+                    onChange={(v) => { setAddress(v); setGeocodeStatus('idle'); }}
+                    onSelect={({ address: addr, lat, lng }) => {
+                      setAddress(addr);
+                      setGeocodedLat(lat);
+                      setGeocodedLng(lng);
+                      setGeocodeStatus('ok');
+                    }}
                     onBlur={() => void runGeocode(address)}
-                    placeholder="Ej: Calle Gran Vía 32, Madrid"
-                    className="w-full rounded-2xl border border-slate-200 px-4 py-3 pr-10 text-base font-semibold outline-none transition focus:border-slate-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
+                    geocodeStatus={geocodeStatus}
+                    placeholder="Ej: Gran Vía 32, Madrid"
+                    inputClassName="w-full rounded-2xl border border-slate-200 px-4 py-3 pr-10 text-base font-semibold outline-none transition focus:border-slate-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
                   />
-                  {/* Geocode status icon */}
-                  <span className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2">
-                    {geocodeStatus === 'loading' && (
-                      <svg className="h-4 w-4 animate-spin text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                        <path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" strokeLinecap="round"/>
-                      </svg>
-                    )}
-                    {geocodeStatus === 'ok' && (
-                      <svg className="h-4 w-4 text-emerald-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                        <path d="M5 13l4 4L19 7" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                    {geocodeStatus === 'error' && (
-                      <svg className="h-4 w-4 text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-                        <path d="M12 9v4M12 17h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    )}
-                  </span>
                 </div>
                 {geocodeStatus === 'ok' && (
                   <p className="mt-1 text-xs font-semibold text-emerald-600">

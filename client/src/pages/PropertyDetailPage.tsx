@@ -11,6 +11,8 @@ import UniversalViewer from '@/components/viewer/UniversalViewer';
 import LeadCaptureModal from '@/components/viewer/LeadCaptureModal';
 import { AUTH_STORAGE_KEYS, api, unwrapApiResponse } from '@/services/api';
 import { geocodeAddress } from '@/utils/googleMaps';
+import AddressAutocomplete from '@/components/AddressAutocomplete';
+import NeighborhoodSection from '@/components/NeighborhoodSection';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type ImmersiveProperty } from '@/store/propertyStore';
 import type { Space, ViewerEvent } from '@/types/viewer';
@@ -934,6 +936,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                       <PropertyMap lat={property.latitude} lng={property.longitude} title={property.title} />
                     </Suspense>
                   </ErrorBoundary>
+                  <NeighborhoodSection lat={property.latitude} lng={property.longitude} />
                   {isAuthenticated && (
                     <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
                       <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
@@ -960,14 +963,29 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
                   <p className="mb-2 text-xs font-black uppercase tracking-wider text-slate-500">Dirección de la propiedad</p>
                   <div className="flex gap-2">
-                    <input
-                      type="text"
+                    <AddressAutocomplete
                       value={addressDraft}
-                      onChange={(e) => { setAddressDraft(e.target.value); setAddrGeoStatus('idle'); }}
+                      onChange={(v) => { setAddressDraft(v); setAddrGeoStatus('idle'); }}
+                      onSelect={({ address, lat, lng }) => {
+                        setAddressDraft(address);
+                        // Direct coordinates from autocomplete — save immediately
+                        void (async () => {
+                          setAddrGeoStatus('ok');
+                          setAddrSaving(true);
+                          try {
+                            await updateProperty(selectedProperty!.id, { address, latitude: lat, longitude: lng });
+                            await fetchPropertyById(selectedProperty!.id);
+                            setEditingAddress(false);
+                          } finally {
+                            setAddrSaving(false);
+                          }
+                        })();
+                      }}
+                      geocodeStatus={addrGeoStatus}
                       onKeyDown={(e) => { if (e.key === 'Enter') void geocodeAndSave(); if (e.key === 'Escape') setEditingAddress(false); }}
-                      placeholder="Ej: Calle Gran Vía 32, Madrid"
+                      placeholder="Ej: Gran Vía 32, Madrid"
                       autoFocus
-                      className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none transition focus:border-slate-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                      inputClassName="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-slate-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 pr-9"
                     />
                     <button
                       type="button"
