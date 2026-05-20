@@ -319,8 +319,8 @@ export default function PropertiesPage(): JSX.Element {
       return;
     }
 
-    if (file.size > 100 * 1024 * 1024) {
-      setMessage('El archivo supera el limite de 100 MB.');
+    if (file.size > 500 * 1024 * 1024) {
+      setMessage('El archivo supera el límite de 500 MB. Comprime el archivo antes de subir (usa SuperSplat para .ply/.splat).');
       return;
     }
 

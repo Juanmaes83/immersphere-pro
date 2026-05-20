@@ -6,6 +6,21 @@ import { usePropertyStore } from '@/store/propertyStore';
 import type { CreateSpacePayload, CreatePropertyPayload } from '@/store/propertyStore';
 import type { UploadAssetResponse } from '@/types/api';
 
+// ── Upload error humanizer ────────────────────────────────────────────────────
+function humanizeUploadError(raw: string): string {
+  const msg = (raw ?? '').toLowerCase();
+  if (msg.includes('extension') || msg.includes('formato') || msg.includes('not permitted') || msg.includes('not allowed') || msg.includes('tipo')) {
+    return 'Formato no admitido. Usa JPG, PNG, WEBP para panoramas o PLY, SPLAT para Gaussian.';
+  }
+  if (msg.includes('supera') || msg.includes('limit') || msg.includes('too large') || msg.includes('size') || msg.includes('grande')) {
+    return 'Archivo demasiado grande. El límite es 500 MB. Comprime con SuperSplat antes de subir.';
+  }
+  if (msg.includes('network') || msg.includes('connection') || msg.includes('fetch') || msg.includes('timeout') || msg.includes('conexi')) {
+    return 'Error de conexión. Comprueba tu wifi e inténtalo de nuevo.';
+  }
+  return 'Error al subir. Comprueba tu conexión e inténtalo de nuevo.';
+}
+
 // ── Room detection from filename ──────────────────────────────────────────────
 interface RoomDefaults {
   name: string;
@@ -839,6 +854,24 @@ export default function PropertyCreateWizardPage(): JSX.Element {
                 onChange={(e) => { addFiles(e.target.files); e.target.value = ''; }}
               />
 
+              {/* ── Explicit upload button + size/format reminder ── */}
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl py-4 text-sm font-black text-white shadow-sm transition hover:opacity-90 active:scale-95"
+                style={bgStyle}
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-5 w-5">
+                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                  <polyline points="17 8 12 3 7 8" />
+                  <line x1="12" y1="3" x2="12" y2="15" />
+                </svg>
+                Subir archivos
+              </button>
+              <p className="mt-2 text-center text-xs font-semibold text-slate-400">
+                Máx. 500 MB · JPG PNG WEBP para panoramas · PLY SPLAT para Gaussian
+              </p>
+
               {/* Upload list */}
               {uploads.length > 0 && (
                 <ul className="mt-4 space-y-2">
@@ -871,27 +904,50 @@ export default function PropertyCreateWizardPage(): JSX.Element {
                           className="w-full rounded-lg border border-transparent bg-transparent px-1 py-0.5 text-sm font-black text-slate-800 outline-none transition focus:border-slate-300 dark:text-slate-100"
                           placeholder="Nombre del espacio"
                         />
+                        {u.status === 'queued' && (
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <span className="h-2 w-2 animate-pulse rounded-full bg-slate-300 dark:bg-slate-500" />
+                            <p className="text-xs font-semibold text-slate-400">Preparando…</p>
+                          </div>
+                        )}
                         {u.status === 'uploading' && (
-                          <div className="mt-1 flex items-center gap-2">
-                            <div className="h-1 flex-1 overflow-hidden rounded-full bg-slate-200">
+                          <div className="mt-1.5">
+                            <div className="mb-1 flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-500 dark:text-slate-400">Subiendo…</span>
+                              <span className="text-xs font-black" style={{ color }}>{u.progress}%</span>
+                            </div>
+                            <div className="h-2.5 w-full overflow-hidden rounded-full bg-slate-200 dark:bg-slate-600">
                               <div
-                                className="h-full rounded-full transition-all"
+                                className="h-full rounded-full transition-all duration-300"
                                 style={{ width: `${u.progress}%`, backgroundColor: color }}
                               />
                             </div>
-                            <span className="text-xs font-bold text-slate-400">{u.progress}%</span>
                           </div>
                         )}
                         {u.status === 'done' && (
-                          <p className="mt-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
-                            Subido correctamente · {u.sizeMb} MB
-                          </p>
+                          <div className="mt-1 flex items-center gap-1.5">
+                            <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-emerald-500 text-white">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-2.5 w-2.5">
+                                <polyline points="20 6 9 17 4 12" />
+                              </svg>
+                            </span>
+                            <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                              Listo · {u.sizeMb} MB
+                            </p>
+                          </div>
                         )}
                         {u.status === 'error' && (
-                          <p className="mt-0.5 text-xs font-semibold text-red-500">{u.errorMsg}</p>
-                        )}
-                        {u.status === 'queued' && (
-                          <p className="mt-0.5 text-xs font-semibold text-slate-400">En cola…</p>
+                          <div className="mt-1 flex items-start gap-1.5">
+                            <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-red-500 text-white">
+                              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" className="h-2.5 w-2.5">
+                                <line x1="18" y1="6" x2="6" y2="18" />
+                                <line x1="6" y1="6" x2="18" y2="18" />
+                              </svg>
+                            </span>
+                            <p className="text-xs font-semibold text-red-500">
+                              {humanizeUploadError(u.errorMsg ?? '')}
+                            </p>
+                          </div>
                         )}
                       </div>
 
