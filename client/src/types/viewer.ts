@@ -1,4 +1,4 @@
-﻿export type ViewerAssetType = 'panorama_360' | 'gaussian_splat' | 'mesh' | 'luma_embed';
+﻿export type ViewerAssetType = 'panorama_360' | 'gaussian_splat' | 'mesh' | 'luma_embed' | 'supersplat_embed';
 
 export type ViewerAssetFormat =
   | 'jpg'

@@ -7,13 +7,31 @@ interface Props {
   isAuthenticated: boolean;
 }
 
-// Detects if a property has any space with a LUMA_EMBED asset
-function getLumaSpace(property: ImmersiveProperty): { spaceId: string; assetUrl: string } | null {
+type EmbedKind = 'luma' | 'supersplat';
+
+function detectEmbedKind(url: string): EmbedKind {
+  return url.includes('superspl.at') || /^[a-f0-9]{8}$/i.test(url.trim())
+    ? 'supersplat'
+    : 'luma';
+}
+
+// Detects if a property has any space with a LUMA_EMBED or SUPERSPLAT_EMBED asset
+function getLumaSpace(property: ImmersiveProperty): { spaceId: string; assetUrl: string; kind: EmbedKind } | null {
   for (const space of property.spaces ?? []) {
-    const lumaAsset = space.assets?.find(
-      (a) => a.type === 'luma_embed' || (a as { type: string }).type === 'LUMA_EMBED'
+    const embedAsset = space.assets?.find(
+      (a) =>
+        a.type === 'luma_embed' ||
+        (a as { type: string }).type === 'LUMA_EMBED' ||
+        a.type === 'supersplat_embed' ||
+        (a as { type: string }).type === 'SUPERSPLAT_EMBED'
     );
-    if (lumaAsset) return { spaceId: space.id, assetUrl: lumaAsset.url };
+    if (embedAsset) {
+      const kind: EmbedKind =
+        embedAsset.type === 'supersplat_embed' || (embedAsset as { type: string }).type === 'SUPERSPLAT_EMBED'
+          ? 'supersplat'
+          : 'luma';
+      return { spaceId: space.id, assetUrl: embedAsset.url, kind };
+    }
   }
   return null;
 }
@@ -28,6 +46,15 @@ function toEmbedUrl(url: string): string {
     .replace('lumalabs.ai/scene/', 'lumalabs.ai/embed/');
 }
 
+function toSuperSplatEmbedUrl(url: string): string {
+  const embedBase = 'https://superspl.at/s?id=';
+  if (url.startsWith(embedBase)) return url;
+  const sceneMatch = url.match(/superspl\.at\/scene\/([a-f0-9]+)/i);
+  if (sceneMatch) return `${embedBase}${sceneMatch[1]}`;
+  if (/^[a-f0-9]{8}$/i.test(url.trim())) return `${embedBase}${url.trim()}`;
+  return url;
+}
+
 export default function LumaSection({ property, isAuthenticated }: Props): JSX.Element | null {
   const { createSpace, createAsset, fetchPropertyById } = usePropertyStore();
   const [editing, setEditing] = useState(false);
@@ -40,22 +67,25 @@ export default function LumaSection({ property, isAuthenticated }: Props): JSX.E
   async function handleSave() {
     const trimmed = url.trim();
     if (!trimmed) return;
-    // Basic validation: must be a lumalabs.ai URL or a UUID
+    // Accept Luma AI URLs/UUIDs and SuperSplat URLs/scene IDs
     const isLumaUrl = trimmed.includes('lumalabs.ai') ||
       /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed);
-    if (!isLumaUrl) {
-      setError('Introduce una URL de Luma AI (lumalabs.ai/capture/...) o un UUID de escena.');
+    const isSuperSplatUrl = trimmed.includes('superspl.at') ||
+      /^[a-f0-9]{8}$/i.test(trimmed);
+    if (!isLumaUrl && !isSuperSplatUrl) {
+      setError('Introduce una URL de Luma AI (lumalabs.ai/capture/...) o SuperSplat (superspl.at/scene/...).');
       return;
     }
+    const kind = detectEmbedKind(trimmed);
     setSaving(true);
     setError('');
     try {
       const space = await createSpace(property.id, {
-        name: 'Tour Luma 3D',
+        name: kind === 'supersplat' ? 'Gaussian Splat 3D' : 'Tour Luma 3D',
         order: (property.spaces?.length ?? 0) + 1,
       });
       await createAsset(property.id, space.id, {
-        type: 'luma_embed',
+        type: kind === 'supersplat' ? 'supersplat_embed' : 'luma_embed',
         url: trimmed,
         format: 'iframe',
         size: 0,
@@ -85,7 +115,7 @@ export default function LumaSection({ property, isAuthenticated }: Props): JSX.E
             onClick={() => setEditing(true)}
             className="text-xs font-bold text-blue-600 hover:underline"
           >
-            {existing ? 'Cambiar escena' : '+ Añadir escena Luma'}
+            {existing ? 'Cambiar escena' : '+ Añadir escena 3D'}
           </button>
         )}
       </div>
@@ -94,14 +124,14 @@ export default function LumaSection({ property, isAuthenticated }: Props): JSX.E
       {isAuthenticated && editing && (
         <div className="mb-4 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
           <p className="mb-1 text-xs font-bold text-slate-500">
-            URL de Luma AI <span className="font-normal opacity-70">(lumalabs.ai/capture/... o UUID)</span>
+            URL de Luma AI o SuperSplat <span className="font-normal opacity-70">(lumalabs.ai/capture/... · superspl.at/scene/...)</span>
           </p>
           <div className="flex gap-2">
             <input
               type="text"
               value={url}
               onChange={e => { setUrl(e.target.value); setError(''); }}
-              placeholder="https://lumalabs.ai/capture/abc123..."
+              placeholder="https://superspl.at/scene/91c1e47e"
               className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold outline-none focus:border-slate-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
               autoFocus
             />
@@ -121,19 +151,20 @@ export default function LumaSection({ property, isAuthenticated }: Props): JSX.E
           </div>
           {error && <p className="mt-1.5 text-xs font-semibold text-red-500">{error}</p>}
           <p className="mt-2 text-xs text-slate-400">
-            Consigue la URL en <a href="https://lumalabs.ai" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">lumalabs.ai</a> → captura → Compartir → "Embed link"
+            Luma: <a href="https://lumalabs.ai" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">lumalabs.ai</a> → captura → Compartir → "Embed link" ·{' '}
+            SuperSplat: <a href="https://superspl.at" target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">superspl.at</a> → escena → copiar URL
           </p>
         </div>
       )}
 
-      {/* Luma embed viewer */}
+      {/* Embed viewer — Luma or SuperSplat */}
       {existing && (
         <div className="overflow-hidden rounded-[1.6rem] ring-1 ring-slate-200 dark:ring-slate-700" style={{ height: 480 }}>
           <iframe
-            src={toEmbedUrl(existing.assetUrl)}
+            src={existing.kind === 'supersplat' ? toSuperSplatEmbedUrl(existing.assetUrl) : toEmbedUrl(existing.assetUrl)}
             className="h-full w-full border-0"
-            allow="autoplay; fullscreen; xr-spatial-tracking"
-            title="Tour 3D Luma"
+            allow={existing.kind === 'supersplat' ? 'fullscreen; xr-spatial-tracking' : 'autoplay; fullscreen; xr-spatial-tracking'}
+            title={existing.kind === 'supersplat' ? 'Gaussian Splat 3D' : 'Tour 3D Luma'}
             loading="lazy"
           />
         </div>
@@ -143,9 +174,9 @@ export default function LumaSection({ property, isAuthenticated }: Props): JSX.E
       {!existing && isAuthenticated && !editing && (
         <div className="flex h-40 items-center justify-center rounded-[1.6rem] border-2 border-dashed border-slate-200 dark:border-slate-700">
           <div className="text-center">
-            <p className="text-sm font-bold text-slate-400">Sin escena Luma 3D</p>
+            <p className="text-sm font-bold text-slate-400">Sin escena 3D</p>
             <p className="mt-1 text-xs text-slate-400">
-              Captura con la app Luma AI y pega el enlace aquí
+              Añade una escena Luma AI o SuperSplat
             </p>
           </div>
         </div>

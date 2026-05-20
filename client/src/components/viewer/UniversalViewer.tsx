@@ -10,6 +10,7 @@ import { t } from '@/i18n/dictionary';
 
 const GlbViewer = lazy(() => import('@/components/viewer/GlbViewer'));
 const LumaEmbedViewer = lazy(() => import('@/components/viewer/LumaEmbedViewer'));
+const SuperSplatEmbedViewer = lazy(() => import('@/components/viewer/SuperSplatEmbedViewer'));
 import { AUTH_STORAGE_KEYS } from '@/services/api';
 import type {
   Hotspot,
@@ -1320,6 +1321,17 @@ export default function UniversalViewer({
                 }
               >
                 <LumaEmbedViewer asset={activeAsset} />
+              </Suspense>
+            ) : activeAsset.type === 'supersplat_embed' ? (
+              <Suspense
+                key={`supersplat-${activeSpace.id}-${activeAsset.id}`}
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center bg-black">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  </div>
+                }
+              >
+                <SuperSplatEmbedViewer asset={activeAsset} />
               </Suspense>
             ) : (
               <Suspense

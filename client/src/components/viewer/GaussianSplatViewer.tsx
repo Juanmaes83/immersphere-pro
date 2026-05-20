@@ -525,7 +525,7 @@ export default function GaussianSplatViewer({
 
                     <button
                       type="button"
-                      onClick={() => { window.open('https://superspl.at/scene/6a0c3ccf', '_blank', 'noopener,noreferrer'); }}
+                      onClick={() => { window.open('https://superspl.at/scene/91c1e47e', '_blank', 'noopener,noreferrer'); }}
                       title={t(lang, 'splat_preview_supersplat')}
                       className="w-full rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80 transition hover:bg-white/10"
                     >
