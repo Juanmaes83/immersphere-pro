@@ -91,7 +91,7 @@ function MobileBottomNav(): JSX.Element | null {
 
   // Hide on public viewer and embed routes
   const isViewerRoute =
-    /^\/property\/[^/]+$/.test(location.pathname) ||
+    /^\/property\/[^/]+(?:\/[^/]+)?$/.test(location.pathname) ||
     location.pathname.startsWith('/embed/');
 
   if (!isAuthenticated || isViewerRoute) return null;
@@ -157,7 +157,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
   const location = useLocation();
 
   const isViewerRoute =
-    /^\/property\/[^/]+$/.test(location.pathname) ||
+    /^\/property\/[^/]+(?:\/[^/]+)?$/.test(location.pathname) ||
     location.pathname.startsWith('/embed/');
 
   const showMobileNav = isAuthenticated && !isViewerRoute;
@@ -316,6 +316,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/ayuda" element={<HelpPage />} />
         <Route path="/compare" element={<ComparePage />} />
         <Route path="/property/:id" element={<PropertyRoutePage />} />
+        <Route path="/property/:id/:slug" element={<PropertyRoutePage />} />
         <Route path="/embed/:id" element={<EmbedRoutePage />} />
         <Route path="/agency/:slug" element={<AgencyPage />} />
         <Route path="/billing/success" element={<BillingSuccessPage />} />

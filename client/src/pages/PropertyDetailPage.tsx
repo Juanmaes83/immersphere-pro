@@ -11,9 +11,11 @@ import UniversalViewer from '@/components/viewer/UniversalViewer';
 import LeadCaptureModal from '@/components/viewer/LeadCaptureModal';
 import { AUTH_STORAGE_KEYS, api, unwrapApiResponse } from '@/services/api';
 import { geocodeAddress } from '@/utils/googleMaps';
+import { propertyShareUrl } from '@/utils/slugify';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import NeighborhoodSection from '@/components/NeighborhoodSection';
 import LumaSection from '@/components/LumaSection';
+import ShareModal from '@/components/ShareModal';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type ImmersiveProperty } from '@/store/propertyStore';
 import type { Space, ViewerEvent } from '@/types/viewer';
@@ -577,6 +579,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   const [tourErrorMsg, setTourErrorMsg] = useState<string | null>(null);
   const [iframeCopied, setIframeCopied] = useState(false);
   const [showContactModal, setShowContactModal] = useState(false);
+  const [showShareModal, setShowShareModal] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [waVisible, setWaVisible] = useState(false);
 
@@ -635,38 +638,12 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   }
 
   function handleCopyLink(): void {
-    const url = `${window.location.origin}/property/${propertyId}`;
+    const url = propertyShareUrl(propertyId, selectedProperty?.title ?? '');
     void navigator.clipboard.writeText(url).then(() => {
       setLinkCopied(true);
       setTimeout(() => setLinkCopied(false), 1800);
       trackShareEvent('copy');
     });
-  }
-
-  async function handleNativeShare(): Promise<void> {
-    const url = `${window.location.origin}/property/${propertyId}`;
-    const shareData: ShareData = {
-      title: `${property?.title ?? ''} · ${t(lang, 'share_tour_suffix')}`,
-      text: `${property?.title ?? ''} — ${t(lang, 'share_body')}`,
-      url,
-    };
-    try {
-      if (
-        typeof navigator.share === 'function' &&
-        navigator.canShare?.(shareData)
-      ) {
-        await navigator.share(shareData);
-        trackShareEvent('native');
-      } else {
-        // Fallback: copy to clipboard (same feedback as handleCopyLink)
-        await navigator.clipboard.writeText(url);
-        setLinkCopied(true);
-        setTimeout(() => setLinkCopied(false), 1800);
-        trackShareEvent('copy');
-      }
-    } catch {
-      // User cancelled the native share sheet — no action needed
-    }
   }
 
   function handleCopyIframe(): void {
@@ -849,7 +826,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
     property.type
   ].filter(Boolean).join(' · ');
   const ogImage = property.coverImage ?? '';
-  const ogUrl = `${window.location.origin}/property/${property.id}`;
+  const ogUrl = propertyShareUrl(property.id, property.title);
 
   const jsonLd = {
     '@context': 'https://schema.org',
@@ -863,6 +840,15 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
     numberOfRooms: property.rooms,
     numberOfBathroomsTotal: property.bathrooms,
     additionalType: property.type,
+    // QW-2: GeoCoordinates for local SEO — only when coordinates are available
+    ...(property.latitude && property.longitude ? {
+      geo: {
+        '@type': 'GeoCoordinates',
+        latitude: property.latitude,
+        longitude: property.longitude,
+      },
+    } : {}),
+    ...(property.address ? { address: property.address } : {}),
     provider: {
       '@type': 'Organization',
       name: property.removeBranding ? `Agencia (${property.tenantId.slice(0, 8)})` : 'Immersphere Pro',
@@ -958,7 +944,16 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                     </button>
                   ) : null}
                 </div>
-              ) : null}
+              ) : (
+                /* QW-3: public fallback when coordinates are not set */
+                <div className="mt-8 flex h-20 items-center justify-center gap-2 rounded-[1.6rem] bg-slate-50 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
+                  <svg className="h-4 w-4 shrink-0 text-slate-300 dark:text-slate-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z" strokeLinecap="round" strokeLinejoin="round"/>
+                    <circle cx="12" cy="10" r="3"/>
+                  </svg>
+                  <p className="text-sm font-bold text-slate-400 dark:text-slate-500">Ubicación no disponible</p>
+                </div>
+              )}
 
               {/* ── Inline address editor ── */}
               {isAuthenticated && editingAddress && (
@@ -1064,7 +1059,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
               {!embed ? (
                 <button
                   type="button"
-                  onClick={() => { void handleNativeShare(); }}
+                  onClick={() => { setShowShareModal(true); trackShareEvent('native'); }}
                   className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700"
                 >
                   {t(lang, 'share_btn')}
@@ -1139,6 +1134,17 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
           lang={lang}
           onClose={() => setShowContactModal(false)}
           onSubmitted={() => setShowContactModal(false)}
+        />
+      ) : null}
+      {showShareModal ? (
+        <ShareModal
+          propertyId={property.id}
+          title={property.title}
+          description={property.description ?? undefined}
+          imageUrl={property.coverImage ?? undefined}
+          primaryColor={primaryColor}
+          whatsappNumber={property.tenantWhatsapp ?? undefined}
+          onClose={() => setShowShareModal(false)}
         />
       ) : null}
       {property.tenantWhatsapp && !embed ? (

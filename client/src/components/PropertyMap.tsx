@@ -9,14 +9,27 @@ interface PropertyMapProps {
 type Tab = 'map' | 'street';
 
 // ── Component ─────────────────────────────────────────────────────────────────
-// Uses Google Maps iframe embed (no API key required) + Nominatim geocoding.
-// Street View tab opens in Google Maps directly (no key needed).
+// Uses Google Maps iframe embed (no API key required).
+// QW-1: Deep link "Cómo llegar" with UA detection (iOS/Android/Desktop).
+// QW-4: Loading skeleton while iframe is painting.
 export default function PropertyMap({ lat, lng, title }: PropertyMapProps): JSX.Element {
   const [tab, setTab] = useState<Tab>('map');
+  const [mapLoaded, setMapLoaded] = useState(false);
+  const [streetLoaded, setStreetLoaded] = useState(false);
 
-  const gmapsUrl      = `https://www.google.com/maps?q=${lat},${lng}`;
-  const embedUrl      = `https://maps.google.com/maps?q=${lat},${lng}&hl=es&z=16&output=embed`;
+  const gmapsUrl       = `https://www.google.com/maps?q=${lat},${lng}`;
+  const embedUrl       = `https://maps.google.com/maps?q=${lat},${lng}&hl=es&z=16&output=embed`;
   const streetEmbedUrl = `https://maps.google.com/maps?q=&layer=c&cbll=${lat},${lng}&cbp=12,0,0,0,0&hl=es&output=embed`;
+
+  // QW-1 — mobile-first deep link for directions
+  const directionsUrl = ((): string => {
+    if (typeof navigator === 'undefined')
+      return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+    const ua = navigator.userAgent;
+    if (/iPad|iPhone|iPod/.test(ua)) return `maps://maps.apple.com/?daddr=${lat},${lng}`;
+    if (/Android/.test(ua))          return `geo:${lat},${lng}?q=${lat},${lng}`;
+    return `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
+  })();
 
   return (
     <section className="mt-8 overflow-hidden rounded-[1.6rem] ring-1 ring-slate-200 dark:ring-slate-700">
@@ -70,33 +83,63 @@ export default function PropertyMap({ lat, lng, title }: PropertyMapProps): JSX.
 
       {/* ── Map panel — iframe embed, no API key needed ── */}
       {tab === 'map' && (
-        <iframe
-          key={`map-${lat}-${lng}`}
-          src={embedUrl}
-          width="100%"
-          height="320"
-          style={{ border: 0, display: 'block' }}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          title={title}
-          allowFullScreen
-        />
+        <div className="relative" style={{ height: 320 }}>
+          {/* QW-4: skeleton while iframe paints */}
+          {!mapLoaded && (
+            <div className="absolute inset-0 z-10 animate-pulse bg-slate-100 dark:bg-slate-800" />
+          )}
+          <iframe
+            key={`map-${lat}-${lng}`}
+            src={embedUrl}
+            width="100%"
+            height="320"
+            style={{ border: 0, display: 'block' }}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title={title}
+            allowFullScreen
+            onLoad={() => setMapLoaded(true)}
+          />
+        </div>
       )}
 
       {/* ── Street View panel — iframe embed (no API key needed) ── */}
       {tab === 'street' && (
-        <iframe
-          key={`sv-${lat}-${lng}`}
-          src={streetEmbedUrl}
-          width="100%"
-          height="320"
-          style={{ border: 0, display: 'block' }}
-          loading="lazy"
-          referrerPolicy="no-referrer-when-downgrade"
-          title={`Street View — ${title}`}
-          allowFullScreen
-        />
+        <div className="relative" style={{ height: 320 }}>
+          {/* QW-4: skeleton while iframe paints */}
+          {!streetLoaded && (
+            <div className="absolute inset-0 z-10 animate-pulse bg-slate-100 dark:bg-slate-800" />
+          )}
+          <iframe
+            key={`sv-${lat}-${lng}`}
+            src={streetEmbedUrl}
+            width="100%"
+            height="320"
+            style={{ border: 0, display: 'block' }}
+            loading="lazy"
+            referrerPolicy="no-referrer-when-downgrade"
+            title={`Street View — ${title}`}
+            allowFullScreen
+            onLoad={() => setStreetLoaded(true)}
+          />
+        </div>
       )}
+
+      {/* ── QW-1: "Cómo llegar" footer — mobile-first deep link ── */}
+      <div className="flex items-center justify-between border-t border-slate-100 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
+        <a
+          href={directionsUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 text-sm font-black text-blue-600 hover:underline"
+        >
+          <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+            <path d="M3 12h18M13 6l6 6-6 6" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          Cómo llegar
+        </a>
+        <span className="text-xs text-slate-400 tabular-nums">{lat.toFixed(5)}, {lng.toFixed(5)}</span>
+      </div>
 
     </section>
   );
