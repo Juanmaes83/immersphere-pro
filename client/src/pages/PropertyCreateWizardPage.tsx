@@ -602,7 +602,7 @@ export default function PropertyCreateWizardPage(): JSX.Element {
                 )}
                 {geocodeStatus === 'error' && (
                   <p className="mt-1 text-xs font-semibold text-amber-500">
-                    No se encontró la dirección. La ficha se publicará sin mapa.
+                    No encontrada. Prueba sin "Calle/Avenida" — ej: <em>Gran Vía 32, Madrid</em>
                   </p>
                 )}
               </label>

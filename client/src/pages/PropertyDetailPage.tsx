@@ -980,7 +980,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                     <button type="button" onClick={() => setEditingAddress(false)} className="rounded-xl px-3 py-2 text-sm font-black text-slate-400 hover:text-slate-600">✕</button>
                   </div>
                   {addrGeoStatus === 'ok'    && <p className="mt-1.5 text-xs font-semibold text-emerald-600">✅ Ubicación encontrada</p>}
-                  {addrGeoStatus === 'error' && <p className="mt-1.5 text-xs font-semibold text-amber-500">⚠️ Dirección no encontrada. Intenta ser más específico.</p>}
+                  {addrGeoStatus === 'error' && <p className="mt-1.5 text-xs font-semibold text-amber-500">⚠️ Dirección no encontrada. Prueba sin "Calle" — ej: <em>Gran Vía 32, Madrid</em></p>}
                   {addrGeoStatus === 'loading' && <p className="mt-1.5 text-xs font-semibold text-slate-400">Buscando…</p>}
                 </div>
               )}
