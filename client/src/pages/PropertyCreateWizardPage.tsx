@@ -795,17 +795,27 @@ export default function PropertyCreateWizardPage(): JSX.Element {
                           </li>
                         ))}
                       </ol>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="mt-4 flex items-center gap-1.5 text-sm font-black"
-                        style={{ color }}
-                      >
-                        Listo, seleccionar archivos
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                      </button>
+                      <div className="mt-4 flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex items-center gap-1.5 text-sm font-black"
+                          style={{ color }}
+                        >
+                          Listo, seleccionar archivos
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
+                        </button>
+                        <a
+                          href="/ayuda#capture-workflow"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-black text-blue-500 hover:underline"
+                        >
+                          Ver guía completa →
+                        </a>
+                      </div>
                     </div>
                   )}
 
@@ -849,17 +859,27 @@ export default function PropertyCreateWizardPage(): JSX.Element {
                           </li>
                         ))}
                       </ol>
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="mt-4 flex items-center gap-1.5 text-sm font-black"
-                        style={{ color }}
-                      >
-                        Listo, seleccionar archivos
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
-                          <polyline points="9 18 15 12 9 6" />
-                        </svg>
-                      </button>
+                      <div className="mt-4 flex items-center justify-between">
+                        <button
+                          type="button"
+                          onClick={() => fileInputRef.current?.click()}
+                          className="flex items-center gap-1.5 text-sm font-black"
+                          style={{ color }}
+                        >
+                          Listo, seleccionar archivos
+                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
+                            <polyline points="9 18 15 12 9 6" />
+                          </svg>
+                        </button>
+                        <a
+                          href="/ayuda#capture-workflow"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-xs font-black text-purple-500 hover:underline"
+                        >
+                          Cómo capturar correctamente →
+                        </a>
+                      </div>
                     </div>
                   )}
 

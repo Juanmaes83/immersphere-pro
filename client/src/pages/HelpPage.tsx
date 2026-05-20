@@ -11,7 +11,7 @@ const STEPS = [
     icon: '📸',
     label: 'Captura',
     title: 'Haz la foto en 5 minutos',
-    body: 'Usa Google Street View (gratis, iOS y Android): abre la app, toca "Crear" → "Foto esférica" y gira sobre ti mismo. O graba un vídeo de 2 minutos y conviértelo en 3D con Luma AI.',
+    body: 'Usa Google Street View (gratis, iOS y Android): abre la app, toca "Crear" → "Foto esférica" y gira sobre ti mismo. Para escenas 3D avanzadas, captura con Polycam o Luma AI y exporta el archivo .splat resultante — ver guía completa más abajo.',
     note: 'Formatos: JPG · PNG · WEBP · PLY · SPLAT',
   },
   {
@@ -19,7 +19,7 @@ const STEPS = [
     label: 'Sube',
     title: 'Arrastra tu archivo al panel',
     body: 'Entra en tu panel, crea una propiedad y sube el archivo. Sin programas. Sin complicaciones. Tu tour está listo en menos de un minuto.',
-    note: 'Tamaño máximo: 100 MB',
+    note: 'Tamaño máximo: 500 MB',
   },
   {
     icon: '🚀',
@@ -66,7 +66,7 @@ const SECTORS: Array<{
     ],
     steps: [
       'Renderiza tu proyecto en 360° (3ds Max, Blender, SketchUp)',
-      'O graba un vídeo de la obra y conviértelo con Luma AI',
+      'Para proyectos premium: Gaussian Splat con Polycam o Postshot (workflow asistido)',
       'Súbelo a Immersphere Pro',
       'Añade hotspots con datos comerciales: precio, m², entrega',
     ],
@@ -131,7 +131,7 @@ const FAQS = [
   },
   {
     q: '¿Cómo convierto un vídeo en 3D?',
-    a: 'Usa Luma AI (gratuito). Graba un vídeo de 2–3 minutos dando la vuelta al espacio, súbelo a la app y en unos minutos descarga el archivo .ply o .splat listo para Immersphere Pro.',
+    a: 'Usa Luma AI o Polycam. Graba el espacio de forma lenta y fluida (mínimo 2–3 min), sube el vídeo a la app y espera el procesamiento en la nube (5–40 min según la cola). Descarga el archivo .splat resultante y súbelo a Immersphere. El resultado depende mucho de la calidad de la captura. Consulta la guía "Cómo grabar bien un vídeo" más abajo en esta página.',
   },
   {
     q: '¿Puedo personalizar los colores con mi marca?',
@@ -150,6 +150,134 @@ const FAQS = [
     a: 'Starter (0 €/mes, hasta 10 propiedades), Professional (49 €/mes, hasta 50 propiedades), Enterprise (199 €/mes, propiedades ilimitadas + white label + soporte prioritario). Todos incluyen visor 360°, analytics y lead capture.',
   },
 ] as const;
+
+// ── Capture Workflow Pack ─────────────────────────────────────────────────────
+
+const CAPTURE_WORKFLOWS: Array<{
+  letter: string; icon: string; badge: string; badgeColor: string;
+  title: string; warning: string | null; useLabel: string;
+  useCases: readonly string[]; steps: readonly string[]; note: string;
+}> = [
+  {
+    letter: 'A', icon: '📷',
+    badge: 'Más recomendado',
+    badgeColor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    title: 'Panorama 360 rápido',
+    warning: null,
+    useLabel: 'Ideal para:',
+    useCases: ['Inmobiliarias', 'Publicación rápida', 'WhatsApp y portales', 'Compradores remotos'],
+    steps: [
+      'Captura una imagen 360° por estancia',
+      'Evita movimiento, espejos y zonas oscuras',
+      'Exporta JPG / PNG / WEBP',
+      'Sube una imagen por habitación',
+      'Crea y publica el tour en Immersphere',
+    ],
+    note: 'El flujo más simple y estable. Recomendado para publicación rápida.',
+  },
+  {
+    letter: 'B', icon: '✨',
+    badge: 'Premium asistido',
+    badgeColor: 'bg-violet-100 text-violet-700 dark:bg-violet-900/40 dark:text-violet-300',
+    title: 'Gaussian Splat asistido',
+    warning: 'Workflow premium asistido — no autoservicio masivo todavía.',
+    useLabel: 'Ideal para:',
+    useCases: ['Villas y hoteles', 'Arquitectura singular', 'Showrooms', 'Interiorismo premium'],
+    steps: [
+      'Captura con Luma / Polycam / Postshot',
+      'Exporta .splat o .ply',
+      'Si supera 500 MB, comprime con SuperSplat antes de subir',
+      'Sube a Immersphere',
+      'Publica la experiencia 3D premium',
+    ],
+    note: 'Requiere buena captura y hardware adecuado. Formatos recomendados: .splat y .ply.',
+  },
+  {
+    letter: 'C', icon: '🎬',
+    badge: 'Equipo Immersphere',
+    badgeColor: 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300',
+    title: 'Workflow Pro interno',
+    warning: null,
+    useLabel: 'Para:',
+    useCases: ['Equipo Immersphere', 'Fotógrafos colaboradores', 'Clientes de alto valor', 'Proyectos llave en mano'],
+    steps: [
+      'Captura profesional in situ',
+      'Procesado externo (Postshot / Luma / Polycam)',
+      'Limpieza y optimización con SuperSplat',
+      'Validación de peso, formato y calidad',
+      'Publicación y entrega final en Immersphere',
+    ],
+    note: 'Immersphere coordina la experiencia final lista para vender.',
+  },
+];
+
+const VIDEO_CAPTURE_TIPS: readonly string[] = [
+  'Graba mínimo 2–3 minutos por espacio de tamaño medio',
+  'Camina lento con movimiento suave y continuo',
+  'Asegura buena iluminación — evita contraluces fuertes',
+  'Evita giros bruscos: gira sobre ti mismo despacio',
+  'Cubre paredes, suelo, techo y todas las esquinas',
+  'Sigue un patrón en espiral o en zigzag por la habitación',
+  'Evita personas y objetos en movimiento durante la grabación',
+  'En grandes espacios, graba en secciones solapadas',
+];
+
+const CAPTURE_TOOLS_MAIN: Array<{
+  icon: string; name: string; badge: string; badgeColor: string;
+  desc: string; bullets: readonly string[]; url: string;
+}> = [
+  {
+    icon: '🤖', name: 'Luma AI',
+    badge: 'Gratis · iOS / Android',
+    badgeColor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
+    desc: 'Captura y genera escenas 3D desde vídeo móvil. La generación ocurre en la nube. La exportación y subida a Immersphere es manual — no hay integración API automática.',
+    bullets: ['Graba el espacio con la app de Luma', 'Espera el procesamiento: 5–40 min en la nube', 'Descarga el .splat exportado manualmente', 'Sube el archivo a Immersphere'],
+    url: 'https://lumalabs.ai',
+  },
+  {
+    icon: '📸', name: 'Polycam',
+    badge: 'Freemium · iPhone LiDAR',
+    badgeColor: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    desc: 'App de captura 3D con soporte LiDAR en iPhone Pro. Resultados más estables en interiores. También disponible para Android.',
+    bullets: ['iPhone 12 Pro o superior para máxima precisión', 'Modo Gaussian Splat integrado en la app', 'Exporta .ply o .splat directamente', 'En Android, asegura muy buena iluminación'],
+    url: 'https://poly.cam',
+  },
+  {
+    icon: '🖥️', name: 'Postshot',
+    badge: 'Avanzado · Desktop · GPU',
+    badgeColor: 'bg-orange-100 text-orange-700 dark:bg-orange-900/40 dark:text-orange-300',
+    desc: 'Reconstrucción Gaussian profesional desde fotos o vídeo en desktop. Máxima calidad. Requiere ordenador con GPU Nvidia dedicada.',
+    bullets: ['Sube 50–200 fotos del espacio', 'Procesado local: 20–60 min con GPU', 'Exporta .ply o .splat de alta calidad', 'No apto para agentes sin hardware técnico'],
+    url: 'https://www.jawset.com',
+  },
+  {
+    icon: '✂️', name: 'SuperSplat',
+    badge: 'Gratis · Editor web',
+    badgeColor: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
+    desc: 'Editor profesional gratuito para limpiar, recortar y optimizar Gaussian Splats antes de subir. Imprescindible cuando el archivo supera 500 MB.',
+    bullets: ['Elimina zonas no deseadas del splat', 'Reduce el peso del archivo drásticamente', 'Exporta como .splat optimizado', 'Funciona desde el navegador, sin instalación'],
+    url: 'https://superspl.at/editor',
+  },
+];
+
+const CAPTURE_TOOLS_SECONDARY: Array<{
+  name: string; type: string; url: string; desc: string; disclaimer: string;
+}> = [
+  {
+    name: 'Quick GS Editor',
+    type: 'Herramienta comunitaria',
+    url: 'https://tijerinart.itch.io/quick-gs-editor',
+    desc: 'Editor auxiliar para revisión y limpieza rápida de Gaussian Splats. Útil para ajustes sencillos antes de exportar.',
+    disclaimer: 'Herramienta comunitaria externa no afiliada con Immersphere. Compatibilidad no garantizada.',
+  },
+  {
+    name: 'Travvir',
+    type: 'App experimental · Android',
+    url: 'https://play.google.com/store/apps/details?id=com.travvir.studio',
+    desc: 'App para captura rápida de panoramas 360° desde móvil Android. Opción experimental cuando no hay cámara 360° disponible.',
+    disclaimer: 'Recurso opcional experimental. Compatibilidad y experiencia pueden variar según dispositivo. No es la opción principal recomendada.',
+  },
+];
 
 export default function HelpPage(): JSX.Element {
   const [activeSector, setActiveSector] = useState<SectorId>('inmobiliarias');
@@ -434,10 +562,10 @@ export default function HelpPage(): JSX.Element {
                 Ya tengo el archivo
               </h3>
               <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-                Arrastra tu archivo .ply, .splat, .glb o .jpg 360° al formulario.
+                Arrastra tu archivo directamente. JPG/PNG/WEBP para panoramas 360°, PLY/SPLAT para Gaussian.
               </p>
               <div className="mt-5 flex flex-wrap gap-2">
-                {(['JPG', 'PNG', 'WEBP', 'PLY', 'SPLAT', 'GLB'] as const).map((fmt) => (
+                {(['JPG', 'PNG', 'WEBP', 'PLY', 'SPLAT'] as const).map((fmt) => (
                   <span
                     key={fmt}
                     className="rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-black text-slate-600 dark:bg-slate-700 dark:text-slate-300"
@@ -445,6 +573,9 @@ export default function HelpPage(): JSX.Element {
                     .{fmt}
                   </span>
                 ))}
+                <span className="rounded-lg border border-slate-200 bg-white px-2.5 py-1 text-xs font-semibold text-slate-500 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-400">
+                  .GLB · compatible si ya tienes un modelo 3D preparado
+                </span>
               </div>
               <div className="mt-auto pt-6">
                 {isAuthenticated ? (
@@ -465,7 +596,7 @@ export default function HelpPage(): JSX.Element {
                   </Link>
                 )}
                 <p className="mt-3 rounded-xl bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-400 dark:bg-slate-700 dark:text-slate-500">
-                  Tamaño máximo: 100 MB
+                  Tamaño máximo: 500 MB
                 </p>
               </div>
             </article>
@@ -691,6 +822,191 @@ export default function HelpPage(): JSX.Element {
                 <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">✅ {item.sol}</p>
               </div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── CAPTURE WORKFLOW PACK ───────────────────────────────── */}
+      <section id="capture-workflow" className="bg-white px-5 py-20 dark:bg-slate-950">
+        <div className="mx-auto max-w-5xl">
+          <p className="text-center text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
+            Capture Workflow Pack
+          </p>
+          <h2 className="mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
+            ¿Qué workflow usar?
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-center text-base text-slate-500 dark:text-slate-400">
+            Tres caminos según el tipo de proyecto. Elige el que encaja con tu objetivo.
+          </p>
+
+          {/* Tres caminos */}
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {CAPTURE_WORKFLOWS.map((wf) => (
+              <article key={wf.letter} className="flex flex-col rounded-[1.6rem] bg-slate-50 p-6 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl">{wf.icon}</span>
+                  <div>
+                    <p className="font-black text-slate-950 dark:text-white">{wf.title}</p>
+                    <span className={`rounded-full px-2 py-0.5 text-xs font-black ${wf.badgeColor}`}>
+                      {wf.badge}
+                    </span>
+                  </div>
+                </div>
+                {wf.warning ? (
+                  <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-bold leading-relaxed text-amber-700 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-400">
+                    ⚠️ {wf.warning}
+                  </p>
+                ) : null}
+                <p className="mt-3 text-xs font-bold uppercase tracking-[0.14em] text-slate-400">{wf.useLabel}</p>
+                <ul className="mt-1.5 space-y-1">
+                  {wf.useCases.map((u) => (
+                    <li key={u} className="text-xs font-semibold text-slate-600 dark:text-slate-400">· {u}</li>
+                  ))}
+                </ul>
+                <p className="mt-4 text-xs font-black uppercase tracking-[0.14em] text-slate-400">Workflow</p>
+                <ol className="mt-2 space-y-2">
+                  {wf.steps.map((step, i) => (
+                    <li key={step} className="flex gap-2.5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                      <span
+                        className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white"
+                        style={bgStyle}
+                      >
+                        {i + 1}
+                      </span>
+                      {step}
+                    </li>
+                  ))}
+                </ol>
+                <p className="mt-4 rounded-xl bg-white px-3 py-2 text-xs leading-relaxed text-slate-400 dark:bg-slate-800">
+                  💡 {wf.note}
+                </p>
+              </article>
+            ))}
+          </div>
+
+          {/* Cómo grabar bien un vídeo móvil */}
+          <h3 className="mt-12 text-xl font-black text-slate-950 dark:text-white">Cómo grabar bien un vídeo móvil</h3>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            La calidad del Gaussian Splat depende directamente de cómo se capture el espacio.
+          </p>
+          <div className="mt-5 grid gap-3 sm:grid-cols-2">
+            {VIDEO_CAPTURE_TIPS.map((tip) => (
+              <div key={tip} className="flex items-start gap-3 rounded-2xl bg-slate-50 px-4 py-3 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
+                <span
+                  className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-black text-white"
+                  style={bgStyle}
+                >
+                  ✓
+                </span>
+                <span className="text-sm font-semibold leading-relaxed text-slate-700 dark:text-slate-300">{tip}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Herramientas recomendadas */}
+          <h3 className="mt-12 text-xl font-black text-slate-950 dark:text-white">Herramientas recomendadas</h3>
+          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+            Compatibles con el flujo Immersphere. No son parte oficial del producto — se usan como herramientas externas en el proceso de captura.
+          </p>
+          <div className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-4">
+            {CAPTURE_TOOLS_MAIN.map((tool) => (
+              <article key={tool.name} className="flex flex-col rounded-[1.6rem] bg-slate-50 p-5 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
+                <div className="flex items-center gap-2">
+                  <span className="text-xl">{tool.icon}</span>
+                  <div>
+                    <p className="text-sm font-black text-slate-950 dark:text-white">{tool.name}</p>
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${tool.badgeColor}`}>
+                      {tool.badge}
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-3 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{tool.desc}</p>
+                <ul className="mt-3 space-y-1.5">
+                  {tool.bullets.map((b) => (
+                    <li key={b} className="flex gap-2.5 text-xs leading-relaxed text-slate-600 dark:text-slate-300">
+                      <span
+                        className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white"
+                        style={bgStyle}
+                      >
+                        ·
+                      </span>
+                      {b}
+                    </li>
+                  ))}
+                </ul>
+                <div className="mt-auto pt-4">
+                  <a
+                    href={tool.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block w-full rounded-2xl px-4 py-2.5 text-center text-xs font-black text-white transition hover:opacity-90"
+                    style={bgStyle}
+                  >
+                    Abrir {tool.name} →
+                  </a>
+                </div>
+              </article>
+            ))}
+          </div>
+
+          {/* Recursos secundarios — comunidad */}
+          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+            {CAPTURE_TOOLS_SECONDARY.map((tool) => (
+              <div key={tool.name} className="rounded-2xl bg-slate-50 p-5 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
+                <div className="flex items-center justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-black text-slate-800 dark:text-slate-100">{tool.name}</p>
+                    <p className="text-xs text-slate-400">{tool.type}</p>
+                  </div>
+                  <a
+                    href={tool.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="shrink-0 rounded-xl border border-slate-200 px-3 py-1.5 text-xs font-black text-slate-600 transition hover:bg-slate-100 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  >
+                    Abrir →
+                  </a>
+                </div>
+                <p className="mt-2 text-xs leading-relaxed text-slate-500 dark:text-slate-400">{tool.desc}</p>
+                <p className="mt-2 rounded-lg bg-amber-50 px-3 py-1.5 text-[11px] font-semibold leading-relaxed text-amber-700 dark:bg-amber-900/20 dark:text-amber-400">
+                  ⚠️ {tool.disclaimer}
+                </p>
+              </div>
+            ))}
+          </div>
+
+          {/* Herramientas internas en exploración */}
+          <div className="mt-10 rounded-[1.6rem] border border-slate-200 bg-slate-50 p-7 dark:border-slate-700 dark:bg-slate-900">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-slate-400">
+              Herramientas internas en exploración
+            </p>
+            <h3 className="mt-2 text-lg font-black text-slate-950 dark:text-white">3dgsconverter</h3>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              Herramienta interna opcional para conversión y optimización de formatos Gaussian entre .splat, .ply, .spz y otros.
+              No es una feature pública ni un flujo obligatorio para usuarios finales.
+            </p>
+            <ul className="mt-4 space-y-2">
+              {[
+                'Convierte entre formatos Gaussian: .splat, .ply, .spz, .ksplat',
+                'Reduce el peso de archivos antes de subir',
+                'Útil para experimentación técnica y optimización avanzada',
+                'Uso manual — no integrado en el pipeline automático',
+                'No recomendado para usuarios finales sin conocimientos técnicos',
+              ].map((item) => (
+                <li key={item} className="flex items-start gap-2 text-sm text-slate-600 dark:text-slate-300">
+                  <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-slate-300 dark:bg-slate-600" />
+                  {item}
+                </li>
+              ))}
+            </ul>
+            <a
+              href="https://github.com/Juanmaes83/3dgsconverter"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 transition hover:bg-white dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+            >
+              Ver repositorio en GitHub →
+            </a>
           </div>
         </div>
       </section>
