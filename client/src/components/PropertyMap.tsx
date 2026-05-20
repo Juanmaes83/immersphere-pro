@@ -1,20 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
-import { loadGoogleMapsScript } from '@/utils/googleMaps';
-
-// Minimal ambient types so TSC doesn't complain — full types come at runtime
-declare global {
-  interface Window {
-    google: {
-      maps: {
-        Map: new (el: HTMLElement, opts: object) => object;
-        Marker: new (opts: object) => object;
-        StreetViewPanorama: new (el: HTMLElement, opts: object) => object;
-        ControlPosition: { RIGHT_CENTER: number };
-        Geocoder: new () => object;
-      };
-    };
-  }
-}
+import { useState } from 'react';
 
 interface PropertyMapProps {
   lat: number;
@@ -24,63 +8,15 @@ interface PropertyMapProps {
 
 type Tab = 'map' | 'street';
 
-// Script loading is now handled by the shared utility
-
 // ── Component ─────────────────────────────────────────────────────────────────
+// Uses Google Maps iframe embed (no API key required) + Nominatim geocoding.
+// Street View tab opens in Google Maps directly (no key needed).
 export default function PropertyMap({ lat, lng, title }: PropertyMapProps): JSX.Element {
-  const mapDivRef    = useRef<HTMLDivElement>(null);
-  const streetDivRef = useRef<HTMLDivElement>(null);
-  const mapObjRef    = useRef<object | null>(null);
-  const svObjRef     = useRef<object | null>(null);
+  const [tab, setTab] = useState<Tab>('map');
 
-  const [tab, setTab]       = useState<Tab>('map');
-  const [ready, setReady]   = useState(false);
-  const [failed, setFailed] = useState(false);
-
-  const gmapsUrl  = `https://www.google.com/maps?q=${lat},${lng}`;
-  const position  = { lat, lng };
-
-  // Load Google Maps script once
-  useEffect(() => {
-    loadGoogleMapsScript().then((ok) => {
-      if (ok) setReady(true);
-      else    setFailed(true);
-    });
-  }, []);
-
-  // Init Map
-  useEffect(() => {
-    if (!ready || !mapDivRef.current || mapObjRef.current) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const G = window.google;
-    mapObjRef.current = new G.maps.Map(mapDivRef.current, {
-      center: position,
-      zoom: 16,
-      mapTypeControl: false,
-      streetViewControl: false,
-      fullscreenControl: false,
-      zoomControlOptions: {
-        position: G.maps.ControlPosition.RIGHT_CENTER,
-      },
-    });
-    new G.maps.Marker({ position, map: mapObjRef.current, title });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready]);
-
-  // Init Street View (lazy — only when tab first activated)
-  useEffect(() => {
-    if (!ready || tab !== 'street' || !streetDivRef.current || svObjRef.current) return;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const G = window.google;
-    svObjRef.current = new G.maps.StreetViewPanorama(streetDivRef.current, {
-      position,
-      pov: { heading: 165, pitch: 0 },
-      zoom: 1,
-      addressControl: false,
-      fullscreenControl: false,
-    });
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ready, tab]);
+  const gmapsUrl     = `https://www.google.com/maps?q=${lat},${lng}`;
+  const streetViewUrl = `https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m1!1e3`;
+  const embedUrl     = `https://maps.google.com/maps?q=${lat},${lng}&hl=es&z=16&output=embed`;
 
   return (
     <section className="mt-8 overflow-hidden rounded-[1.6rem] ring-1 ring-slate-200 dark:ring-slate-700">
@@ -132,41 +68,51 @@ export default function PropertyMap({ lat, lng, title }: PropertyMapProps): JSX.
         </a>
       </div>
 
-      {/* ── Map panel ── */}
-      <div
-        ref={mapDivRef}
-        style={{ height: 320, display: tab === 'map' && ready ? 'block' : 'none' }}
-      />
-
-      {/* ── Street View panel ── */}
-      <div
-        ref={streetDivRef}
-        style={{ height: 320, display: tab === 'street' && ready ? 'block' : 'none' }}
-      />
-
-      {/* ── Loading skeleton ── */}
-      {!ready && !failed && (
-        <div className="flex h-[320px] items-center justify-center bg-slate-50 dark:bg-slate-800">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-        </div>
+      {/* ── Map panel — iframe embed, no API key needed ── */}
+      {tab === 'map' && (
+        <iframe
+          key={`map-${lat}-${lng}`}
+          src={embedUrl}
+          width="100%"
+          height="320"
+          style={{ border: 0, display: 'block' }}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          title={title}
+          allowFullScreen
+        />
       )}
 
-      {/* ── Error / no key ── */}
-      {failed && (
-        <div className="flex h-[320px] flex-col items-center justify-center gap-3 bg-slate-50 dark:bg-slate-800">
-          <svg className="h-8 w-8 text-slate-300" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5}>
-            <path d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L15 4m0 13V4m0 0L9 7" strokeLinecap="round" strokeLinejoin="round"/>
+      {/* ── Street View panel — opens in Google Maps ── */}
+      {tab === 'street' && (
+        <div className="flex h-[320px] flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-slate-800">
+          <svg
+            className="h-10 w-10 text-slate-300 dark:text-slate-600"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth={1.5}
+          >
+            <circle cx="12" cy="12" r="3"/>
+            <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" strokeLinecap="round"/>
           </svg>
+          <p className="text-sm text-slate-500 dark:text-slate-400">
+            Street View se abre en Google Maps
+          </p>
           <a
-            href={gmapsUrl}
+            href={streetViewUrl}
             target="_blank"
             rel="noopener noreferrer"
-            className="text-sm font-bold text-blue-600 hover:underline"
+            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
           >
-            Ver en Google Maps →
+            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" strokeLinecap="round" strokeLinejoin="round"/>
+            </svg>
+            Abrir Street View →
           </a>
         </div>
       )}
+
     </section>
   );
 }
