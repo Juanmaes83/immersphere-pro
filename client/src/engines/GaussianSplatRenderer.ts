@@ -193,6 +193,17 @@ export class GaussianSplatRenderer implements RendererLifecycle {
 
   public setYaw(_value: number): void { /* controlled by SparkControls */ }
   public setPitch(_value: number): void { /* controlled by SparkControls */ }
+
+  /**
+   * Adjusts SparkControls move/rotate speeds at runtime.
+   * SparkControls reads these properties every frame, so property mutation is sufficient.
+   */
+  public setSpeed(moveSpeed: number, rotateSpeed: number): void {
+    const c = this.controls as unknown as { moveSpeed: number; rotateSpeed: number };
+    c.moveSpeed  = moveSpeed;
+    c.rotateSpeed = rotateSpeed;
+  }
+
   public setPosition(x: number, y: number, z: number): void {
     this.camera.position.set(x, y, z);
   }

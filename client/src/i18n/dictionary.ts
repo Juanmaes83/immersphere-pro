@@ -217,6 +217,12 @@ export const dict = {
     splat_admin_fallback_title: 'Sube tu Gaussian Splat',
     splat_admin_fallback_body: 'Sube tu propio .splat o .ply para verlo aquí.',
     splat_admin_upload_label: 'Subir archivo local',
+
+    // ── Gaussian UX Lite (Micro-PR 5) ─────────────────────────────────────
+    splat_onboarding_drag: 'Arrastra para explorar',
+    splat_onboarding_swipe: 'Desliza para explorar',
+    splat_mode_explore: 'Explorar',
+    splat_mode_walk: 'Recorrer',
   },
 
   en: {
@@ -395,5 +401,11 @@ export const dict = {
     splat_admin_fallback_title: 'Upload your Gaussian Splat',
     splat_admin_fallback_body: 'Upload your own .splat or .ply to view it here.',
     splat_admin_upload_label: 'Upload local file',
+
+    // ── Gaussian UX Lite (Micro-PR 5) ─────────────────────────────────────
+    splat_onboarding_drag: 'Drag to explore',
+    splat_onboarding_swipe: 'Swipe to explore',
+    splat_mode_explore: 'Explore',
+    splat_mode_walk: 'Walk',
   }
 } as const;

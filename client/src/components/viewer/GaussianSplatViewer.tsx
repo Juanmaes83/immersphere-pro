@@ -56,6 +56,18 @@ export default function GaussianSplatViewer({
   const analyticsRef = useRef(onAnalyticsEvent);
   const slowTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // ── Micro-PR 5: UX Lite refs ───────────────────────────────────────────
+  const viewerPanelRef     = useRef<HTMLDivElement | null>(null);
+  const onboardingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTouchDeviceRef   = useRef(
+    typeof window !== 'undefined' &&
+    ('ontouchstart' in window || navigator.maxTouchPoints > 0)
+  );
+  const prefersReducedMotionRef = useRef(
+    typeof window !== 'undefined' &&
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  );
+
   const [runtimeUrl, setRuntimeUrl] = useState(asset.url);
   const [runtimeLabel, setRuntimeLabel] = useState(asset.url.split('/').pop() ?? asset.format);
   const [isReady, setIsReady] = useState(false);
@@ -66,6 +78,11 @@ export default function GaussianSplatViewer({
   const [removedZones, setRemovedZones] = useState<RemovedSplatZone[]>([]);
   const [activeTab, setActiveTab] = useState<'upload' | 'editor'>('upload');
   const [retryKey, setRetryKey] = useState(0);
+
+  // ── Micro-PR 5: UX Lite state ──────────────────────────────────────────
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [viewMode, setViewMode] = useState<'explore' | 'walk'>('explore');
+  const [isFullscreen, setIsFullscreen] = useState(false);
 
   const removedCount = removedZones.length;
 
@@ -164,6 +181,55 @@ export default function GaussianSplatViewer({
       }
     };
   }, []);
+
+  // ── Onboarding toast — once per session, public mode only ──────────────
+  useEffect(() => {
+    if (!isReady || isAdminMode) return;
+    try { if (sessionStorage.getItem('gv_onboarding_shown')) return; } catch { /* blocked */ }
+    setShowOnboarding(true);
+    onboardingTimerRef.current = setTimeout(() => {
+      setShowOnboarding(false);
+      try { sessionStorage.setItem('gv_onboarding_shown', '1'); } catch { /* blocked */ }
+    }, 2500);
+    return () => {
+      if (onboardingTimerRef.current) clearTimeout(onboardingTimerRef.current);
+    };
+  }, [isReady, isAdminMode]);
+
+  // ── Speed profile — adjust SparkControls per device + view mode ────────
+  useEffect(() => {
+    if (!isReady || !rendererRef.current) return;
+    const touch  = isTouchDeviceRef.current;
+    const baseM  = touch ? 0.9  : 1.7;
+    const baseR  = touch ? 1.2  : 2.0;
+    const move   = viewMode === 'walk' ? baseM  * 0.50 : baseM;
+    const rotate = viewMode === 'walk' ? baseR  * 0.55 : baseR;
+    rendererRef.current.setSpeed(move, rotate);
+  }, [isReady, viewMode]);
+
+  // ── Fullscreen state sync ───────────────────────────────────────────────
+  useEffect(() => {
+    const onFsChange = (): void => { setIsFullscreen(!!document.fullscreenElement); };
+    document.addEventListener('fullscreenchange', onFsChange);
+    return () => { document.removeEventListener('fullscreenchange', onFsChange); };
+  }, []);
+
+  function dismissOnboarding(): void {
+    if (!showOnboarding) return;
+    if (onboardingTimerRef.current) clearTimeout(onboardingTimerRef.current);
+    setShowOnboarding(false);
+    try { sessionStorage.setItem('gv_onboarding_shown', '1'); } catch { /* blocked */ }
+  }
+
+  function handleFullscreen(): void {
+    try {
+      if (!document.fullscreenElement) {
+        void viewerPanelRef.current?.requestFullscreen();
+      } else {
+        void document.exitFullscreen();
+      }
+    } catch { /* fullscreen not available in this context */ }
+  }
 
   function handleFileChange(event: React.ChangeEvent<HTMLInputElement>): void {
     const file = event.target.files?.[0];
@@ -283,7 +349,11 @@ export default function GaussianSplatViewer({
             Mobile  : ancho completo, min 56vh
             Desktop : flex-1, min 600px
         ══════════════════════════════════════════════════════ */}
-        <div className="relative order-1 min-h-[56vh] w-full overflow-hidden bg-slate-950 lg:min-h-[600px] lg:flex-1">
+        <div
+          ref={viewerPanelRef}
+          className="relative order-1 min-h-[56vh] w-full overflow-hidden bg-slate-950 lg:min-h-[600px] lg:flex-1"
+          onPointerDown={() => { dismissOnboarding(); }}
+        >
           {/* Canvas 3D */}
           <div ref={containerRef} className="absolute inset-0" />
 
@@ -393,6 +463,83 @@ export default function GaussianSplatViewer({
               <p className="mt-0.5 text-xl font-black">{formatLabel}</p>
               <p className="mt-0.5 text-[0.65rem] text-white/50">{t(lang, 'splat_controls_hint')}</p>
             </div>
+          ) : null}
+
+          {/* ── PUBLIC UX LITE (Micro-PR 5) ─────────────────────────────── */}
+
+          {/* Onboarding toast — shown once per session on first load */}
+          {!isAdminMode && showOnboarding ? (
+            <div
+              className="pointer-events-none absolute inset-x-0 bottom-24 z-50 flex justify-center px-4"
+              aria-hidden="true"
+            >
+              <div className="flex items-center gap-2.5 rounded-2xl border border-white/20 bg-black/65 px-5 py-3.5 shadow-xl backdrop-blur-md">
+                <span
+                  className={prefersReducedMotionRef.current ? 'text-lg' : 'animate-bounce text-lg'}
+                  role="img"
+                  aria-label=""
+                >
+                  {isTouchDeviceRef.current ? '👆' : '🖱️'}
+                </span>
+                <span className="text-sm font-bold tracking-wide text-white">
+                  {isTouchDeviceRef.current
+                    ? t(lang, 'splat_onboarding_swipe')
+                    : t(lang, 'splat_onboarding_drag')}
+                </span>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Mode toggle pill — Explorar / Recorrer */}
+          {!isAdminMode && isReady && !errorMessage ? (
+            <div className="absolute bottom-5 left-1/2 z-40 -translate-x-1/2">
+              <div className="flex overflow-hidden rounded-2xl border border-white/15 bg-black/60 backdrop-blur-md">
+                <button
+                  type="button"
+                  onClick={() => { setViewMode('explore'); }}
+                  className={`px-4 py-2 text-[0.68rem] font-black uppercase tracking-widest transition-colors ${
+                    viewMode === 'explore'
+                      ? 'bg-white/20 text-white'
+                      : 'text-white/45 hover:text-white/70'
+                  }`}
+                >
+                  {t(lang, 'splat_mode_explore')}
+                </button>
+                <div className="my-2 w-px bg-white/15" />
+                <button
+                  type="button"
+                  onClick={() => { setViewMode('walk'); }}
+                  className={`px-4 py-2 text-[0.68rem] font-black uppercase tracking-widest transition-colors ${
+                    viewMode === 'walk'
+                      ? 'bg-white/20 text-white'
+                      : 'text-white/45 hover:text-white/70'
+                  }`}
+                >
+                  {t(lang, 'splat_mode_walk')}
+                </button>
+              </div>
+            </div>
+          ) : null}
+
+          {/* Fullscreen button */}
+          {!isAdminMode && isReady && !errorMessage ? (
+            <button
+              type="button"
+              onClick={handleFullscreen}
+              className="absolute bottom-5 right-4 z-40 rounded-2xl border border-white/15 bg-black/60 p-2.5 text-white/70 backdrop-blur-md transition hover:bg-black/75 hover:text-white active:scale-95"
+              title={isFullscreen ? t(lang, 'fullscreen_exit') : t(lang, 'fullscreen_enter')}
+              aria-label={isFullscreen ? t(lang, 'fullscreen_exit') : t(lang, 'fullscreen_enter')}
+            >
+              {isFullscreen ? (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 9L3 3m0 6V3h6M15 9l6-6m0 6V3h-6M9 15l-6 6m0-6v6h6m6-6l6 6m0-6v6h-6" />
+                </svg>
+              ) : (
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4 8V4m0 0h4M4 4l5 5m7-5h4m0 0v4m0-4l-5 5M4 16v4m0 0h4m-4 0l5-5m7 5h4m0 0v-4m0 4l-5-5" />
+                </svg>
+              )}
+            </button>
           ) : null}
 
           {/* Overlay de medición */}
