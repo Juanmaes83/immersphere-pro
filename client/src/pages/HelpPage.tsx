@@ -228,9 +228,9 @@ const CAPTURE_TOOLS_MAIN: Array<{
 }> = [
   {
     icon: '🤖', name: 'Luma AI',
-    badge: 'Gratis · iOS / Android',
+    badge: 'Freemium · iOS / Android',
     badgeColor: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300',
-    desc: 'Captura y genera escenas 3D desde vídeo móvil. La generación ocurre en la nube. La exportación y subida a Immersphere es manual — no hay integración API automática.',
+    desc: 'Captura y genera escenas 3D desde vídeo móvil. La generación ocurre en la nube. La exportación y subida a Immersphere es manual — no hay integración API automática. El plan gratuito, las exportaciones y los tiempos de procesamiento pueden variar según cuenta, cola y disponibilidad.',
     bullets: ['Graba el espacio con la app de Luma', 'Espera el procesamiento: 5–40 min en la nube', 'Descarga el .splat exportado manualmente', 'Sube el archivo a Immersphere'],
     url: 'https://lumalabs.ai',
   },
