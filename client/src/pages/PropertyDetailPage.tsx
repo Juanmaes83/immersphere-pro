@@ -563,7 +563,7 @@ function PropertyQRCode({
 
 export default function PropertyDetailPage({ propertyId, embed = false }: PropertyDetailPageProps): JSX.Element {
   const navigate = useNavigate();
-  const { selectedProperty, fetchPropertyById, unlockProperty, isLoading, error, clearSelectedProperty } = usePropertyStore();
+  const { selectedProperty, fetchPropertyById, unlockProperty, updateProperty, isLoading, error, clearSelectedProperty } = usePropertyStore();
   const [passwordInput, setPasswordInput] = useState('');
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [unlocking, setUnlocking] = useState(false);
@@ -575,6 +575,43 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   const [showContactModal, setShowContactModal] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [waVisible, setWaVisible] = useState(false);
+
+  // ── Address / geocoding editor (auth only) ────────────────────────────────
+  const [editingAddress, setEditingAddress] = useState(false);
+  const [addressDraft, setAddressDraft] = useState('');
+  const [addrGeoStatus, setAddrGeoStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
+  const [addrSaving, setAddrSaving] = useState(false);
+
+  async function geocodeAndSave(): Promise<void> {
+    const query = addressDraft.trim();
+    if (!query || !selectedProperty) return;
+    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
+    if (!apiKey) return;
+    setAddrGeoStatus('loading');
+    try {
+      const geoRes = await fetch(
+        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`
+      );
+      const geoData = await geoRes.json() as {
+        status: string;
+        results: Array<{ geometry: { location: { lat: number; lng: number } } }>;
+      };
+      if (geoData.status !== 'OK' || !geoData.results.length) {
+        setAddrGeoStatus('error');
+        return;
+      }
+      setAddrGeoStatus('ok');
+      const { lat, lng } = geoData.results[0].geometry.location;
+      setAddrSaving(true);
+      await updateProperty(selectedProperty.id, { address: query, latitude: lat, longitude: lng });
+      await fetchPropertyById(selectedProperty.id);
+      setEditingAddress(false);
+    } catch {
+      setAddrGeoStatus('error');
+    } finally {
+      setAddrSaving(false);
+    }
+  }
 
   useEffect(() => {
     const t = setTimeout(() => { setWaVisible(true); }, 4000);
@@ -897,13 +934,64 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 onAnalyticsEvent={handleAnalyticsEvent}
               />
 
+              {/* ── Map + address editor ── */}
               {property.latitude && property.longitude ? (
-                <ErrorBoundary fallback={null}>
-                  <Suspense fallback={<div className="mt-8 h-[320px] rounded-[1.6rem] bg-slate-100 ring-1 ring-slate-200" />}>
-                    <PropertyMap lat={property.latitude} lng={property.longitude} title={property.title} />
-                  </Suspense>
-                </ErrorBoundary>
+                <>
+                  <ErrorBoundary fallback={null}>
+                    <Suspense fallback={<div className="mt-8 h-[320px] rounded-[1.6rem] bg-slate-100 ring-1 ring-slate-200" />}>
+                      <PropertyMap lat={property.latitude} lng={property.longitude} title={property.title} />
+                    </Suspense>
+                  </ErrorBoundary>
+                  {isAuthenticated && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
+                      <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                      <span className="truncate">{property.address || `${property.latitude.toFixed(4)}, ${property.longitude.toFixed(4)}`}</span>
+                      <button type="button" onClick={() => { setAddressDraft(property.address ?? ''); setEditingAddress(true); setAddrGeoStatus('idle'); }} className="shrink-0 font-bold text-slate-500 hover:text-blue-600">
+                        Editar
+                      </button>
+                    </div>
+                  )}
+                </>
+              ) : isAuthenticated ? (
+                <div className="mt-8 rounded-[1.6rem] border-2 border-dashed border-slate-200 p-6 dark:border-slate-700">
+                  <p className="text-sm font-black text-slate-500">📍 Sin ubicación — añade la dirección para mostrar el mapa</p>
+                  {!editingAddress ? (
+                    <button type="button" onClick={() => { setAddressDraft(''); setEditingAddress(true); setAddrGeoStatus('idle'); }} className="mt-3 text-sm font-black text-blue-600 hover:underline">
+                      + Añadir dirección
+                    </button>
+                  ) : null}
+                </div>
               ) : null}
+
+              {/* ── Inline address editor ── */}
+              {isAuthenticated && editingAddress && (
+                <div className="mt-3 rounded-2xl border border-slate-200 bg-slate-50 p-4 dark:border-slate-700 dark:bg-slate-800">
+                  <p className="mb-2 text-xs font-black uppercase tracking-wider text-slate-500">Dirección de la propiedad</p>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={addressDraft}
+                      onChange={(e) => { setAddressDraft(e.target.value); setAddrGeoStatus('idle'); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter') void geocodeAndSave(); if (e.key === 'Escape') setEditingAddress(false); }}
+                      placeholder="Ej: Calle Gran Vía 32, Madrid"
+                      autoFocus
+                      className="flex-1 rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none transition focus:border-slate-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => void geocodeAndSave()}
+                      disabled={addrSaving || !addressDraft.trim()}
+                      className="rounded-xl bg-blue-600 px-4 py-2 text-sm font-black text-white hover:bg-blue-700 disabled:opacity-40"
+                    >
+                      {addrSaving ? '…' : 'Guardar'}
+                    </button>
+                    <button type="button" onClick={() => setEditingAddress(false)} className="rounded-xl px-3 py-2 text-sm font-black text-slate-400 hover:text-slate-600">✕</button>
+                  </div>
+                  {addrGeoStatus === 'ok'    && <p className="mt-1.5 text-xs font-semibold text-emerald-600">✅ Ubicación encontrada</p>}
+                  {addrGeoStatus === 'error' && <p className="mt-1.5 text-xs font-semibold text-amber-500">⚠️ Dirección no encontrada. Intenta ser más específico.</p>}
+                  {addrGeoStatus === 'loading' && <p className="mt-1.5 text-xs font-semibold text-slate-400">Buscando…</p>}
+                </div>
+              )}
 
               {isAuthenticated ? (
                 <AnalyticsDashboard summary={analyticsSummary} primaryColor={primaryColor} spaces={property.spaces} />
