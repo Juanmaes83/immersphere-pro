@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { loadGoogleMapsScript } from '@/utils/googleMaps';
 
 // Minimal ambient types so TSC doesn't complain — full types come at runtime
 declare global {
@@ -9,6 +10,7 @@ declare global {
         Marker: new (opts: object) => object;
         StreetViewPanorama: new (el: HTMLElement, opts: object) => object;
         ControlPosition: { RIGHT_CENTER: number };
+        Geocoder: new () => object;
       };
     };
   }
@@ -22,32 +24,7 @@ interface PropertyMapProps {
 
 type Tab = 'map' | 'street';
 
-// ── Google Maps script loader (singleton) ─────────────────────────────────────
-let _gmapsState: 'idle' | 'loading' | 'ready' | 'error' = 'idle';
-const _gmapsCallbacks: Array<(ok: boolean) => void> = [];
-
-function loadGoogleMaps(apiKey: string): Promise<boolean> {
-  return new Promise((resolve) => {
-    if (_gmapsState === 'ready') { resolve(true); return; }
-    if (_gmapsState === 'error') { resolve(false); return; }
-    _gmapsCallbacks.push(resolve);
-    if (_gmapsState === 'loading') return;
-    _gmapsState = 'loading';
-    const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${apiKey}`;
-    script.async = true;
-    script.defer = true;
-    script.onload = () => {
-      _gmapsState = 'ready';
-      _gmapsCallbacks.splice(0).forEach(cb => cb(true));
-    };
-    script.onerror = () => {
-      _gmapsState = 'error';
-      _gmapsCallbacks.splice(0).forEach(cb => cb(false));
-    };
-    document.head.appendChild(script);
-  });
-}
+// Script loading is now handled by the shared utility
 
 // ── Component ─────────────────────────────────────────────────────────────────
 export default function PropertyMap({ lat, lng, title }: PropertyMapProps): JSX.Element {
@@ -60,18 +37,16 @@ export default function PropertyMap({ lat, lng, title }: PropertyMapProps): JSX.
   const [ready, setReady]   = useState(false);
   const [failed, setFailed] = useState(false);
 
-  const apiKey    = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
   const gmapsUrl  = `https://www.google.com/maps?q=${lat},${lng}`;
   const position  = { lat, lng };
 
   // Load Google Maps script once
   useEffect(() => {
-    if (!apiKey) { setFailed(true); return; }
-    loadGoogleMaps(apiKey).then((ok) => {
+    loadGoogleMapsScript().then((ok) => {
       if (ok) setReady(true);
       else    setFailed(true);
     });
-  }, [apiKey]);
+  }, []);
 
   // Init Map
   useEffect(() => {

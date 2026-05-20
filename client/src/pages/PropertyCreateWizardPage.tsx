@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { geocodeAddress as geocodeAddressUtil } from '@/utils/googleMaps';
 import { useNavigate } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
 import { api, unwrapApiResponse, getApiErrorMessage } from '@/services/api';
@@ -223,20 +224,15 @@ export default function PropertyCreateWizardPage(): JSX.Element {
   const [geocodedLng, setGeocodedLng] = useState<number | null>(null);
   const [geocodeStatus, setGeocodeStatus] = useState<'idle' | 'loading' | 'ok' | 'error'>('idle');
 
-  const geocodeAddress = useCallback(async (raw: string): Promise<void> => {
+  const runGeocode = useCallback(async (raw: string): Promise<void> => {
     const query = raw.trim();
     if (!query) { setGeocodeStatus('idle'); return; }
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
-    if (!apiKey) return;
     setGeocodeStatus('loading');
     try {
-      const url = `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`;
-      const res = await fetch(url);
-      const data = await res.json() as { status: string; results: Array<{ geometry: { location: { lat: number; lng: number } } }> };
-      if (data.status === 'OK' && data.results.length > 0) {
-        const { lat, lng } = data.results[0].geometry.location;
-        setGeocodedLat(lat);
-        setGeocodedLng(lng);
+      const coords = await geocodeAddressUtil(query);
+      if (coords) {
+        setGeocodedLat(coords.lat);
+        setGeocodedLng(coords.lng);
         setGeocodeStatus('ok');
       } else {
         setGeocodedLat(null);
@@ -576,7 +572,7 @@ export default function PropertyCreateWizardPage(): JSX.Element {
                     type="text"
                     value={address}
                     onChange={(e) => { setAddress(e.target.value); setGeocodeStatus('idle'); }}
-                    onBlur={() => void geocodeAddress(address)}
+                    onBlur={() => void runGeocode(address)}
                     placeholder="Ej: Calle Gran Vía 32, Madrid"
                     className="w-full rounded-2xl border border-slate-200 px-4 py-3 pr-10 text-base font-semibold outline-none transition focus:border-slate-400 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100 dark:placeholder-slate-500"
                   />

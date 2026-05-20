@@ -10,6 +10,7 @@ const PropertyMap = lazy(() => import('@/components/PropertyMap'));
 import UniversalViewer from '@/components/viewer/UniversalViewer';
 import LeadCaptureModal from '@/components/viewer/LeadCaptureModal';
 import { AUTH_STORAGE_KEYS, api, unwrapApiResponse } from '@/services/api';
+import { geocodeAddress } from '@/utils/googleMaps';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type ImmersiveProperty } from '@/store/propertyStore';
 import type { Space, ViewerEvent } from '@/types/viewer';
@@ -585,25 +586,16 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   async function geocodeAndSave(): Promise<void> {
     const query = addressDraft.trim();
     if (!query || !selectedProperty) return;
-    const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY as string | undefined;
-    if (!apiKey) return;
     setAddrGeoStatus('loading');
     try {
-      const geoRes = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(query)}&key=${apiKey}`
-      );
-      const geoData = await geoRes.json() as {
-        status: string;
-        results: Array<{ geometry: { location: { lat: number; lng: number } } }>;
-      };
-      if (geoData.status !== 'OK' || !geoData.results.length) {
+      const coords = await geocodeAddress(query);
+      if (!coords) {
         setAddrGeoStatus('error');
         return;
       }
       setAddrGeoStatus('ok');
-      const { lat, lng } = geoData.results[0].geometry.location;
       setAddrSaving(true);
-      await updateProperty(selectedProperty.id, { address: query, latitude: lat, longitude: lng });
+      await updateProperty(selectedProperty.id, { address: query, latitude: coords.lat, longitude: coords.lng });
       await fetchPropertyById(selectedProperty.id);
       setEditingAddress(false);
     } catch {
