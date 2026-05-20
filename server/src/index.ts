@@ -103,6 +103,23 @@ app.get('/sitemap.xml', async (_req, res) => {
       .replace(/'/g, '&apos;');
   }
 
+  /**
+   * Server-side slugify — mirrors client/src/utils/slugify.ts exactly.
+   * Must stay in sync manually; no shared package between client and server.
+   * "Gran Vía 32, Madrid" → "gran-via-32-madrid"
+   */
+  function slugify(text: string): string {
+    return text
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[̀-ͯ]/g, '') // strip combining diacriticals (accents, tildes…)
+      .replace(/[^a-z0-9\s-]/g, '')   // keep alphanumeric + spaces + hyphens
+      .trim()
+      .replace(/\s+/g, '-')
+      .replace(/-+/g, '-')
+      .slice(0, 60);
+  }
+
   try {
     const rawAppUrl = (env.APP_URL ?? '').replace(/\/$/, '');
 
@@ -121,14 +138,18 @@ app.get('/sitemap.xml', async (_req, res) => {
     const appUrl = rawAppUrl;
 
     // Only PUBLISHED properties without password protection
+    // S3.2: include title so we can generate the canonical slug URL
     const properties = await prisma.property.findMany({
       where: { status: 'PUBLISHED', passwordHash: null },
-      select: { id: true, updatedAt: true },
+      select: { id: true, title: true, updatedAt: true },
       orderBy: { updatedAt: 'desc' }
     });
 
     const propertyUrls = properties.map((p) => {
-      const loc = escapeXml(`${appUrl}/property/${p.id}`);
+      // S3.2: use slug URL as canonical so sitemap matches og:url and <link rel="canonical">
+      const slug = slugify(p.title);
+      const path = slug ? `/property/${p.id}/${slug}` : `/property/${p.id}`;
+      const loc = escapeXml(`${appUrl}${path}`);
       const lastmod = p.updatedAt.toISOString().slice(0, 10);
       return `  <url><loc>${loc}</loc><lastmod>${lastmod}</lastmod><changefreq>weekly</changefreq><priority>0.8</priority></url>`;
     });

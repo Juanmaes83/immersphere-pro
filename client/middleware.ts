@@ -62,6 +62,43 @@ function extractPropertyId(pathname: string): string | null {
   return id && id.length > 0 ? id : null;
 }
 
+/**
+ * Edge-compatible slugify — mirrors client/src/utils/slugify.ts exactly.
+ * Uses only built-in JS/V8 APIs (safe for Vercel Edge Runtime).
+ * "Gran Vía 32, Madrid" → "gran-via-32-madrid"
+ */
+function slugify(text: string): string {
+  return text
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '') // strip combining diacriticals
+    .replace(/[^a-z0-9\s-]/g, '')    // keep alphanumeric + spaces + hyphens
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/-+/g, '-')
+    .slice(0, 60);
+}
+
+/**
+ * Return the canonical slug URL for a property.
+ * - If the incoming pathname already has a slug segment, keep it as-is.
+ * - Otherwise compute the slug from the property title and append it.
+ * - Falls back to the ID-only path if the title produces an empty slug.
+ */
+function buildCanonicalUrl(origin: string, pathname: string, propertyId: string, title: string): string {
+  const parts = pathname.split('/').filter(Boolean); // ['property', 'UUID'] or ['property', 'UUID', 'slug']
+  const hasSlugSegment = parts.length >= 3;
+  if (hasSlugSegment) {
+    // URL already contains a slug — respect it as canonical
+    return `${origin}${pathname}`;
+  }
+  // ID-only path — compute and append the slug
+  const slug = slugify(title);
+  return slug
+    ? `${origin}/property/${propertyId}/${slug}`
+    : `${origin}/property/${propertyId}`;
+}
+
 function escapeHtml(str: string): string {
   return str
     .replace(/&/g, '&amp;')
@@ -231,8 +268,11 @@ export default async function middleware(request: Request): Promise<Response | u
     const indexHtml = await indexRes.text();
 
     // Step 3 — build and inject OG tags
-    const canonicalUrl = `${url.origin}${url.pathname}`;
     const propertyTitle = property.title || 'Propiedad';
+    // S3.2: canonical always resolves to the slug URL.
+    // If the request already carries /property/UUID/slug → keep it.
+    // If the request is /property/UUID (no slug) → compute and append.
+    const canonicalUrl = buildCanonicalUrl(url.origin, url.pathname, propertyId, propertyTitle);
     const description = (
       property.description || 'Tour virtual inmersivo en Immersphere Pro'
     ).trim();
