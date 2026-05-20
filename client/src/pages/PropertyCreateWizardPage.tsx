@@ -210,12 +210,15 @@ export default function PropertyCreateWizardPage(): JSX.Element {
   // Step 3 — reorder
   const [spaces, setSpaces] = useState<CreatedSpace[]>([]);
 
+  // Step 2 — capture method selector
+  const [captureMethod, setCaptureMethod] = useState<'360' | 'gaussian' | 'files' | null>(null);
+
   // Step 4 — published
   const [propertyId, setPropertyId] = useState<string | null>(null);
   const [publishedUrl, setPublishedUrl] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const STEP_LABELS = ['Datos', 'Panoramas', 'Orden', 'Publicar'];
+  const STEP_LABELS = ['Datos', 'Archivos', 'Orden', 'Publicar'];
 
   // ── Step 1: create property ─────────────────────────────────────────────────
   async function handleStep1(): Promise<void> {
@@ -647,11 +650,150 @@ export default function PropertyCreateWizardPage(): JSX.Element {
           {step === 2 && (
             <div>
               <h2 className="mb-1 text-lg font-black text-slate-900 dark:text-slate-100">
-                Sube los panoramas 360°
+                Sube los archivos del recorrido
               </h2>
               <p className="mb-6 text-sm font-semibold text-slate-500">
                 Cada archivo se convierte en una estancia. El nombre se detecta automáticamente.
               </p>
+
+              {/* ── Capture method selector (only shown before any upload starts) ── */}
+              {uploads.length === 0 && (
+                <div className="mb-6">
+                  <p className="mb-3 text-xs font-black uppercase tracking-wider text-slate-400">
+                    ¿Cómo vas a capturar?
+                  </p>
+                  <div className="grid grid-cols-3 gap-3">
+                    {(
+                      [
+                        { id: '360',      icon: '📷', title: 'Foto 360°',         sub: 'Ricoh Theta · Insta360' },
+                        { id: 'gaussian', icon: '✨', title: 'Gaussian Splat',    sub: 'Polycam · Luma · LiDAR' },
+                        { id: 'files',    icon: '📁', title: 'Ya tengo archivos', sub: 'Subir directamente'     }
+                      ] as const
+                    ).map((method) => {
+                      const isSelected = captureMethod === method.id;
+                      return (
+                        <button
+                          key={method.id}
+                          type="button"
+                          onClick={() => setCaptureMethod(isSelected ? null : method.id)}
+                          className={`flex flex-col items-center gap-1.5 rounded-2xl border-2 px-2 py-4 text-center transition ${
+                            isSelected
+                              ? 'border-transparent text-white shadow-md'
+                              : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                          }`}
+                          style={isSelected ? bgStyle : undefined}
+                        >
+                          <span className="text-2xl">{method.icon}</span>
+                          <span className="text-xs font-black leading-tight">{method.title}</span>
+                          <span className={`text-[10px] font-semibold leading-tight ${isSelected ? 'text-white/80' : 'text-slate-400'}`}>
+                            {method.sub}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* ── Guide: 360° ── */}
+                  {captureMethod === '360' && (
+                    <div className="mt-4 rounded-2xl border border-blue-100 bg-blue-50 px-5 py-4 dark:border-blue-900/40 dark:bg-blue-950/30">
+                      <p className="mb-3 text-xs font-black uppercase tracking-wider text-blue-600 dark:text-blue-400">
+                        Cómo capturar en 360°
+                      </p>
+                      <ol className="space-y-2.5">
+                        {[
+                          'Captura con tu cámara 360° (Ricoh Theta, Insta360) o con Polycam en modo 360°',
+                          'Exporta cada habitación como imagen JPG o PNG',
+                          'Sube una imagen por habitación — el nombre se detecta automáticamente'
+                        ].map((step, i) => (
+                          <li key={i} className="flex items-start gap-3">
+                            <span
+                              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white"
+                              style={bgStyle}
+                            >
+                              {i + 1}
+                            </span>
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">{step}</span>
+                          </li>
+                        ))}
+                      </ol>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="mt-4 flex items-center gap-1.5 text-sm font-black"
+                        style={{ color }}
+                      >
+                        Listo, seleccionar archivos
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── Guide: Gaussian ── */}
+                  {captureMethod === 'gaussian' && (
+                    <div className="mt-4 rounded-2xl border border-purple-100 bg-purple-50 px-5 py-4 dark:border-purple-900/40 dark:bg-purple-950/30">
+                      <p className="mb-3 text-xs font-black uppercase tracking-wider text-purple-600 dark:text-purple-400">
+                        Cómo capturar Gaussian Splat
+                      </p>
+                      <ol className="space-y-2.5">
+                        {([
+                          { text: 'Graba un vídeo lento y fluido de la estancia (Polycam, Luma AI o iPhone con LiDAR)' },
+                          { text: 'Exporta el archivo en formato .ply o .splat' },
+                          { text: 'Si el archivo pesa más de 500 MB, comprímelo primero con SuperSplat', link: { label: 'Abrir SuperSplat →', url: 'https://supersplat.playcanvas.com' } },
+                          { text: 'Sube el archivo aquí — límite máximo 500 MB' }
+                        ] as Array<{ text: string; link?: { label: string; url: string } }>).map((step, i) => (
+                          <li key={i} className="flex items-start gap-3">
+                            <span
+                              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] font-black text-white"
+                              style={bgStyle}
+                            >
+                              {i + 1}
+                            </span>
+                            <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+                              {step.text}
+                              {step.link && (
+                                <>
+                                  {' '}
+                                  <a
+                                    href={step.link.url}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="font-black underline"
+                                    style={{ color }}
+                                  >
+                                    {step.link.label}
+                                  </a>
+                                </>
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="mt-4 flex items-center gap-1.5 text-sm font-black"
+                        style={{ color }}
+                      >
+                        Listo, seleccionar archivos
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" className="h-3.5 w-3.5">
+                          <polyline points="9 18 15 12 9 6" />
+                        </svg>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* ── Guide: Ya tengo archivos ── */}
+                  {captureMethod === 'files' && (
+                    <div className="mt-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-4 py-3 dark:border-emerald-900/40 dark:bg-emerald-950/30">
+                      <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
+                        Perfecto. Selecciona tus archivos en el área de abajo — JPG, PNG, WEBP para panoramas 360° o PLY, SPLAT para Gaussian.
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Drop zone */}
               <div
@@ -677,11 +819,14 @@ export default function PropertyCreateWizardPage(): JSX.Element {
                   </svg>
                 </div>
                 <div>
-                  <p className="font-black text-slate-700 dark:text-slate-200">
-                    Arrastra los panoramas aquí
+                  <p className="hidden font-black text-slate-700 dark:text-slate-200 sm:block">
+                    Arrastra los archivos aquí
+                  </p>
+                  <p className="font-black text-slate-700 dark:text-slate-200 sm:hidden">
+                    Toca para seleccionar archivos
                   </p>
                   <p className="mt-0.5 text-sm font-semibold text-slate-400">
-                    o haz clic para seleccionarlos · JPG, PNG, WEBP, GLB, SPLAT
+                    JPG · PNG · WEBP · PLY · SPLAT · GLB
                   </p>
                 </div>
               </div>
