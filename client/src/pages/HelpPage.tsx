@@ -1098,6 +1098,332 @@ export default function HelpPage(): JSX.Element {
         </div>
       </section>
 
+      {/* ── MULTI-ROOM GAUSSIAN BLUEPRINT — solo admin ──────────── */}
+      {isAuthenticated && (
+        <section id="gaussian-blueprint" className="bg-slate-950 px-5 py-20">
+          <div className="mx-auto max-w-5xl">
+
+            {/* Header */}
+            <div className="flex items-center gap-3 mb-2">
+              <span className="inline-flex rounded-full bg-violet-600/20 border border-violet-500/30 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-violet-400">
+                Blueprint interno · Solo admin
+              </span>
+            </div>
+            <h2 className="text-3xl font-black text-white md:text-4xl">
+              Multi-room Gaussian Blueprint
+            </h2>
+            <p className="mt-3 max-w-2xl text-base text-slate-400">
+              Guía realista para producir y vender experiencias Gaussian multi-room en Immersphere.
+              Sin humo técnico. Sin sobreingeniería. Sin promesas que no podemos cumplir hoy.
+            </p>
+
+            {/* A — Definición: Lite vs Pro */}
+            <div className="mt-12 grid gap-5 md:grid-cols-2">
+              <div className="rounded-[1.4rem] border border-violet-500/30 bg-violet-950/30 p-6">
+                <span className="inline-flex rounded-full bg-violet-600 px-2.5 py-0.5 text-[10px] font-black text-white uppercase tracking-wide">Disponible ahora</span>
+                <h3 className="mt-3 text-lg font-black text-white">Multi-room Gaussian Lite</h3>
+                <ul className="mt-3 space-y-1.5">
+                  {[
+                    'Varias estancias, cada una es un Space',
+                    'Cada Space puede tener asset gaussian_splat',
+                    'Navegación: selector de rooms, floorplan, hotspots, guided tour',
+                    'Storytelling y CTA por estancia',
+                    'Cinematic drift direccional en transiciones',
+                    'Sin hotspots 3D reales — overlay 2D',
+                    'Sin gestión de memoria entre splats',
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-2 text-sm text-slate-300">
+                      <span className="mt-0.5 text-violet-400">✓</span>{item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-[1.4rem] border border-slate-700 bg-slate-900 p-6">
+                <span className="inline-flex rounded-full bg-slate-700 px-2.5 py-0.5 text-[10px] font-black text-slate-300 uppercase tracking-wide">Fase Pro — no ahora</span>
+                <h3 className="mt-3 text-lg font-black text-white">Multi-room Gaussian Pro</h3>
+                <ul className="mt-3 space-y-1.5">
+                  {[
+                    'Anchors espaciales 3D dentro del splat',
+                    'Hotspots 3D reales (no overlay)',
+                    'Scene preloading y memory unloading',
+                    'Navegación walk/fly (sin colisiones reales)',
+                    'Mobile performance avanzada + GPU tier detection',
+                    'Analytics espaciales (posición en el splat)',
+                    'Relighting y edición persistente avanzada',
+                  ].map((item) => (
+                    <li key={item} className="flex items-start gap-2 text-sm text-slate-500">
+                      <span className="mt-0.5 text-slate-600">○</span>{item}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* B — Arquitectura recomendada Lite */}
+            <div className="mt-10 rounded-[1.4rem] border border-slate-700 bg-slate-900 p-6">
+              <h3 className="text-base font-black text-white mb-1">Arquitectura recomendada — Lite</h3>
+              <p className="text-xs text-slate-400 mb-5">No todo tiene que ser Gaussian. Combina según el tipo de estancia.</p>
+              <div className="space-y-2">
+                {[
+                  { space: 'Space 1 — Entrada',         type: 'panorama_360',    why: 'Carga instantánea. Ancla la experiencia desde el primer segundo.' },
+                  { space: 'Space 2 — Salón premium',   type: 'gaussian_splat',  why: 'Volumen y presencia. El primer wow.' },
+                  { space: 'Space 3 — Cocina',          type: 'panorama_360',    why: 'Rapidez y cobertura. No necesita 3D volumétrico.' },
+                  { space: 'Space 4 — Terraza flagship',type: 'gaussian_splat',  why: 'El segundo wow. Arquitectura + exterior + singularidad.' },
+                  { space: 'Space 5 — Dormitorio',      type: 'panorama_360',    why: 'Mobile-safe. Cierre del recorrido sin peso extra.' },
+                ].map((row) => (
+                  <div key={row.space} className="flex items-start gap-4 rounded-xl bg-slate-800/50 px-4 py-3">
+                    <div className="w-44 shrink-0">
+                      <p className="text-xs font-black text-slate-200">{row.space}</p>
+                      <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-black ${
+                        row.type === 'gaussian_splat'
+                          ? 'bg-violet-600/20 text-violet-300'
+                          : 'bg-blue-900/30 text-blue-300'
+                      }`}>{row.type}</span>
+                    </div>
+                    <p className="text-xs text-slate-400 leading-relaxed">{row.why}</p>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-4 text-xs font-black text-slate-500 uppercase tracking-wide">
+                Regla: Gaussian donde aporte volumen, lujo o singularidad. Panorama donde importe velocidad, mobile o cobertura.
+              </p>
+            </div>
+
+            {/* C — Spatial Storytelling */}
+            <div className="mt-8 rounded-[1.4rem] border border-slate-700 bg-slate-900 p-6">
+              <h3 className="text-base font-black text-white mb-1">Spatial Storytelling</h3>
+              <p className="text-xs text-slate-400 mb-5">No es una lista de escenas. Es un arco narrativo espacial con intención.</p>
+              <div className="flex flex-col gap-2">
+                {[
+                  { label: 'Entrada', note: 'Panorama. Ancla inmediata. Storytelling: bienvenida.' },
+                  { label: '↓ Drift → Salón', note: 'Gaussian. Primer wow. CTA: "Solicitar visita".' },
+                  { label: '↓ Drift → Cocina', note: 'Panorama. Fluidez. Sin coste de carga.' },
+                  { label: '↓ Drift → Terraza flagship', note: 'Gaussian. El clímax del recorrido. CTA: "Hablar con asesor".' },
+                  { label: '↓ Drift → Dormitorio', note: 'Panorama. Cierre emocional. Lead capture final.' },
+                ].map((step, i) => (
+                  <div key={i} className="flex items-start gap-3">
+                    <div className="mt-1 h-2 w-2 shrink-0 rounded-full bg-violet-500" />
+                    <div>
+                      <p className="text-sm font-black text-slate-200">{step.label}</p>
+                      <p className="text-xs text-slate-500">{step.note}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-4">
+                {[
+                  { icon: '🎬', label: 'Drift', desc: 'da continuidad' },
+                  { icon: '📖', label: 'Storytelling', desc: 'da intención' },
+                  { icon: '🎯', label: 'CTA', desc: 'convierte' },
+                  { icon: '💎', label: 'Gaussian', desc: 'da presencia' },
+                ].map((item) => (
+                  <div key={item.label} className="rounded-xl bg-slate-800 px-3 py-3 text-center">
+                    <span className="text-xl">{item.icon}</span>
+                    <p className="mt-1 text-xs font-black text-slate-200">{item.label}</p>
+                    <p className="text-[10px] text-slate-500">{item.desc}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* D — Limitaciones actuales */}
+            <div className="mt-8 grid gap-5 md:grid-cols-2">
+              <div className="rounded-[1.4rem] border border-emerald-800/40 bg-emerald-950/20 p-6">
+                <h3 className="text-sm font-black text-emerald-400 mb-3">✅ Actualmente SÍ tenemos</h3>
+                <ul className="space-y-1">
+                  {[
+                    'Espacios múltiples (order field)',
+                    'Asset type gaussian_splat en cada Space',
+                    'Viewer nativo SparkJS (.splat / .ply)',
+                    'Mezcla panorama + gaussian por propiedad',
+                    'Floorplan pins → cualquier tipo de Space',
+                    'Guided tour cross-type (panorama + gaussian)',
+                    'Storytelling + CTA por estancia',
+                    'Cinematic drift en navegación por hotspot',
+                    'splat_ready / splat_error analytics',
+                    'space_time analytics (dwell)',
+                    'ErrorBoundary + fallback amable',
+                    'Renderer.dispose() en unmount (no memory leak)',
+                    'Share slug / QR / OG injection',
+                  ].map((item) => (
+                    <li key={item} className="text-xs text-slate-300">· {item}</li>
+                  ))}
+                </ul>
+              </div>
+              <div className="rounded-[1.4rem] border border-red-900/40 bg-red-950/20 p-6">
+                <h3 className="text-sm font-black text-red-400 mb-3">❌ Actualmente NO tenemos</h3>
+                <ul className="space-y-1">
+                  {[
+                    'Hotspots 3D reales en Gaussian (solo overlay 2D)',
+                    'Preloading de assets gaussian_splat',
+                    'Gestión de memoria multi-splat',
+                    'Walk mode / fly mode propio',
+                    'Colisiones / spatial anchors',
+                    'GPU tier detection (fallback proactivo mobile)',
+                    'Streaming / adaptive quality',
+                    'Mobile Gaussian UX avanzada',
+                    'Analytics espaciales (posición en splat)',
+                    'Relighting',
+                    'Conversión cloud automática (.video → .splat)',
+                    'Multi-user collaboration',
+                    'Edición avanzada persistente',
+                  ].map((item) => (
+                    <li key={item} className="text-xs text-slate-500">· {item}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+
+            {/* E — Reglas de producto */}
+            <div className="mt-8 rounded-[1.4rem] border border-amber-800/30 bg-amber-950/10 p-6">
+              <h3 className="text-base font-black text-amber-400 mb-4">Reglas de producto — Gaussian</h3>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {[
+                  { n: '1', rule: 'Gaussian no sustituye Panorama.', detail: 'Es capa premium sobre una base panorama estable.' },
+                  { n: '2', rule: 'Máx. recomendado: 1–2 splats por propiedad.', detail: 'Fase actual. Sin preloading, cada splat carga desde cero.' },
+                  { n: '3', rule: 'Si el público es móvil: panorama como base.', detail: 'Gaussian como bonus. Nunca como única opción.' },
+                  { n: '4', rule: 'No vender Gaussian multi-room masivo todavía.', detail: 'Demos controladas. Flagship. No como producto genérico.' },
+                  { n: '5', rule: 'Demo sin archivo = supersplat_embed temporal.', detail: 'Etiquetado como demo en admin. Reemplazar cuando exista el .splat.' },
+                  { n: '6', rule: 'Optimizar antes de subir.', detail: 'Si el splat > 200 MB, procesar con SuperSplat primero.' },
+                  { n: '7', rule: 'Gaussian donde aporte wow real.', detail: 'Terraza, salón premium, showroom, arquitectura singular.' },
+                  { n: '8', rule: 'En demos: Gaussian para wow + Panorama para cobertura.', detail: 'Combinación óptima para conversión y fiabilidad.' },
+                ].map((r) => (
+                  <div key={r.n} className="flex gap-3 rounded-xl bg-slate-900 px-4 py-3">
+                    <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-amber-600 text-[10px] font-black text-white">{r.n}</span>
+                    <div>
+                      <p className="text-xs font-black text-slate-200">{r.rule}</p>
+                      <p className="mt-0.5 text-[11px] text-slate-500">{r.detail}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* F — Roadmap */}
+            <div className="mt-8 rounded-[1.4rem] border border-slate-700 bg-slate-900 p-6">
+              <h3 className="text-base font-black text-white mb-5">Roadmap realista</h3>
+              <div className="grid gap-4 sm:grid-cols-2 md:grid-cols-4">
+                {[
+                  {
+                    phase: 'Lite', when: 'Ahora', color: 'bg-emerald-600',
+                    items: [
+                      'Mezclar panorama + Gaussian por Space',
+                      'Floorplan y selector de rooms',
+                      'Storytelling y CTA por estancia',
+                      'Drift direccional en hotspot-nav',
+                      'SuperSplat embed solo como demo temporal',
+                    ]
+                  },
+                  {
+                    phase: 'Studio', when: 'Próximo sprint', color: 'bg-blue-600',
+                    items: [
+                      'Cargar 2–3 Gaussian en propiedad demo',
+                      'Probar mobile real y definir fallback',
+                      'Crear caso flagship (ático Madrid)',
+                      'Criterios de calidad QA manual',
+                      'Prefetch gaussian en hotspot hover',
+                    ]
+                  },
+                  {
+                    phase: 'Pro', when: 'Después', color: 'bg-violet-600',
+                    items: [
+                      'Hotspots 3D (anchor en splat)',
+                      'Walk/fly UX lite',
+                      'Preloading + memory unloading',
+                      'Mobile Gaussian UX',
+                      'Analytics espaciales',
+                    ]
+                  },
+                  {
+                    phase: 'Enterprise', when: 'No ahora', color: 'bg-slate-600',
+                    items: [
+                      'Pipeline CV propio',
+                      'Streaming splats adaptativo',
+                      'Scene graph multi-splat',
+                      'Relighting',
+                      'Multi-user collaboration',
+                    ]
+                  },
+                ].map((phase) => (
+                  <div key={phase.phase} className="rounded-xl border border-slate-700 bg-slate-800 p-4">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className={`rounded-full px-2.5 py-0.5 text-[10px] font-black text-white ${phase.color}`}>{phase.phase}</span>
+                      <span className="text-[10px] text-slate-500">{phase.when}</span>
+                    </div>
+                    <ul className="space-y-1.5">
+                      {phase.items.map((item) => (
+                        <li key={item} className="text-[11px] text-slate-400 leading-relaxed">· {item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* G — Criterios de calidad */}
+            <div className="mt-8 rounded-[1.4rem] border border-slate-700 bg-slate-900 p-6">
+              <h3 className="text-base font-black text-white mb-4">Criterios de calidad — Gaussian Lite</h3>
+              <p className="text-xs text-slate-400 mb-4">Una experiencia Multi-room Gaussian Lite se considera aprobada si cumple todos estos puntos:</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {[
+                  'Carga en desktop Chrome sin error',
+                  'No bloquea ni rompe los spaces panorama',
+                  'No saca al usuario de Immersphere (sin iframes visibles en vista pública)',
+                  'Cada Space tiene nombre claro y significativo',
+                  'CTA visible en al menos un Space Gaussian',
+                  'Floorplan funciona y pines apuntan correctamente',
+                  'Share slug funciona y OG image se inyecta',
+                  'QR genera URL canonical correcta',
+                  'Si falla el Gaussian: fallback amable visible (no pantalla en blanco)',
+                  'Mobile no queda roto (aunque Gaussian sea limitado)',
+                  'No hay texto que prometa walk-through o navegación libre',
+                  'supersplat_embed etiquetado como temporal si existe',
+                ].map((criterion) => (
+                  <div key={criterion} className="flex items-start gap-2 rounded-xl bg-slate-800 px-3 py-2.5">
+                    <span className="mt-0.5 text-emerald-500">☐</span>
+                    <p className="text-[11px] text-slate-300 leading-relaxed">{criterion}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Bugs detectados durante auditoría */}
+            <div className="mt-8 rounded-[1.4rem] border border-red-900/40 bg-red-950/10 p-6">
+              <h3 className="text-sm font-black text-red-400 mb-4">🔍 Bugs detectados durante auditoría forense</h3>
+              <div className="space-y-4">
+                {[
+                  {
+                    sev: 'MEDIUM',
+                    title: 'Gaussian prewarm missing',
+                    file: 'UniversalViewer.tsx · líneas 536–542',
+                    detail: 'El efecto de prewarm solo calienta assets panorama_360 (new Image()). Los spaces gaussian_splat objetivo de hotspot navigation no se precargan — el usuario ve pantalla de carga al navegar.',
+                    pr: 'perf(viewer): prefetch gaussian_splat assets for hotspot-target spaces',
+                  },
+                  {
+                    sev: 'LOW',
+                    title: 'Sin GPU tier detection en Gaussian',
+                    file: 'GaussianSplatViewer.tsx · useEffect renderer init',
+                    detail: 'No hay comprobación de navigator.gpu ni WebGL capabilities antes de inicializar SparkJS. En móvil de gama baja el error se captura y muestra fallback amable — pero el check podría ser proactivo.',
+                    pr: 'feat(viewer): add WebGL tier detection for gaussian_splat graceful mobile fallback',
+                  },
+                ].map((bug) => (
+                  <div key={bug.title} className="rounded-xl bg-slate-900 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={`rounded-full px-2 py-0.5 text-[10px] font-black ${bug.sev === 'MEDIUM' ? 'bg-amber-600/20 text-amber-400' : 'bg-slate-700 text-slate-400'}`}>{bug.sev}</span>
+                      <span className="text-xs font-black text-slate-200">{bug.title}</span>
+                    </div>
+                    <p className="text-[10px] font-mono text-slate-500 mb-1">{bug.file}</p>
+                    <p className="text-xs text-slate-400 mb-2">{bug.detail}</p>
+                    <p className="text-[10px] font-mono text-violet-400">PR recomendado: {bug.pr}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+          </div>
+        </section>
+      )}
+
       {/* ── CTA FINAL ───────────────────────────────────────────── */}
       <section className="bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 px-5 py-24 text-center text-white md:py-32">
         <p className="text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
