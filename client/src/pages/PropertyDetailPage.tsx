@@ -421,7 +421,8 @@ function PropertyQRCode({
   const [showFullscreen, setShowFullscreen] = useState(false);
   const [linkCopiedQR, setLinkCopiedQR] = useState(false);
 
-  const tourUrl = `${window.location.origin}/property/${propertyId}`;
+  // QR must use the same canonical slug URL as ShareModal and og:url
+  const tourUrl = propertyShareUrl(propertyId, propertyTitle ?? '');
 
   useEffect(() => {
     if (!canvasRef.current) return;
@@ -871,6 +872,8 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
         <meta name="twitter:description" content={ogDescription} />
         {ogImage ? <meta name="twitter:image" content={ogImage} /> : null}
         <script type="application/ld+json">{JSON.stringify(jsonLd)}</script>
+        {/* S3.1: canonical for client-side nav; middleware also injects this for crawlers */}
+        <link rel="canonical" href={ogUrl} />
       </Helmet>
       <section className="mx-auto max-w-7xl px-5 py-10">
         {!embed ? (
@@ -1143,7 +1146,6 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
           description={property.description ?? undefined}
           imageUrl={property.coverImage ?? undefined}
           primaryColor={primaryColor}
-          whatsappNumber={property.tenantWhatsapp ?? undefined}
           onClose={() => setShowShareModal(false)}
         />
       ) : null}

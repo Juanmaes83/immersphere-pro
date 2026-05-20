@@ -8,13 +8,13 @@ interface Props {
   description?: string;
   imageUrl?: string;
   primaryColor?: string;
-  whatsappNumber?: string;   // tenant's agent number (for contact, not sharing)
+  // NOTE: whatsappNumber removed — contact button lives in the property aside, not here
   onClose: () => void;
 }
 
 export default function ShareModal({
   propertyId, title, description, imageUrl, primaryColor = '#7C3AED',
-  whatsappNumber, onClose,
+  onClose,
 }: Props): JSX.Element {
   const canonicalUrl = propertyShareUrl(propertyId, title);
   const [copied, setCopied] = useState(false);
