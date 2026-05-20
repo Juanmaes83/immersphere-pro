@@ -14,6 +14,7 @@ const SuperSplatEmbedViewer = lazy(() => import('@/components/viewer/SuperSplatE
 import { AUTH_STORAGE_KEYS } from '@/services/api';
 import type {
   Hotspot,
+  HotspotPosition,
   Space,
   SpacePreview,
   UniversalViewerProps,
@@ -244,6 +245,13 @@ export default function UniversalViewer({
   const isTouchDevice        = useRef(window.matchMedia('(pointer: coarse)').matches);
   /** Set before calling runTransition to control cinematic zoom intensity */
   const transitionIntentRef  = useRef<'hotspot' | 'nav' | ''>('');
+  /**
+   * Directional drift vector for cinematic transitions.
+   * Computed from hotspot.position (yaw/pitch for panoramas, x/y otherwise).
+   * Applies translateX/translateY during the 'out' phase only.
+   * Cleared when transition returns to 'idle'.
+   */
+  const driftRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
 
   const viewerRef       = useRef<HTMLElement>(null);
   const sessionId       = useRef(getOrCreateSessionId());
@@ -658,6 +666,31 @@ export default function UniversalViewer({
     }, nextSpace.id);
   }
 
+  // ── Cinematic drift helper ───────────────────────────────────────────────────
+
+  /**
+   * Compute a micro drift vector (px) from a hotspot's HotspotPosition.
+   *
+   * Position x and y are percentages (0–100) of the viewer canvas:
+   *   x = 50  →  center  →  no horizontal drift
+   *   x > 50  →  right   →  drift right  (+px)
+   *   x < 50  →  left    →  drift left   (–px)
+   *   y = 50  →  middle  →  no vertical drift
+   *   y > 50  →  below   →  drift down   (+py, half weight)
+   *   y < 50  →  above   →  drift up     (–py, half weight)
+   *
+   * Max drift: 8 px desktop, 4 px mobile (within 6–10 / 3–5 px spec).
+   * ONLY applied for `transitionIntentRef === 'hotspot'` navigation transitions;
+   * never for 'nav' (room-bar click) or '' (cinematic auto) — see call sites.
+   */
+  function computeDrift(pos: HotspotPosition): { x: number; y: number } {
+    const maxPx = isTouchDevice.current ? 4 : 8;
+    const clamp = (v: number) => Math.max(-1, Math.min(1, v));
+    const x = clamp((pos.x - 50) / 50) * maxPx;
+    const y = clamp((pos.y - 50) / 50) * maxPx * 0.5;
+    return { x: Math.round(x * 10) / 10, y: Math.round(y * 10) / 10 };
+  }
+
   // ── Cinematic transition runner ──────────────────────────────────────────────
 
   function runTransition(swapFn: () => void, targetId: string): void {
@@ -676,7 +709,8 @@ export default function UniversalViewer({
       swapFn();
       setTPhase('in');
       setTimeout(() => {
-        transitionIntentRef.current = ''; // clear before idle render so scale resets cleanly
+        transitionIntentRef.current = ''; // clear before idle render so scale/drift resets cleanly
+        driftRef.current = { x: 0, y: 0 };
         setTPhase('idle');
         transitionLock.current = false;
         const pendingId = pendingSpaceRef.current;
@@ -776,6 +810,10 @@ export default function UniversalViewer({
     // Navigation hotspots: switch space directly — do not open info panel
     if (hotspot.type === 'navigation' && hotspot.targetSpaceId) {
       transitionIntentRef.current = 'hotspot'; // cinematic zoom-in before transition
+      // Compute directional drift from hotspot position (yaw/pitch for panoramas, x/y otherwise).
+      // Only for navigation hotspots — CTA/info hotspots never trigger drift.
+      // prefersReducedMotion guard is applied at render time (driftRef read is safe here).
+      driftRef.current = computeDrift(hotspot.position);
       runTransition(() => { handleSpaceChange(hotspot.targetSpaceId!); }, hotspot.targetSpaceId);
       return;
     }
@@ -850,6 +888,12 @@ export default function UniversalViewer({
   const _scaleOut     = _isCinZoom ? 1.042 : 1.018;
   const _blurOut      = _isCinZoom ? '9px'  : '6px';
   const _brightnessOut = _isCinZoom ? 0.5    : 0.7;
+  // Directional drift: only during hotspot-intent transitions, only if reduced-motion is off.
+  // During 'out' phase: apply drift vector so the scene appears to slide toward the target.
+  // During 'in' and 'idle': always 0 — the CSS transition animates the snap back to center.
+  const _isDrift  = tPhase !== 'idle' && !prefersReducedMotion && _cinIntent === 'hotspot';
+  const _driftX   = _isDrift ? driftRef.current.x : 0;
+  const _driftY   = _isDrift ? driftRef.current.y : 0;
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
@@ -1227,7 +1271,12 @@ export default function UniversalViewer({
               // _scaleOut: 1.042 for hotspot/nav intent, 1.018 for regular transitions.
               // During 'in' phase the element starts at whatever _scaleOut was (CSS holds last value)
               // and transitions to scale(1) — giving the "breathing open" zoom-out on entry.
-              transform: tPhase === 'out' ? `scale(${_scaleOut})` : 'scale(1)',
+              // _driftX/Y: directional micro-drift from hotspot.position (yaw/pitch).
+              // Only for 'hotspot' intent; never for 'nav' or CTA/info hotspots.
+              // translate is applied before scale so it operates in pre-scale screen space.
+              transform: tPhase === 'out'
+                ? `translateX(${_driftX}px) translateY(${_driftY}px) scale(${_scaleOut})`
+                : `translateX(0px) translateY(0px) scale(1)`,
               filter: tPhase === 'out'
                 ? `blur(${_blurOut}) brightness(${_brightnessOut})`
                 : tPhase === 'in'
