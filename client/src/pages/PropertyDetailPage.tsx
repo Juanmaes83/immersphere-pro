@@ -13,6 +13,7 @@ import { AUTH_STORAGE_KEYS, api, unwrapApiResponse } from '@/services/api';
 import { geocodeAddress } from '@/utils/googleMaps';
 import AddressAutocomplete from '@/components/AddressAutocomplete';
 import NeighborhoodSection from '@/components/NeighborhoodSection';
+import LumaSection from '@/components/LumaSection';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type ImmersiveProperty } from '@/store/propertyStore';
 import type { Space, ViewerEvent } from '@/types/viewer';
@@ -937,6 +938,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                     </Suspense>
                   </ErrorBoundary>
                   <NeighborhoodSection lat={property.latitude} lng={property.longitude} />
+                  <LumaSection property={property} isAuthenticated={isAuthenticated} />
                   {isAuthenticated && (
                     <div className="mt-2 flex items-center gap-2 text-xs text-slate-400">
                       <svg className="h-3.5 w-3.5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>

@@ -9,6 +9,7 @@ import PanoramaViewer from '@/components/viewer/PanoramaViewer';
 import { t } from '@/i18n/dictionary';
 
 const GlbViewer = lazy(() => import('@/components/viewer/GlbViewer'));
+const LumaEmbedViewer = lazy(() => import('@/components/viewer/LumaEmbedViewer'));
 import { AUTH_STORAGE_KEYS } from '@/services/api';
 import type {
   Hotspot,
@@ -1308,6 +1309,17 @@ export default function UniversalViewer({
                   lang={language}
                   onAnalyticsEvent={onAnalyticsEvent}
                 />
+              </Suspense>
+            ) : activeAsset.type === 'luma_embed' ? (
+              <Suspense
+                key={`luma-${activeSpace.id}-${activeAsset.id}`}
+                fallback={
+                  <div className="flex h-full w-full items-center justify-center bg-black">
+                    <div className="h-8 w-8 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                  </div>
+                }
+              >
+                <LumaEmbedViewer asset={activeAsset} />
               </Suspense>
             ) : (
               <Suspense

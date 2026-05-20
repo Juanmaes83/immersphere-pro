@@ -1,4 +1,4 @@
-﻿export type ViewerAssetType = 'panorama_360' | 'gaussian_splat' | 'mesh';
+﻿export type ViewerAssetType = 'panorama_360' | 'gaussian_splat' | 'mesh' | 'luma_embed';
 
 export type ViewerAssetFormat =
   | 'jpg'
@@ -10,7 +10,8 @@ export type ViewerAssetFormat =
   | 'sog'
   | 'glb'
   | 'meta.json'
-  | 'lod-meta.json';
+  | 'lod-meta.json'
+  | 'iframe';
 
 export type HotspotType = 'info' | 'cta' | 'navigation' | 'measurement';
 

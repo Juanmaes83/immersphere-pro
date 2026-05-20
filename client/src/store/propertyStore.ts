@@ -186,13 +186,14 @@ function normalizeAssetType(type: string): ViewerAsset['type'] {
 
   if (normalized === 'GAUSSIAN_SPLAT') return 'gaussian_splat';
   if (normalized === 'MESH') return 'mesh';
+  if (normalized === 'LUMA_EMBED') return 'luma_embed';
 
   return 'panorama_360';
 }
 
 function normalizeAssetFormat(format: string): ViewerAsset['format'] {
   const normalized = format.toLowerCase();
-  const allowed: ViewerAsset['format'][] = ['jpg', 'jpeg', 'png', 'webp', 'splat', 'ply', 'glb'];
+  const allowed: ViewerAsset['format'][] = ['jpg', 'jpeg', 'png', 'webp', 'splat', 'ply', 'glb', 'iframe'];
 
   return allowed.includes(normalized as ViewerAsset['format']) ? (normalized as ViewerAsset['format']) : 'jpg';
 }
@@ -239,6 +240,7 @@ function isFallbackAsset(asset: ViewerAsset): boolean {
 function toApiAssetType(type: ViewerAsset['type']): string {
   if (type === 'gaussian_splat') return 'GAUSSIAN_SPLAT';
   if (type === 'mesh') return 'MESH';
+  if (type === 'luma_embed') return 'LUMA_EMBED';
 
   return 'PANORAMA_360';
 }
