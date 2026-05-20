@@ -34,7 +34,10 @@ export async function geocodeAddress(address: string): Promise<{ lat: number; ln
         results: Array<{ geometry: { location: { lat(): number; lng(): number } } }>;
       }>;
     };
-    const response = await geocoder.geocode({ address });
+    const timeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('geocode_timeout')), 8000)
+    );
+    const response = await Promise.race([geocoder.geocode({ address }), timeout]);
     if (response.results?.length) {
       return {
         lat: response.results[0].geometry.location.lat(),
