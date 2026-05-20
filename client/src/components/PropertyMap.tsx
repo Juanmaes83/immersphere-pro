@@ -14,9 +14,9 @@ type Tab = 'map' | 'street';
 export default function PropertyMap({ lat, lng, title }: PropertyMapProps): JSX.Element {
   const [tab, setTab] = useState<Tab>('map');
 
-  const gmapsUrl     = `https://www.google.com/maps?q=${lat},${lng}`;
-  const streetViewUrl = `https://www.google.com/maps/@${lat},${lng},3a,75y,0h,90t/data=!3m1!1e3`;
-  const embedUrl     = `https://maps.google.com/maps?q=${lat},${lng}&hl=es&z=16&output=embed`;
+  const gmapsUrl      = `https://www.google.com/maps?q=${lat},${lng}`;
+  const embedUrl      = `https://maps.google.com/maps?q=${lat},${lng}&hl=es&z=16&output=embed`;
+  const streetEmbedUrl = `https://maps.google.com/maps?q=&layer=c&cbll=${lat},${lng}&cbp=12,0,0,0,0&hl=es&output=embed`;
 
   return (
     <section className="mt-8 overflow-hidden rounded-[1.6rem] ring-1 ring-slate-200 dark:ring-slate-700">
@@ -83,34 +83,19 @@ export default function PropertyMap({ lat, lng, title }: PropertyMapProps): JSX.
         />
       )}
 
-      {/* ── Street View panel — opens in Google Maps ── */}
+      {/* ── Street View panel — iframe embed (no API key needed) ── */}
       {tab === 'street' && (
-        <div className="flex h-[320px] flex-col items-center justify-center gap-4 bg-slate-50 dark:bg-slate-800">
-          <svg
-            className="h-10 w-10 text-slate-300 dark:text-slate-600"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.5}
-          >
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M12 1v4M12 19v4M4.22 4.22l2.83 2.83M16.95 16.95l2.83 2.83M1 12h4M19 12h4M4.22 19.78l2.83-2.83M16.95 7.05l2.83-2.83" strokeLinecap="round"/>
-          </svg>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Street View se abre en Google Maps
-          </p>
-          <a
-            href={streetViewUrl}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="flex items-center gap-1.5 rounded-lg bg-blue-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-blue-700"
-          >
-            <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
-              <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" strokeLinecap="round" strokeLinejoin="round"/>
-            </svg>
-            Abrir Street View →
-          </a>
-        </div>
+        <iframe
+          key={`sv-${lat}-${lng}`}
+          src={streetEmbedUrl}
+          width="100%"
+          height="320"
+          style={{ border: 0, display: 'block' }}
+          loading="lazy"
+          referrerPolicy="no-referrer-when-downgrade"
+          title={`Street View — ${title}`}
+          allowFullScreen
+        />
       )}
 
     </section>
