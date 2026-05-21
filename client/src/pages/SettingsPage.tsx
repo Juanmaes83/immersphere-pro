@@ -504,27 +504,35 @@ export default function SettingsPage(): JSX.Element {
         </div>
       ) : null}
 
-      {/* ── Plans visual banner ── */}
-      <div className="mt-8 overflow-hidden rounded-3xl bg-slate-900 shadow-lg" style={{ minHeight: '160px' }}>
-        <div className="relative flex flex-col justify-center px-8 py-8 sm:flex-row sm:items-center sm:justify-between">
-          <div className="pointer-events-none absolute inset-0">
-            <img
-              src="/images/settings-plans-lifestyle.webp"
-              alt=""
-              className="h-full w-full object-cover opacity-[0.2]"
-              aria-hidden="true"
-            />
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 to-slate-800/60" />
-          </div>
-          <div className="relative">
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-400">Tu plan actual</p>
-            <h2 className="mt-1 text-2xl font-black text-white">Escala cuando lo necesites</h2>
-            <p className="mt-1 text-sm text-slate-400">
+      {/* ── Plans editorial banner ── */}
+      <div className="mt-8 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+        <div className="grid sm:grid-cols-2">
+          {/* Left: copy */}
+          <div className="flex flex-col justify-center p-8">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-600 dark:text-violet-400">Planes Immersphere</p>
+            <h2 className="mt-2 text-2xl font-black tracking-tight text-slate-900 dark:text-white">Escala cuando lo necesites</h2>
+            <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+              Cambia de plan en cualquier momento desde este panel.
               Comparativa completa en{' '}
-              <a href="/pricing" className="font-black text-violet-300 hover:underline">/pricing</a>
-              {' '}· Agency y Enterprise: llama al{' '}
-              <a href="tel:+34629554870" className="font-black text-white hover:underline">629 554 870</a>
+              <a href="/pricing" className="font-black text-violet-600 hover:underline dark:text-violet-400">/pricing</a>.
             </p>
+            <a
+              href="tel:+34629554870"
+              className="mt-4 inline-flex w-fit items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+            >
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.07 1.18 2 2 0 012.07.03h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11l-1.27 1.27a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7a2 2 0 011.72 2.01z"/></svg>
+              Agency / Enterprise · 629 554 870
+            </a>
+          </div>
+          {/* Right: image — visible editorial */}
+          <div className="relative min-h-[200px] overflow-hidden sm:min-h-[240px]">
+            <img
+              src="/images/settings-upgrade-desk.webp"
+              alt="Agente revisando planes y dashboard en oficina premium"
+              className="h-full w-full object-cover object-center"
+            />
+            {/* gradient only on left edge to blend with content */}
+            <div className="absolute inset-0 bg-gradient-to-r from-white/70 via-transparent to-transparent dark:from-slate-900/70" />
           </div>
         </div>
       </div>

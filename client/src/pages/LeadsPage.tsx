@@ -244,10 +244,11 @@ export default function LeadsPage(): JSX.Element {
             <img
               src="/images/leads-dashboard-premium.webp"
               alt=""
-              className="h-full w-full object-cover opacity-[0.18]"
+              className="h-full w-full object-cover object-right opacity-60"
               aria-hidden="true"
             />
-            <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/70 to-transparent" />
+            {/* Gradient covers left 55% to protect text, image visible on right */}
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-900 from-40% via-slate-900/80 to-transparent" />
           </div>
           {/* Left: title + metrics */}
           <div className="relative">
@@ -501,11 +502,38 @@ export default function LeadsPage(): JSX.Element {
                   <tr>
                     <td colSpan={8}>
                       {leads.length === 0 ? (
-                        <EmptyState
-                          icon={IcoInbox}
-                          title="Aún no tienes interesados"
-                          body="Publica tu primer tour, compártelo por WhatsApp o email y empieza a recibir leads con nombre, teléfono y propiedad visitada — todo centralizado en este panel."
-                        />
+                        <div className="py-2">
+                          {/* Editorial empty state with image */}
+                          <div className="overflow-hidden rounded-2xl border border-slate-100 bg-white dark:border-slate-800 dark:bg-slate-900">
+                            <div className="grid sm:grid-cols-2">
+                              <div className="relative min-h-[220px] overflow-hidden">
+                                <img
+                                  src="/images/leads-empty-cta.webp"
+                                  alt=""
+                                  className="h-full w-full object-cover object-top"
+                                  aria-hidden="true"
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/50 dark:to-slate-900/50 sm:block hidden" />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent sm:hidden" />
+                              </div>
+                              <div className="flex flex-col justify-center p-8">
+                                <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-2xl bg-slate-100 dark:bg-slate-800">
+                                  <svg className="h-5 w-5 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 002 2h16a2 2 0 002-2v-6l-3.45-6.89A2 2 0 0016.76 4H7.24a2 2 0 00-1.79 1.11z"/></svg>
+                                </div>
+                                <h3 className="text-lg font-black text-slate-900 dark:text-white">Aún no tienes interesados</h3>
+                                <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                                  Publica tu primer tour, compártelo por WhatsApp o email y empieza a recibir leads con nombre, teléfono y propiedad visitada — todo centralizado aquí.
+                                </p>
+                                <a
+                                  href="/properties"
+                                  className="mt-5 inline-flex w-fit items-center gap-2 rounded-full bg-violet-600 px-5 py-2.5 text-sm font-black text-white transition hover:bg-violet-500"
+                                >
+                                  Ir a propiedades
+                                </a>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
                       ) : (
                         <EmptyState
                           icon={IcoSearchX}

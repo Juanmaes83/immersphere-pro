@@ -191,7 +191,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
 
           <nav className="hidden items-center gap-2 lg:flex">
             <BrandNavLink to="/gallery">Galería</BrandNavLink>
-            <BrandNavLink to="/pricing">Precios</BrandNavLink>
+            {!isAuthenticated ? <BrandNavLink to="/pricing">Precios</BrandNavLink> : null}
             {isAuthenticated ? (
               <>
                 <BrandNavLink to="/dashboard">Dashboard</BrandNavLink>

@@ -354,7 +354,7 @@ export default function PricingPage(): JSX.Element {
               <img
                 src="/images/pricing-gaussian-villa.webp"
                 alt=""
-                className="h-full w-full object-cover opacity-[0.12]"
+                className="h-full w-full object-cover opacity-30"
                 aria-hidden="true"
               />
             </div>
@@ -434,41 +434,62 @@ export default function PricingPage(): JSX.Element {
 
         {/* ── Por qué Immersphere ─────────────────────────────────────── */}
         <section aria-label="Por qué Immersphere" className="mb-20">
-          <div className="mb-10 text-center">
-            <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white sm:text-4xl">
-              Por qué Immersphere
-            </h2>
-            <p className="mx-auto mt-3 max-w-xl text-slate-500 dark:text-slate-400">
-              Diseñado para el ritmo real de una agencia. No para demos de feria.
-            </p>
-          </div>
-          <div className="grid gap-5 md:grid-cols-3">
-            <div className="rounded-3xl border border-slate-200 bg-white p-7 dark:border-slate-700 dark:bg-slate-900">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 dark:bg-violet-900/40">
-                <svg className="h-6 w-6 text-violet-600 dark:text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900">
+            <div className="grid lg:grid-cols-2">
+              {/* Left: editorial image — visible, split layout */}
+              <div className="relative min-h-[320px] overflow-hidden lg:min-h-[480px]">
+                <img
+                  src="/images/pricing-why-pillar.webp"
+                  alt="Agente mostrando tour virtual a clientes en villa de lujo"
+                  className="h-full w-full object-cover"
+                  style={{ minHeight: '320px' }}
+                />
+                {/* Subtle right-edge gradient only — image stays visible */}
+                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-transparent to-white/60 dark:to-slate-900/60 lg:block hidden" />
+                <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent lg:hidden" />
+                {/* Overlay caption on mobile */}
+                <div className="absolute bottom-0 left-0 right-0 p-6 lg:hidden">
+                  <p className="text-xs font-black uppercase tracking-widest text-white/70">Por qué Immersphere</p>
+                  <h2 className="mt-1 text-2xl font-black text-white">Diseñado para el ritmo real de una agencia.</h2>
+                </div>
               </div>
-              <h3 className="text-lg font-black text-slate-900 dark:text-white">Publicado en 5 minutos</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-                Sube el archivo, configura la propiedad y comparte el link. Sin instalaciones, sin dependencias técnicas, sin esperar a IT.
-              </p>
-            </div>
-            <div className="rounded-3xl border border-slate-200 bg-white p-7 dark:border-slate-700 dark:bg-slate-900">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-900/40">
-                <svg className="h-6 w-6 text-emerald-600 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              {/* Right: content */}
+              <div className="flex flex-col justify-center p-8 lg:p-12">
+                <p className="hidden text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 lg:block">Por qué Immersphere</p>
+                <h2 className="mt-2 hidden text-3xl font-black tracking-tight text-slate-900 dark:text-white lg:block">
+                  Diseñado para el ritmo real de una agencia.
+                </h2>
+                <p className="mt-3 hidden text-slate-500 dark:text-slate-400 lg:block">No para demos de feria.</p>
+                <div className="mt-8 space-y-6">
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-violet-100 dark:bg-violet-900/40">
+                      <svg className="h-5 w-5 text-violet-600 dark:text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+                    </div>
+                    <div>
+                      <h3 className="font-black text-slate-900 dark:text-white">Publicado en 5 minutos</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-500 dark:text-slate-400">Sube el archivo, configura la propiedad y comparte el link. Sin instalaciones, sin esperar a IT.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-900/40">
+                      <svg className="h-5 w-5 text-emerald-600 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+                    </div>
+                    <div>
+                      <h3 className="font-black text-slate-900 dark:text-white">Leads con contexto real</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-500 dark:text-slate-400">Cada lead llega con nombre, teléfono y propiedad visitada. Sabes qué le interesa antes de llamar.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-4">
+                    <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-amber-100 dark:bg-amber-900/40">
+                      <svg className="h-5 w-5 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+                    </div>
+                    <div>
+                      <h3 className="font-black text-slate-900 dark:text-white">Tu marca, no la nuestra</h3>
+                      <p className="mt-1 text-sm leading-relaxed text-slate-500 dark:text-slate-400">Desde Pro, el tour lleva tu logo, tu color y tu dominio. El comprador recuerda tu agencia.</p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <h3 className="text-lg font-black text-slate-900 dark:text-white">Leads con contexto</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-                Cada lead llega con nombre, teléfono, propiedad visitada y tiempo de sesión. Sabes exactamente qué le interesa antes de llamar.
-              </p>
-            </div>
-            <div className="rounded-3xl border border-slate-200 bg-white p-7 dark:border-slate-700 dark:bg-slate-900">
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 dark:bg-amber-900/40">
-                <svg className="h-6 w-6 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
-              </div>
-              <h3 className="text-lg font-black text-slate-900 dark:text-white">Tu marca, no la nuestra</h3>
-              <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
-                Desde el plan Pro, el tour lleva tu logo, tu color y tu dominio. El comprador recuerda tu agencia, no la plataforma.
-              </p>
             </div>
           </div>
         </section>
