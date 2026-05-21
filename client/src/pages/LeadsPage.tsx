@@ -3,6 +3,7 @@ import { useSearchParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useBrand } from '@/hooks/useBrand';
 import { markLeadsAsSeen } from '@/hooks/useLeadsBadge';
+import AvatarWidget from '@/components/AvatarWidget';
 import { api, unwrapApiResponse, getApiErrorMessage } from '@/services/api';
 import type { LeadWithProperty } from '@/types/leads';
 import { LEAD_STATUSES, type LeadStatus, STATUS_META, DONE_STATUSES } from '@/constants/leads';
@@ -250,11 +251,14 @@ export default function LeadsPage(): JSX.Element {
             {/* Gradient covers left 55% to protect text, image visible on right */}
             <div className="absolute inset-0 bg-gradient-to-r from-slate-900 from-40% via-slate-900/80 to-transparent" />
           </div>
-          {/* Left: title + metrics */}
-          <div className="relative">
-            <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-400">CRM · Gestión de interesados</p>
-            <h1 className="mt-1 text-4xl font-black tracking-tight text-white">Leads</h1>
-            <p className="mt-1.5 text-sm text-slate-400">{metrics.total} en total · {metrics.thisWeek} esta semana</p>
+          {/* Left: avatar + title + metrics */}
+          <div className="relative flex items-center gap-4">
+            <AvatarWidget size={52} primaryColor={brandColor} />
+            <div>
+              <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-400">CRM · Gestión de interesados</p>
+              <h1 className="mt-1 text-4xl font-black tracking-tight text-white">Leads</h1>
+              <p className="mt-1.5 text-sm text-slate-400">{metrics.total} en total · {metrics.thisWeek} esta semana</p>
+            </div>
           </div>
           {/* Right: export */}
           <div className="relative">

@@ -3,18 +3,21 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore } from '@/store/propertyStore';
+import { useBrand } from '@/hooks/useBrand';
 import { api, unwrapApiResponse, getApiErrorMessage } from '@/services/api';
 import type { SubscriptionResponse, DashLead } from '@/types/api';
 import { DONE_STATUSES } from '@/constants/leads';
 import { CommercialCard } from '@/components/ui/CommercialCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IcoInbox } from '@/components/ui/icons';
+import AvatarWidget from '@/components/AvatarWidget';
 
 const HELP_BANNER_KEY = 'immersphere_help_banner_dismissed';
 
 export default function DashboardPage(): JSX.Element {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
+  const { color } = useBrand();
   const { properties, fetchProperties, isLoading } = usePropertyStore();
   const [subscription, setSubscription] = useState<SubscriptionResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -71,13 +74,18 @@ export default function DashboardPage(): JSX.Element {
       </Helmet>
 
       {/* ── Page header ── */}
-      <div>
-        <p className="text-ip-xs font-semibold uppercase tracking-[0.22em] text-ip-accent">
-          {user?.tenant.name ?? 'Immersphere Pro'}
-        </p>
-        <h1 className="mt-2 text-ip-2xl font-bold tracking-tight text-slate-900 dark:text-white">
-          {user?.name ? `Hola, ${user.name.split(' ')[0]}` : 'Dashboard'}
-        </h1>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+          <AvatarWidget size={52} showLabel primaryColor={color} />
+          <div>
+            <p className="text-ip-xs font-semibold uppercase tracking-[0.22em] text-ip-accent">
+              {user?.tenant.name ?? 'Immersphere Pro'}
+            </p>
+            <h1 className="mt-0.5 text-ip-2xl font-bold tracking-tight text-slate-900 dark:text-white">
+              {user?.name ? `Hola, ${user.name.split(' ')[0]}` : 'Dashboard'}
+            </h1>
+          </div>
+        </div>
       </div>
 
       {/* ── Help banner ── */}

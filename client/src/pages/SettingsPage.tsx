@@ -7,6 +7,7 @@ import { useAuthStore } from '@/store/authStore';
 import { api, unwrapApiResponse, getApiErrorMessage } from '@/services/api';
 import type { SubscriptionResponse, TenantUsageResponse, StorageUsageResponse, UploadAssetResponse } from '@/types/api';
 import PlanCard from '@/components/billing/PlanCard';
+import AvatarWidget from '@/components/AvatarWidget';
 
 export default function SettingsPage(): JSX.Element {
   const { user, hydrateFromStorage } = useAuthStore();
@@ -228,7 +229,7 @@ export default function SettingsPage(): JSX.Element {
   }
 
   const currentPlan = subscription?.plan ?? user?.tenant.plan ?? 'STARTER';
-  const { bgStyle, colorStyle } = useBrand();
+  const { color, bgStyle, colorStyle } = useBrand();
   const mainRef = useRef<HTMLElement>(null);
 
   // Motion System — storytelling sections only (operational UI untouched)
@@ -317,20 +318,8 @@ export default function SettingsPage(): JSX.Element {
       <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Foto de perfil</p>
         <div className="mt-4 flex items-center gap-5">
-          {user?.avatarUrl ? (
-            <img src={user.avatarUrl} alt={user.name} className="h-16 w-16 rounded-full object-cover ring-2 ring-violet-200" />
-          ) : (
-            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-xl font-black text-white" style={bgStyle}>
-              {user?.name?.slice(0, 1).toUpperCase() ?? '?'}
-            </span>
-          )}
-          <div className="min-w-0 flex-1">
-            <label className={`flex w-fit cursor-pointer items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50 ${avatarUploading ? 'cursor-not-allowed opacity-50' : ''}`}>
-              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => { void handleAvatarUpload(e); }} disabled={avatarUploading} className="sr-only" />
-              {avatarUploading ? 'Subiendo...' : '↑ Subir foto'}
-            </label>
-            <p className="mt-1.5 text-xs text-slate-400">PNG, JPG o WEBP · Cuadrada recomendada. Se muestra en tu perfil.</p>
-          </div>
+          <AvatarWidget size={64} showLabel primaryColor={color} />
+          <p className="text-xs text-slate-400">Haz clic en tu avatar para subir un archivo o hacer una foto con la cámara.</p>
         </div>
       </div>
 
