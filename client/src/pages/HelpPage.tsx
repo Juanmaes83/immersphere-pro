@@ -31,6 +31,12 @@ const STEPS = [
   },
 ] as const;
 
+const STEP_IMAGES = [
+  '/images/story-agency-configure.webp',
+  '/images/story-agency-upload.webp',
+  '/images/story-agency-publish.webp',
+] as const;
+
 const SECTORS: Array<{
   id: SectorId;
   icon: string;
@@ -345,11 +351,6 @@ export default function HelpPage(): JSX.Element {
           start: 'top 88%', once: true,
         });
 
-        // Leads image
-        gsap.from('.motion-help-leads-img', {
-          scale: 1.03, opacity: 0, duration: M.slow, ease: M.ease,
-          scrollTrigger: { trigger: '.motion-help-leads-img', start: M.scrollStart },
-        });
       }, mainRef);
     });
 
@@ -442,25 +443,37 @@ export default function HelpPage(): JSX.Element {
             {STEPS.map((step, i) => (
               <article
                 key={step.label}
-                className="motion-help-step rounded-[1.6rem] bg-white p-7 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+                className="motion-help-step overflow-hidden rounded-[1.6rem] bg-white shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
               >
-                <div className="mb-4 flex items-center gap-3">
-                  <span
-                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black text-white"
-                    style={bgStyle}
-                  >
-                    {i + 1}
-                  </span>
-                  <span className="text-2xl">{step.icon}</span>
-                  <span className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">
-                    {step.label}
-                  </span>
+                {/* Image header */}
+                <div className="relative h-44 overflow-hidden">
+                  <img
+                    src={STEP_IMAGES[i]}
+                    alt={step.title}
+                    className="h-full w-full object-cover"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/20 to-transparent" />
+                  <div className="absolute bottom-4 left-4 flex items-center gap-2.5">
+                    <span
+                      className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-black text-white"
+                      style={bgStyle}
+                    >
+                      {i + 1}
+                    </span>
+                    <span className="text-xs font-black uppercase tracking-[0.18em] text-white/90">
+                      {step.label}
+                    </span>
+                  </div>
                 </div>
-                <h3 className="text-lg font-black text-slate-950 dark:text-white">{step.title}</h3>
-                <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{step.body}</p>
-                <p className="mt-4 rounded-xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-400 dark:bg-slate-700 dark:text-slate-500">
-                  {step.note}
-                </p>
+                {/* Content */}
+                <div className="p-7">
+                  <h3 className="text-lg font-black text-slate-950 dark:text-white">{step.title}</h3>
+                  <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{step.body}</p>
+                  <p className="mt-4 rounded-xl bg-slate-50 px-3 py-2 text-xs font-bold text-slate-400 dark:bg-slate-700 dark:text-slate-500">
+                    {step.note}
+                  </p>
+                </div>
               </article>
             ))}
           </div>
@@ -735,6 +748,28 @@ export default function HelpPage(): JSX.Element {
                   <p className="mt-1 text-xs text-white/50">{item.desc}</p>
                 </div>
               ))}
+            </div>
+          </div>
+
+          {/* SuperSplat embed — interactive live demo */}
+          <div className="mt-12">
+            <p className="mb-2 text-center text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
+              Demo interactivo
+            </p>
+            <h3 className="mb-6 text-center text-xl font-black text-slate-950 dark:text-white">
+              Explora un Gaussian Splat en vivo
+            </h3>
+            <div className="overflow-hidden rounded-[1.6rem] ring-1 ring-slate-200 dark:ring-slate-700">
+              <iframe
+                src="https://superspl.at/scene/91c1e47e"
+                title="Gaussian Splat 3D interactivo — Ático Lumière"
+                className="h-[480px] w-full border-0"
+                allowFullScreen
+                loading="lazy"
+              />
+              <p className="bg-slate-50 px-5 py-3 text-center text-xs text-slate-400 dark:bg-slate-900 dark:text-slate-500">
+                Ratón para rotar · Scroll para zoom · Funciona en Chrome, Safari y Edge
+              </p>
             </div>
           </div>
 
@@ -1520,17 +1555,33 @@ export default function HelpPage(): JSX.Element {
         </section>
       )}
 
+      {/* ── TOUR DEL ÁTICO — demo en vivo ──────────────────────── */}
+      <section className="bg-slate-950 px-5 pb-0 pt-20">
+        <div className="mx-auto max-w-5xl">
+          <p className="text-center text-xs font-black uppercase tracking-[0.22em] text-violet-400">
+            Demo en vivo
+          </p>
+          <h2 className="mt-2 text-center text-3xl font-black text-white md:text-4xl">
+            Así se ve un tour terminado
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-center text-base text-slate-400">
+            Ático Lumière — experiencia Gaussian Splat con hotspots, storytelling y lead capture integrado.
+            Interactúa con él directamente.
+          </p>
+          <div className="mt-10 overflow-hidden rounded-t-[2rem] ring-1 ring-violet-500/20">
+            <iframe
+              src="https://superspl.at/scene/91c1e47e"
+              title="Tour completo — Ático Lumière Immersphere"
+              className="h-[600px] w-full border-0 md:h-[680px]"
+              allowFullScreen
+              loading="lazy"
+            />
+          </div>
+        </div>
+      </section>
+
       {/* ── CTA FINAL ───────────────────────────────────────────── */}
       <section className="bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 px-5 py-24 text-center text-white md:py-32">
-        {/* Leads analytics image */}
-        <div className="motion-help-leads-img mx-auto mb-14 max-w-2xl overflow-hidden rounded-[2rem] shadow-2xl shadow-violet-950/50">
-          <img
-            src="/images/leads-dashboard-premium.webp"
-            alt="Agente inmobiliaria viendo analytics de leads y visitas en su panel Immersphere"
-            className="h-56 w-full object-cover md:h-72"
-            loading="lazy"
-          />
-        </div>
         <p className="text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
           Empieza hoy
         </p>
