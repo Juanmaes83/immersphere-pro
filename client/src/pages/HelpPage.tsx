@@ -4,6 +4,7 @@ import { Helmet } from 'react-helmet-async';
 import { useBrand } from '@/hooks/useBrand';
 import { M, loadGSAP } from '@/lib/motion';
 import { useAuthStore } from '@/store/authStore';
+import ChatbotWidget from '@/components/ChatbotWidget';
 
 type SectorId = 'inmobiliarias' | 'constructoras' | 'decoradores' | 'museos';
 
@@ -289,7 +290,7 @@ const CAPTURE_TOOLS_SECONDARY: Array<{
 export default function HelpPage(): JSX.Element {
   const [activeSector, setActiveSector] = useState<SectorId>('inmobiliarias');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
-  const { bgStyle, colorStyle } = useBrand();
+  const { color, bgStyle, colorStyle } = useBrand();
   const isAuthenticated = useAuthStore((state) => !!state.user);
   const mainRef = useRef<HTMLElement>(null);
 
@@ -1649,6 +1650,8 @@ export default function HelpPage(): JSX.Element {
           )}
         </div>
       </section>
+
+      <ChatbotWidget platformMode primaryColor={color} />
     </main>
   );
 }
