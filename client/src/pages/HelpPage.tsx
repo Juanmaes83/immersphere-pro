@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useBrand } from '@/hooks/useBrand';
+import { M, loadGSAP } from '@/lib/motion';
 import { useAuthStore } from '@/store/authStore';
 
 type SectorId = 'inmobiliarias' | 'constructoras' | 'decoradores' | 'museos';
@@ -284,11 +285,81 @@ export default function HelpPage(): JSX.Element {
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const { bgStyle, colorStyle } = useBrand();
   const isAuthenticated = useAuthStore((state) => !!state.user);
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    let ctx: { revert: () => void } | undefined;
+
+    loadGSAP().then(({ gsap, ScrollTrigger, SplitText }) => {
+      if (!mainRef.current) return;
+      ctx = gsap.context(() => {
+        // Hero headline — split by lines
+        const heroH1 = mainRef.current?.querySelector('.motion-help-h1');
+        if (heroH1) {
+          const split = new SplitText(heroH1, { type: 'lines', linesClass: 'overflow-hidden' });
+          gsap.from(split.lines, {
+            y: '105%', opacity: 0, duration: M.cinematic, stagger: M.stagger,
+            ease: M.easeBack, delay: 0.1,
+          });
+        }
+
+        // Hero badge + sub
+        gsap.from('.motion-help-badge', { y: 16, opacity: 0, duration: M.base, ease: M.ease, delay: 0.05 });
+        gsap.from('.motion-help-sub', { y: 14, opacity: 0, duration: M.base, ease: M.ease, delay: 0.35 });
+        gsap.from('.motion-help-ctas', { y: 12, opacity: 0, duration: M.base, ease: M.ease, delay: 0.5 });
+
+        // Hero image
+        gsap.from('.motion-help-hero-img', {
+          scale: 1.04, opacity: 0, duration: M.cinematic, ease: M.ease, delay: 0.2,
+        });
+
+        // Section h2s
+        gsap.set('.motion-help-h2', { y: 20, opacity: 0 });
+        ScrollTrigger.batch('.motion-help-h2', {
+          onEnter: (els) => gsap.to(els, { y: 0, opacity: 1, duration: M.base, stagger: M.stagger, ease: M.ease }),
+          start: M.scrollStart, once: true,
+        });
+
+        // "Como funciona" step cards
+        gsap.set('.motion-help-step', { x: -24, opacity: 0 });
+        ScrollTrigger.batch('.motion-help-step', {
+          onEnter: (els) => gsap.to(els, { x: 0, opacity: 1, duration: M.base, stagger: M.staggerSlow, ease: M.ease }),
+          start: 'top 88%', once: true,
+        });
+
+        // Gaussian image parallax
+        ScrollTrigger.create({
+          trigger: '.motion-gaussian-img-help',
+          start: 'top bottom',
+          end: 'bottom top',
+          scrub: 1.2,
+          onUpdate: (self) => {
+            gsap.set('.motion-gaussian-img-help img', { y: self.progress * -40 });
+          },
+        });
+
+        // Workflow cards stagger
+        gsap.set('.motion-help-workflow', { y: 28, opacity: 0 });
+        ScrollTrigger.batch('.motion-help-workflow', {
+          onEnter: (els) => gsap.to(els, { y: 0, opacity: 1, duration: M.base, stagger: M.stagger, ease: M.ease }),
+          start: 'top 88%', once: true,
+        });
+
+        // Leads image
+        gsap.from('.motion-help-leads-img', {
+          scale: 1.03, opacity: 0, duration: M.slow, ease: M.ease,
+          scrollTrigger: { trigger: '.motion-help-leads-img', start: M.scrollStart },
+        });
+      }, mainRef);
+    });
+
+    return () => { ctx?.revert(); };
+  }, []);
 
   const sector = SECTORS.find((s) => s.id === activeSector) ?? SECTORS[0];
 
   return (
-    <main>
+    <main ref={mainRef}>
       <Helmet>
         <title>Ayuda y guía rápida | Immersphere Pro</title>
         <meta
@@ -298,45 +369,61 @@ export default function HelpPage(): JSX.Element {
       </Helmet>
 
       {/* ── HERO ────────────────────────────────────────────────── */}
-      <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 px-5 py-24 text-white md:py-32">
-        <div className="relative mx-auto max-w-3xl text-center">
-          <span
-            className="mb-6 inline-block rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-[0.22em]"
-            style={{ ...bgStyle, opacity: 0.9 }}
-          >
-            Immersphere Pro · Guía rápida
-          </span>
-          <h1 className="text-4xl font-black leading-[1.08] tracking-tight md:text-6xl">
-            Convierte tus espacios en{' '}
-            <span style={colorStyle}>experiencias que venden</span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-xl text-lg text-white/60 md:text-xl">
-            Tours virtuales 360° y 3D en minutos. Desde tu móvil. Sin instalar nada.
-          </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            {isAuthenticated ? (
-              <Link
-                to="/properties"
-                className="rounded-full px-8 py-3.5 text-sm font-black text-white transition hover:opacity-90"
-                style={bgStyle}
+      <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 px-5 py-20 text-white md:py-28">
+        <div className="relative mx-auto max-w-6xl">
+          <div className="grid items-center gap-10 md:grid-cols-2 md:gap-16">
+            {/* Text side */}
+            <div className="text-center md:text-left">
+              <span
+                className="motion-help-badge mb-6 inline-block rounded-full px-4 py-1.5 text-xs font-black uppercase tracking-[0.22em]"
+                style={{ ...bgStyle, opacity: 0.9 }}
               >
-                Ir a mis propiedades →
-              </Link>
-            ) : (
-              <Link
-                to="/register"
-                className="rounded-full px-8 py-3.5 text-sm font-black text-white transition hover:opacity-90"
-                style={bgStyle}
-              >
-                Crear cuenta gratis →
-              </Link>
-            )}
-            <Link
-              to="/gallery"
-              className="rounded-full border border-white/20 px-8 py-3.5 text-sm font-black text-white/80 transition hover:border-white/40 hover:text-white"
-            >
-              Ver ejemplos en vivo
-            </Link>
+                Immersphere Pro · Guía rápida
+              </span>
+              <h1 className="motion-help-h1 text-4xl font-black leading-[1.08] tracking-tight md:text-6xl">
+                Convierte tus espacios en{' '}
+                <span style={colorStyle}>experiencias que venden</span>
+              </h1>
+              <p className="motion-help-sub mx-auto mt-6 max-w-xl text-lg text-white/60 md:mx-0 md:text-xl">
+                Tours virtuales 360° y 3D en minutos. Desde tu móvil. Sin instalar nada.
+              </p>
+              <div className="motion-help-ctas mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row md:justify-start">
+                {isAuthenticated ? (
+                  <Link
+                    to="/properties"
+                    className="rounded-full px-8 py-3.5 text-sm font-black text-white transition hover:opacity-90"
+                    style={bgStyle}
+                  >
+                    Ir a mis propiedades →
+                  </Link>
+                ) : (
+                  <Link
+                    to="/register"
+                    className="rounded-full px-8 py-3.5 text-sm font-black text-white transition hover:opacity-90"
+                    style={bgStyle}
+                  >
+                    Crear cuenta gratis →
+                  </Link>
+                )}
+                <Link
+                  to="/gallery"
+                  className="rounded-full border border-white/20 px-8 py-3.5 text-sm font-black text-white/80 transition hover:border-white/40 hover:text-white"
+                >
+                  Ver ejemplos en vivo
+                </Link>
+              </div>
+            </div>
+            {/* Image side */}
+            <div className="motion-help-hero-img relative hidden overflow-hidden rounded-[2rem] md:block">
+              <img
+                src="/images/help-hero-immersive-tour.webp"
+                alt="Agente inmobiliaria explorando un tour 3D inmersivo en tablet"
+                className="h-auto w-full object-cover"
+                loading="eager"
+              />
+              {/* Subtle gradient overlay at bottom */}
+              <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-slate-950/60 to-transparent" />
+            </div>
           </div>
         </div>
       </section>
@@ -347,7 +434,7 @@ export default function HelpPage(): JSX.Element {
           <p className="text-center text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
             Cómo funciona
           </p>
-          <h2 className="mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
+          <h2 className="motion-help-h2 mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
             Tres pasos. Sin complicaciones.
           </h2>
 
@@ -355,7 +442,7 @@ export default function HelpPage(): JSX.Element {
             {STEPS.map((step, i) => (
               <article
                 key={step.label}
-                className="rounded-[1.6rem] bg-white p-7 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+                className="motion-help-step rounded-[1.6rem] bg-white p-7 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
               >
                 <div className="mb-4 flex items-center gap-3">
                   <span
@@ -386,7 +473,7 @@ export default function HelpPage(): JSX.Element {
           <p className="text-center text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
             Guía por sector
           </p>
-          <h2 className="mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
+          <h2 className="motion-help-h2 mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
             Hecho para tu negocio
           </h2>
 
@@ -460,7 +547,7 @@ export default function HelpPage(): JSX.Element {
           <p className="text-center text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
             Crea tu contenido
           </p>
-          <h2 className="mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
+          <h2 className="motion-help-h2 mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
             Cómo crear contenido 3D
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-center text-base text-slate-500 dark:text-slate-400">
@@ -607,11 +694,20 @@ export default function HelpPage(): JSX.Element {
 
       {/* ── GUÍA GAUSSIAN SPLAT ─────────────────────────────────── */}
       <section className="bg-white px-5 py-20 dark:bg-slate-950">
+        {/* Full-width Gaussian visual */}
+        <div className="motion-gaussian-img-help mx-auto mb-16 max-w-5xl overflow-hidden rounded-[2rem]">
+          <img
+            src="/images/pricing-gaussian-villa.webp"
+            alt="Villa de lujo capturada con tecnología Gaussian Splat 3D volumétrico"
+            className="h-64 w-full object-cover md:h-80"
+            loading="lazy"
+          />
+        </div>
         <div className="mx-auto max-w-5xl">
           <p className="text-center text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
             Guía técnica
           </p>
-          <h2 className="mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
+          <h2 className="motion-help-h2 mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
             Gaussian Splats — Todo lo que necesitas saber
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-center text-base text-slate-500 dark:text-slate-400">
@@ -832,7 +928,7 @@ export default function HelpPage(): JSX.Element {
           <p className="text-center text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
             Capture Workflow Pack
           </p>
-          <h2 className="mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
+          <h2 className="motion-help-h2 mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
             ¿Qué workflow usar?
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-center text-base text-slate-500 dark:text-slate-400">
@@ -842,7 +938,7 @@ export default function HelpPage(): JSX.Element {
           {/* Tres caminos */}
           <div className="mt-12 grid gap-6 md:grid-cols-3">
             {CAPTURE_WORKFLOWS.map((wf) => (
-              <article key={wf.letter} className="flex flex-col rounded-[1.6rem] bg-slate-50 p-6 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
+              <article key={wf.letter} className="motion-help-workflow flex flex-col rounded-[1.6rem] bg-slate-50 p-6 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700">
                 <div className="flex items-center gap-3">
                   <span className="text-2xl">{wf.icon}</span>
                   <div>
@@ -1017,7 +1113,7 @@ export default function HelpPage(): JSX.Element {
           <p className="text-center text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
             El cambio real
           </p>
-          <h2 className="mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
+          <h2 className="motion-help-h2 mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
             Antes vs. Ahora
           </h2>
 
@@ -1061,7 +1157,7 @@ export default function HelpPage(): JSX.Element {
           <p className="text-center text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
             Preguntas frecuentes
           </p>
-          <h2 className="mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
+          <h2 className="motion-help-h2 mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
             Todo lo que necesitas saber
           </h2>
 
@@ -1426,6 +1522,15 @@ export default function HelpPage(): JSX.Element {
 
       {/* ── CTA FINAL ───────────────────────────────────────────── */}
       <section className="bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 px-5 py-24 text-center text-white md:py-32">
+        {/* Leads analytics image */}
+        <div className="motion-help-leads-img mx-auto mb-14 max-w-2xl overflow-hidden rounded-[2rem] shadow-2xl shadow-violet-950/50">
+          <img
+            src="/images/leads-dashboard-premium.webp"
+            alt="Agente inmobiliaria viendo analytics de leads y visitas en su panel Immersphere"
+            className="h-56 w-full object-cover md:h-72"
+            loading="lazy"
+          />
+        </div>
         <p className="text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
           Empieza hoy
         </p>
