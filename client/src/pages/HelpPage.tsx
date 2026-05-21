@@ -720,7 +720,7 @@ export default function HelpPage(): JSX.Element {
           </p>
           <div className="mt-10 overflow-hidden rounded-[1.6rem] ring-1 ring-violet-500/20">
             <iframe
-              src="https://immersphere-pro.vercel.app/embed/2fe0f03b-5631-4d21-8337-cf526428834c"
+              src="/embed/2fe0f03b-5631-4d21-8337-cf526428834c"
               title="Tour en vivo — Ático Lumière con hotspots"
               className="h-[600px] w-full border-0 md:h-[680px]"
               allowFullScreen

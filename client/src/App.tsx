@@ -164,7 +164,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
 
   const showMobileNav = isAuthenticated && !isViewerRoute;
 
-  const logoText = user?.tenant.logoText ?? 'âœ¦';
+  const logoText = user?.tenant.logoText ?? '✦';
   const logoUrl = user?.tenant.logoUrl ?? '';
   const brandName = user?.tenant.name ?? 'Immersphere';
   const brandSub = isAuthenticated ? (user?.tenant.plan ?? 'STARTER') : 'Pro SaaS';
