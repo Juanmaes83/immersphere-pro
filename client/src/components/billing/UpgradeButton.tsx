@@ -57,7 +57,7 @@ export default function UpgradeButton({
         onClick={handleUpgrade}
         className={`w-full rounded-2xl px-5 py-4 text-sm font-black transition disabled:cursor-not-allowed disabled:opacity-60 ${className}`}
       >
-        {isLoading ? 'Preparando Stripe...' : plan === 'STARTER' ? 'Cambiar a Starter' : `Upgrade a ${plan}`}
+        {isLoading ? 'Preparando Stripe...' : plan === 'STARTER' ? 'Cambiar a Starter' : `Upgrade a ${plan === 'PROFESSIONAL' ? 'Pro' : plan === 'ENTERPRISE' ? 'Agency' : plan}`}
       </button>
       {error ? <p className="mt-3 text-sm font-bold text-red-600">{error}</p> : null}
     </div>

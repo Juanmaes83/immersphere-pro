@@ -50,6 +50,7 @@ interface AuthenticatedUser {
   id: string;
   email: string;
   name: string;
+  avatarUrl: string;
   role: Role;
   tenant: {
     id: string;
@@ -89,6 +90,7 @@ function serializeUser(user: {
   id: string;
   email: string;
   name: string;
+  avatarUrl: string;
   role: Role;
   tenant: {
     id: string;
@@ -103,6 +105,7 @@ function serializeUser(user: {
     id: user.id,
     email: user.email,
     name: user.name,
+    avatarUrl: user.avatarUrl,
     role: user.role,
     tenant: {
       id: user.tenant.id,

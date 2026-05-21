@@ -1,6 +1,7 @@
 import type { Request, Response } from 'express';
 import { z } from 'zod';
 import * as authService from '../services/auth.service.js';
+import { prisma } from '../index.js';
 
 const registerSchema = z.object({
   tenantName: z.string().trim().min(2, 'El nombre del tenant debe tener al menos 2 caracteres.'),
@@ -46,5 +47,20 @@ export async function refresh(request: Request, response: Response): Promise<voi
     success: true,
     data
   });
+}
+
+const updateAvatarSchema = z.object({
+  avatarUrl: z.string().url('La URL del avatar no es válida.').max(1000),
+});
+
+export async function updateAvatar(request: Request, response: Response): Promise<void> {
+  const userId = request.auth?.userId;
+  if (!userId) {
+    response.status(401).json({ success: false, error: 'No autenticado.' });
+    return;
+  }
+  const { avatarUrl } = updateAvatarSchema.parse(request.body);
+  await prisma.user.update({ where: { id: userId }, data: { avatarUrl } });
+  response.status(200).json({ success: true, data: { avatarUrl } });
 }
 

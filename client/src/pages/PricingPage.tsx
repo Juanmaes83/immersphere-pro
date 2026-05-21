@@ -277,11 +277,12 @@ export default function PricingPage(): JSX.Element {
         });
 
         // Plan cards — stagger on scroll
+        gsap.set('.motion-plan-card', { y: 36, opacity: 0 });
         ScrollTrigger.batch('.motion-plan-card', {
           onEnter: (els) =>
-            gsap.from(els, {
-              y: 36,
-              opacity: 0,
+            gsap.to(els, {
+              y: 0,
+              opacity: 1,
               duration: M.base,
               stagger: M.stagger,
               ease: M.ease,
@@ -291,11 +292,12 @@ export default function PricingPage(): JSX.Element {
         });
 
         // Studio service items — stagger from left
+        gsap.set('.motion-studio-item', { x: -14, opacity: 0 });
         ScrollTrigger.batch('.motion-studio-item', {
           onEnter: (els) =>
-            gsap.from(els, {
-              x: -14,
-              opacity: 0,
+            gsap.to(els, {
+              x: 0,
+              opacity: 1,
               duration: M.fast,
               stagger: M.staggerFast,
               ease: M.ease,

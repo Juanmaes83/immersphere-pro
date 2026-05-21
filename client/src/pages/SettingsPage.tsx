@@ -28,6 +28,7 @@ export default function SettingsPage(): JSX.Element {
   const [primaryColorInput, setPrimaryColorInput] = useState(user?.tenant.primaryColor ?? '#7C3AED');
   const [colorSaving, setColorSaving] = useState(false);
   const [logoTextInput, setLogoTextInput] = useState(user?.tenant.logoText ?? '');
+  const [avatarUploading, setAvatarUploading] = useState(false);
 
   useEffect(() => {
     void loadBillingState();
@@ -47,6 +48,34 @@ export default function SettingsPage(): JSX.Element {
       setError(null);
     } catch (error) {
       setError(getApiErrorMessage(error));
+    }
+  }
+
+  async function handleAvatarUpload(event: ChangeEvent<HTMLInputElement>): Promise<void> {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    setAvatarUploading(true);
+    setSettingsMsg(null);
+    const formData = new FormData();
+    formData.append('file', file);
+    try {
+      const upload = await unwrapApiResponse<UploadAssetResponse>(
+        api.post('/uploads', formData, { headers: { 'Content-Type': 'multipart/form-data' } })
+      );
+      await unwrapApiResponse(api.patch('/auth/me/avatar', { avatarUrl: upload.url }));
+      const stored = window.localStorage.getItem('user');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        parsed.avatarUrl = upload.url;
+        window.localStorage.setItem('user', JSON.stringify(parsed));
+        hydrateFromStorage();
+      }
+      setSettingsMsg('Foto de perfil actualizada.');
+    } catch {
+      setSettingsMsg('Error al subir la foto de perfil.');
+    } finally {
+      setAvatarUploading(false);
+      event.target.value = '';
     }
   }
 
@@ -210,11 +239,13 @@ export default function SettingsPage(): JSX.Element {
       ctx = gsap.context(() => {
 
         // Storytelling A — 4-step workflow cards stagger on scroll
+        // gsap.set initialises hidden BEFORE trigger — avoids immediateRender bug.
+        gsap.set('.motion-story-card', { y: 32, opacity: 0 });
         ScrollTrigger.batch('.motion-story-card', {
           onEnter: (els) =>
-            gsap.from(els, {
-              y: 32,
-              opacity: 0,
+            gsap.to(els, {
+              y: 0,
+              opacity: 1,
               duration: M.base,
               stagger: M.stagger,
               ease: M.ease,
@@ -224,9 +255,10 @@ export default function SettingsPage(): JSX.Element {
         });
 
         // Storytelling B — dark section fade+scale
-        gsap.from('.motion-story-b', {
-          y: 24,
-          opacity: 0,
+        gsap.set('.motion-story-b', { y: 24, opacity: 0 });
+        gsap.to('.motion-story-b', {
+          y: 0,
+          opacity: 1,
           duration: M.slow,
           ease: M.ease,
           scrollTrigger: {
@@ -237,8 +269,9 @@ export default function SettingsPage(): JSX.Element {
         });
 
         // Story B images — subtle scale reveal
-        gsap.from('.motion-story-b-img', {
-          scale: 1.04,
+        gsap.set('.motion-story-b-img', { scale: 1.04 });
+        gsap.to('.motion-story-b-img', {
+          scale: 1,
           duration: M.cinematic,
           ease: M.ease,
           stagger: 0.2,
@@ -279,6 +312,27 @@ export default function SettingsPage(): JSX.Element {
 
       {error ? <div className="mt-6 rounded-2xl bg-red-50 p-4 font-bold text-red-700">{error}</div> : null}
       {settingsMsg ? <div className="mt-4 rounded-2xl bg-emerald-50 p-4 font-bold text-emerald-700">{settingsMsg}</div> : null}
+
+      {/* ── Foto de perfil ──────────────────────────────────────────────── */}
+      <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Foto de perfil</p>
+        <div className="mt-4 flex items-center gap-5">
+          {user?.avatarUrl ? (
+            <img src={user.avatarUrl} alt={user.name} className="h-16 w-16 rounded-full object-cover ring-2 ring-violet-200" />
+          ) : (
+            <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-full text-xl font-black text-white" style={bgStyle}>
+              {user?.name?.slice(0, 1).toUpperCase() ?? '?'}
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <label className={`flex w-fit cursor-pointer items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 transition hover:bg-slate-50 ${avatarUploading ? 'cursor-not-allowed opacity-50' : ''}`}>
+              <input type="file" accept="image/png,image/jpeg,image/webp" onChange={(e) => { void handleAvatarUpload(e); }} disabled={avatarUploading} className="sr-only" />
+              {avatarUploading ? 'Subiendo...' : '↑ Subir foto'}
+            </label>
+            <p className="mt-1.5 text-xs text-slate-400">PNG, JPG o WEBP · Cuadrada recomendada. Se muestra en tu perfil.</p>
+          </div>
+        </div>
+      </div>
 
       <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Logo de la agencia</p>

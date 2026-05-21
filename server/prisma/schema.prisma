@@ -36,6 +36,7 @@ model User {
   passwordHash String
   name         String
 
+  avatarUrl     String         @default("")
   role          String         @default("TENANTADMIN")
   tenantId      String
   tenant        Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
