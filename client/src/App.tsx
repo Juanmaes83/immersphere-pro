@@ -171,7 +171,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
 
   return (
     <div className={`min-h-screen bg-[#F8FAFC] text-slate-950 dark:bg-slate-900 dark:text-slate-100${showMobileNav ? ' pb-20 md:pb-0' : ''}`}>
-      <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/90">
+      {!isViewerRoute && <header className="sticky top-0 z-50 border-b border-slate-200 bg-white/90 backdrop-blur-xl dark:border-slate-700 dark:bg-slate-900/90">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4">
           <Link to="/" className="flex min-w-0 items-center gap-3">
             {logoUrl ? (
@@ -261,10 +261,10 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
             )}
           </div>
         </div>
-      </header>
+      </header>}
       {children}
       <MobileBottomNav />
-      <footer className="border-t border-slate-200 bg-white py-6 dark:border-slate-700 dark:bg-slate-900">
+      {!isViewerRoute && <footer className="border-t border-slate-200 bg-white py-6 dark:border-slate-700 dark:bg-slate-900">
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-3 px-5 sm:flex-row">
           {!user?.tenant.removeBranding ? (
             <p className="text-xs font-bold text-slate-400">
@@ -286,7 +286,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
             <a href="tel:+34629554870" className="ml-2 font-black text-slate-700 hover:underline dark:text-slate-300">629 554 870</a>
           </p>
         </div>
-      </footer>
+      </footer>}
     </div>
   );
 }

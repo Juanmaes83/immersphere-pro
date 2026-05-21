@@ -819,6 +819,26 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   const lang = property.language ?? 'es';
   const hasGaussian = property.spaces.some((s) => s.assets.some((a) => a.type === 'gaussian_splat'));
 
+  // ── Embed mode: render ONLY the 3D viewer, no ficha ─────────────────────────
+  if (embed) {
+    return (
+      <div className="flex min-h-screen flex-col bg-slate-950">
+        <UniversalViewer
+          propertyId={property.id}
+          spaces={property.spaces}
+          primaryColor={primaryColor}
+          removeBranding={property.removeBranding}
+          language={lang}
+          propertyTitle={property.title}
+          agencyName={property.tenantLogoText || property.tenantName || 'Agencia inmobiliaria'}
+          agencyLogoUrl={property.tenantLogoUrl || undefined}
+          floorplanUrl={property.floorplanUrl || undefined}
+          onAnalyticsEvent={handleAnalyticsEvent}
+        />
+      </div>
+    );
+  }
+
   const ogTitle = property.title;
   const rawDesc = (property.description ?? '').replace(/\s+/g, ' ').trim();
   const ogDescription = rawDesc.slice(0, 150) || [
