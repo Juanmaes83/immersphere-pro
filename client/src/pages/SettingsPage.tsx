@@ -527,8 +527,8 @@ export default function SettingsPage(): JSX.Element {
           {/* Right: image — visible editorial */}
           <div className="relative min-h-[200px] overflow-hidden sm:min-h-[240px]">
             <img
-              src="/images/settings-upgrade-desk.webp"
-              alt="Agente revisando planes y dashboard en oficina premium"
+              src="/images/settings-agent-screen-side.webp"
+              alt="Agente revisando el dashboard de Immersphere Pro en oficina"
               className="h-full w-full object-cover object-center"
             />
             {/* gradient only on left edge to blend with content */}
@@ -566,6 +566,169 @@ export default function SettingsPage(): JSX.Element {
           features={['100 propiedades activas', '10 usuarios', 'White-label completo', 'Iframe embed', 'PDF reports', 'Soporte prioritario']}
         />
       </div>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          STORYTELLING A — Cómo usan Immersphere las inmobiliarias
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="mt-16" aria-label="Así trabajan las agencias con Immersphere">
+        <div className="mb-8 text-center">
+          <span className="inline-flex items-center gap-2 rounded-full bg-violet-50 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+            Flujo de trabajo
+          </span>
+          <h2 className="mt-3 text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+            Así trabajan las agencias con Immersphere
+          </h2>
+          <p className="mx-auto mt-3 max-w-xl text-slate-500 dark:text-slate-400">
+            En 5 minutos. Sin técnicos. Sin depender de nadie.
+          </p>
+        </div>
+
+        <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          {/* Step 1 — Alta */}
+          <div className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+            <div className="relative overflow-hidden" style={{ paddingBottom: '66.6%' }}>
+              <img
+                src="/images/story-agency-signup.webp"
+                alt="Agente dándose de alta en Immersphere Pro"
+                className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+              <span className="absolute bottom-3 left-4 text-4xl font-black text-white/30 leading-none select-none">01</span>
+            </div>
+            <div className="p-5">
+              <h3 className="font-black text-slate-900 dark:text-white">Crear cuenta</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                Alta en 2 minutos. Elige tu plan, configura tu agencia y activa tu color de marca. Sin tarjeta para empezar.
+              </p>
+            </div>
+          </div>
+
+          {/* Step 2 — Subir propiedad */}
+          <div className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+            <div className="relative overflow-hidden" style={{ paddingBottom: '66.6%' }}>
+              <img
+                src="/images/story-agency-upload.webp"
+                alt="Agente subiendo propiedad con tablet en villa"
+                className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+              <span className="absolute bottom-3 left-4 text-4xl font-black text-white/30 leading-none select-none">02</span>
+            </div>
+            <div className="p-5">
+              <h3 className="font-black text-slate-900 dark:text-white">Inscribir propiedad</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                Sube el panorama 360°, vídeo hero, fotos y datos. La plataforma procesa y genera el tour automáticamente.
+              </p>
+            </div>
+          </div>
+
+          {/* Step 3 — Personalizar */}
+          <div className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+            <div className="relative overflow-hidden" style={{ paddingBottom: '66.6%' }}>
+              <img
+                src="/images/story-agency-configure.webp"
+                alt="Agente configurando hotspots y personalización"
+                className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+              <span className="absolute bottom-3 left-4 text-4xl font-black text-white/30 leading-none select-none">03</span>
+            </div>
+            <div className="p-5">
+              <h3 className="font-black text-slate-900 dark:text-white">Personalizar y enriquecer</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                Añade hotspots por estancia, storytelling, Gaussian viewer, vídeo y tu marca. Todo desde el editor visual.
+              </p>
+            </div>
+          </div>
+
+          {/* Step 4 — Publicar */}
+          <div className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+            <div className="relative overflow-hidden" style={{ paddingBottom: '66.6%' }}>
+              <img
+                src="/images/story-agency-publish.webp"
+                alt="Agente compartiendo tour publicado por WhatsApp"
+                className="absolute inset-0 h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+              <span className="absolute bottom-3 left-4 text-4xl font-black text-white/30 leading-none select-none">04</span>
+            </div>
+            <div className="p-5">
+              <h3 className="font-black text-slate-900 dark:text-white">Publicar y compartir</h3>
+              <p className="mt-1.5 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                Un link. Un QR. Un botón de WhatsApp. Tu tour inmersivo llega a cualquier móvil en segundos, sin apps.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════════════
+          STORYTELLING B — Lo que sienten tus clientes
+      ═══════════════════════════════════════════════════════════════════ */}
+      <section className="mt-16 mb-4" aria-label="La experiencia de tus clientes">
+        <div className="overflow-hidden rounded-3xl bg-slate-900 shadow-2xl">
+          {/* Two images side by side */}
+          <div className="grid sm:grid-cols-2">
+            <div className="relative min-h-[260px] overflow-hidden sm:min-h-[340px]">
+              <img
+                src="/images/story-client-discovery.webp"
+                alt="Pareja descubriendo su casa ideal a través de Immersphere"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
+              <div className="absolute bottom-4 left-5">
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-widest text-white/70 backdrop-blur-sm">
+                  El momento del descubrimiento
+                </span>
+              </div>
+            </div>
+            <div className="relative min-h-[260px] overflow-hidden sm:min-h-[340px]">
+              <img
+                src="/images/story-client-dream.webp"
+                alt="Pareja emocionada al encontrar su casa de los sueños"
+                className="h-full w-full object-cover"
+              />
+              <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
+              <div className="absolute bottom-4 left-5">
+                <span className="rounded-full bg-white/10 px-3 py-1 text-xs font-black uppercase tracking-widest text-white/70 backdrop-blur-sm">
+                  "Es esta. Es nuestra casa."
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Copy section */}
+          <div className="px-8 py-10 text-center md:px-16">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-400">El valor real que generas</p>
+            <h2 className="mx-auto mt-3 max-w-2xl text-2xl font-black leading-tight text-white sm:text-3xl">
+              Tu próximo cliente ya está imaginándose en esa casa.
+              <br />
+              <span className="text-violet-300">¿Le has dado la experiencia que merece?</span>
+            </h2>
+            <p className="mx-auto mt-4 max-w-xl text-slate-400">
+              Cuando un comprador entra al tour de una de tus propiedades, no está viendo fotos.
+              Está caminando por los espacios, imaginando su vida allí, tomando decisiones.
+              Immersphere convierte esa visita virtual en una conversación real contigo.
+            </p>
+            <div className="mt-8 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <a
+                href="/properties"
+                className="flex items-center gap-2 rounded-2xl bg-violet-600 px-6 py-3 text-sm font-black text-white transition hover:bg-violet-500 active:scale-[0.98]"
+              >
+                Publicar mi primera propiedad
+              </a>
+              <a
+                href="tel:+34629554870"
+                className="flex items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-6 py-3 text-sm font-black text-white backdrop-blur-sm transition hover:bg-white/20 active:scale-[0.98]"
+              >
+                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.07 1.18 2 2 0 012.07.03h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11l-1.27 1.27a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7a2 2 0 011.72 2.01z"/></svg>
+                Hablar con nosotros · 629 554 870
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </main>
   );
 }
