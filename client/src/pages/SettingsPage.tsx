@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import type { ChangeEvent } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { useBrand } from '@/hooks/useBrand';
+import { M, loadGSAP } from '@/lib/motion';
 import { useAuthStore } from '@/store/authStore';
 import { api, unwrapApiResponse, getApiErrorMessage } from '@/services/api';
 import type { SubscriptionResponse, TenantUsageResponse, StorageUsageResponse, UploadAssetResponse } from '@/types/api';
@@ -199,9 +200,62 @@ export default function SettingsPage(): JSX.Element {
 
   const currentPlan = subscription?.plan ?? user?.tenant.plan ?? 'STARTER';
   const { bgStyle, colorStyle } = useBrand();
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Motion System — storytelling sections only (operational UI untouched)
+  useEffect(() => {
+    // eslint-disable-next-line prefer-const
+    let ctx: any;
+    loadGSAP().then(({ gsap, ScrollTrigger }) => {
+      ctx = gsap.context(() => {
+
+        // Storytelling A — 4-step workflow cards stagger on scroll
+        ScrollTrigger.batch('.motion-story-card', {
+          onEnter: (els) =>
+            gsap.from(els, {
+              y: 32,
+              opacity: 0,
+              duration: M.base,
+              stagger: M.stagger,
+              ease: M.ease,
+            }),
+          start: 'top 87%',
+          once: true,
+        });
+
+        // Storytelling B — dark section fade+scale
+        gsap.from('.motion-story-b', {
+          y: 24,
+          opacity: 0,
+          duration: M.slow,
+          ease: M.ease,
+          scrollTrigger: {
+            trigger: '.motion-story-b',
+            start: 'top 85%',
+            once: true,
+          },
+        });
+
+        // Story B images — subtle scale reveal
+        gsap.from('.motion-story-b-img', {
+          scale: 1.04,
+          duration: M.cinematic,
+          ease: M.ease,
+          stagger: 0.2,
+          scrollTrigger: {
+            trigger: '.motion-story-b',
+            start: 'top 85%',
+            once: true,
+          },
+        });
+
+      }, mainRef);
+    });
+    return () => ctx?.revert();
+  }, []);
 
   return (
-    <main className="mx-auto max-w-7xl px-5 py-10">
+    <main ref={mainRef} className="mx-auto max-w-7xl px-5 py-10">
       <Helmet>
         <title>Ajustes · Immersphere Pro</title>
         <meta name="robots" content="noindex" />
@@ -585,7 +639,7 @@ export default function SettingsPage(): JSX.Element {
 
         <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-4">
           {/* Step 1 — Alta */}
-          <div className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+          <div className="motion-story-card group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
             <div className="relative overflow-hidden" style={{ paddingBottom: '66.6%' }}>
               <img
                 src="/images/story-agency-signup.webp"
@@ -604,7 +658,7 @@ export default function SettingsPage(): JSX.Element {
           </div>
 
           {/* Step 2 — Subir propiedad */}
-          <div className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+          <div className="motion-story-card group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
             <div className="relative overflow-hidden" style={{ paddingBottom: '66.6%' }}>
               <img
                 src="/images/story-agency-upload.webp"
@@ -623,7 +677,7 @@ export default function SettingsPage(): JSX.Element {
           </div>
 
           {/* Step 3 — Personalizar */}
-          <div className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+          <div className="motion-story-card group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
             <div className="relative overflow-hidden" style={{ paddingBottom: '66.6%' }}>
               <img
                 src="/images/story-agency-configure.webp"
@@ -642,7 +696,7 @@ export default function SettingsPage(): JSX.Element {
           </div>
 
           {/* Step 4 — Publicar */}
-          <div className="group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
+          <div className="motion-story-card group overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md dark:border-slate-700 dark:bg-slate-900">
             <div className="relative overflow-hidden" style={{ paddingBottom: '66.6%' }}>
               <img
                 src="/images/story-agency-publish.webp"
@@ -666,14 +720,14 @@ export default function SettingsPage(): JSX.Element {
           STORYTELLING B — Lo que sienten tus clientes
       ═══════════════════════════════════════════════════════════════════ */}
       <section className="mt-16 mb-4" aria-label="La experiencia de tus clientes">
-        <div className="overflow-hidden rounded-3xl bg-slate-900 shadow-2xl">
+        <div className="motion-story-b overflow-hidden rounded-3xl bg-slate-900 shadow-2xl">
           {/* Two images side by side */}
           <div className="grid sm:grid-cols-2">
             <div className="relative min-h-[260px] overflow-hidden sm:min-h-[340px]">
               <img
                 src="/images/story-client-discovery.webp"
                 alt="Pareja descubriendo su casa ideal a través de Immersphere"
-                className="h-full w-full object-cover"
+                className="motion-story-b-img h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
               <div className="absolute bottom-4 left-5">
@@ -686,7 +740,7 @@ export default function SettingsPage(): JSX.Element {
               <img
                 src="/images/story-client-dream.webp"
                 alt="Pareja emocionada al encontrar su casa de los sueños"
-                className="h-full w-full object-cover"
+                className="motion-story-b-img h-full w-full object-cover"
               />
               <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-transparent to-transparent" />
               <div className="absolute bottom-4 left-5">

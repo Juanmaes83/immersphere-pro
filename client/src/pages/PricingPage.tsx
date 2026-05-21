@@ -1,6 +1,8 @@
+import { useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useBrand } from '@/hooks/useBrand';
+import { M, loadGSAP } from '@/lib/motion';
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -151,7 +153,7 @@ function PlanCard({ plan }: { plan: Plan }): JSX.Element {
 
   return (
     <div
-      className={`relative flex flex-col rounded-3xl border p-7 transition-shadow ${
+      className={`motion-plan-card relative flex flex-col rounded-3xl border p-7 transition-shadow ${
         plan.highlight
           ? 'border-violet-300 bg-white shadow-xl shadow-violet-100/60 dark:border-violet-700 dark:bg-slate-900 dark:shadow-violet-900/30'
           : 'border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-900'
@@ -227,6 +229,127 @@ function PlanCard({ plan }: { plan: Plan }): JSX.Element {
 
 export default function PricingPage(): JSX.Element {
   const { bgStyle, colorStyle } = useBrand();
+  const mainRef = useRef<HTMLElement>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line prefer-const
+    let ctx: any;
+    loadGSAP().then(({ gsap, ScrollTrigger, SplitText }) => {
+      ctx = gsap.context(() => {
+
+        // Hero image — cinematic scale-in
+        gsap.from('.motion-hero-img', {
+          scale: 1.06,
+          duration: M.cinematic,
+          ease: M.ease,
+        });
+
+        // Badge chip
+        gsap.from('.motion-hero-badge', {
+          y: 14,
+          opacity: 0,
+          duration: M.base,
+          ease: M.ease,
+          delay: 0.25,
+        });
+
+        // Headline — SplitText line-by-line reveal
+        const headlineEl = document.querySelector<HTMLElement>('.motion-hero-h1');
+        if (headlineEl) {
+          const split = new SplitText(headlineEl, { type: 'lines' });
+          gsap.from(split.lines, {
+            y: 44,
+            opacity: 0,
+            duration: M.base,
+            stagger: M.stagger * 1.5,
+            ease: M.ease,
+            delay: 0.4,
+          });
+        }
+
+        // Sub-headline
+        gsap.from('.motion-hero-sub', {
+          y: 18,
+          opacity: 0,
+          duration: M.base,
+          ease: M.ease,
+          delay: 0.72,
+        });
+
+        // Plan cards — stagger on scroll
+        ScrollTrigger.batch('.motion-plan-card', {
+          onEnter: (els) =>
+            gsap.from(els, {
+              y: 36,
+              opacity: 0,
+              duration: M.base,
+              stagger: M.stagger,
+              ease: M.ease,
+            }),
+          start: M.scrollStart,
+          once: true,
+        });
+
+        // Studio service items — stagger from left
+        ScrollTrigger.batch('.motion-studio-item', {
+          onEnter: (els) =>
+            gsap.from(els, {
+              x: -14,
+              opacity: 0,
+              duration: M.fast,
+              stagger: M.staggerFast,
+              ease: M.ease,
+            }),
+          start: 'top 88%',
+          once: true,
+        });
+
+        // Section headings reveal
+        gsap.utils.toArray<Element>('.motion-section-h2').forEach((el) => {
+          gsap.from(el, {
+            y: 22,
+            opacity: 0,
+            duration: M.base,
+            ease: M.ease,
+            scrollTrigger: { trigger: el, start: M.scrollStart, once: true },
+          });
+        });
+
+        // Gaussian — image ambient drift
+        gsap.to('.motion-gaussian-img', {
+          scale: 1.06,
+          duration: 14,
+          ease: M.easeSine,
+          repeat: -1,
+          yoyo: true,
+        });
+
+        // Gaussian — glow pulse
+        gsap.to('.motion-gaussian-glow', {
+          opacity: 0.28,
+          duration: 5,
+          ease: M.easeSine,
+          repeat: -1,
+          yoyo: true,
+        });
+
+        // "Por qué" right column reveal
+        gsap.from('.motion-why-content', {
+          x: 28,
+          opacity: 0,
+          duration: M.slow,
+          ease: M.ease,
+          scrollTrigger: {
+            trigger: '.motion-why-content',
+            start: 'top 80%',
+            once: true,
+          },
+        });
+
+      }, mainRef);
+    });
+    return () => ctx?.revert();
+  }, []);
 
   return (
     <>
@@ -235,7 +358,7 @@ export default function PricingPage(): JSX.Element {
         <meta name="description" content="Planes SaaS y servicios Studio para agencias inmobiliarias. Desde 59 €/mes. Primer mes gratis." />
       </Helmet>
 
-      <main className="mx-auto max-w-7xl px-5 pb-24 pt-16">
+      <main ref={mainRef} className="mx-auto max-w-7xl px-5 pb-24 pt-16">
 
         {/* ── Hero ──────────────────────────────────────────────────────── */}
         <div className="mb-16">
@@ -244,20 +367,20 @@ export default function PricingPage(): JSX.Element {
             <img
               src="/images/pricing-hero-agent-tablet.webp"
               alt="Agente inmobiliaria mostrando tour virtual en tablet dentro de villa premium"
-              className="h-full w-full object-cover opacity-80"
+              className="motion-hero-img h-full w-full object-cover opacity-80"
               style={{ minHeight: '360px' }}
             />
             <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-transparent" />
             <div className="absolute inset-0 flex flex-col justify-center px-10 py-12 md:px-16">
-              <span className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-white/80 backdrop-blur-sm">
+              <span className="motion-hero-badge mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-white/80 backdrop-blur-sm">
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                 SaaS inmobiliario · Activo desde el día 1
               </span>
-              <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">
+              <h1 className="motion-hero-h1 text-4xl font-black tracking-tight text-white sm:text-5xl">
                 Planes claros.<br />
                 <span className="text-violet-300">Sin sorpresas.</span>
               </h1>
-              <p className="mt-5 max-w-xl text-lg text-white/70">
+              <p className="motion-hero-sub mt-5 max-w-xl text-lg text-white/70">
                 Publica tours 360° profesionales, activa vídeo hero por propiedad y convierte visitas en leads.
                 Todo desde un panel. Sin instalaciones. Sin comisiones.
               </p>
@@ -291,7 +414,7 @@ export default function PricingPage(): JSX.Element {
             <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
               Studio opcional
             </span>
-            <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white sm:text-4xl">
+            <h2 className="motion-section-h2 text-3xl font-black tracking-tight text-slate-900 dark:text-white sm:text-4xl">
               Immersphere Studio
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-base text-slate-500 dark:text-slate-400">
@@ -305,7 +428,7 @@ export default function PricingPage(): JSX.Element {
               {STUDIO_SERVICES.map((service) => (
                 <div
                   key={service}
-                  className="flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60"
+                  className="motion-studio-item flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60"
                 >
                   <span className="h-2 w-2 shrink-0 rounded-full bg-amber-400" aria-hidden="true" />
                   <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{service}</span>
@@ -354,10 +477,19 @@ export default function PricingPage(): JSX.Element {
               <img
                 src="/images/pricing-gaussian-villa.webp"
                 alt=""
-                className="h-full w-full object-cover opacity-30"
+                className="motion-gaussian-img h-full w-full object-cover opacity-30"
                 aria-hidden="true"
               />
             </div>
+            {/* Ambient glow overlay — animated via GSAP */}
+            <div
+              className="motion-gaussian-glow pointer-events-none absolute inset-0 opacity-[0.12]"
+              style={{
+                background:
+                  'radial-gradient(ellipse at 25% 65%, rgba(124,58,237,0.7) 0%, transparent 52%), radial-gradient(ellipse at 78% 38%, rgba(14,165,233,0.5) 0%, transparent 48%)',
+              }}
+              aria-hidden="true"
+            />
             <div className="px-8 py-12 md:px-12">
               <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-16">
 
@@ -366,7 +498,7 @@ export default function PricingPage(): JSX.Element {
                   <span className="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-white/70">
                     Servicio premium
                   </span>
-                  <h2 className="text-3xl font-black tracking-tight text-white sm:text-4xl">
+                  <h2 className="motion-section-h2 text-3xl font-black tracking-tight text-white sm:text-4xl">
                     Gaussian Studio
                   </h2>
                   <p className="mt-4 text-base leading-relaxed text-slate-300">
@@ -454,7 +586,7 @@ export default function PricingPage(): JSX.Element {
                 </div>
               </div>
               {/* Right: content */}
-              <div className="flex flex-col justify-center p-8 lg:p-12">
+              <div className="motion-why-content flex flex-col justify-center p-8 lg:p-12">
                 <p className="hidden text-xs font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 lg:block">Por qué Immersphere</p>
                 <h2 className="mt-2 hidden text-3xl font-black tracking-tight text-slate-900 dark:text-white lg:block">
                   Diseñado para el ritmo real de una agencia.
