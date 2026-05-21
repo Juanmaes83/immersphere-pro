@@ -147,7 +147,7 @@ const FAQS = [
   },
   {
     q: '¿Qué planes hay y cuánto cuestan?',
-    a: 'Starter (0 €/mes, hasta 10 propiedades), Professional (49 €/mes, hasta 50 propiedades), Enterprise (199 €/mes, propiedades ilimitadas + white label + soporte prioritario). Todos incluyen visor 360°, analytics y lead capture.',
+    a: 'Starter (59 €/mes · 1er mes gratis, hasta 5 propiedades), Pro (149 €/mes, hasta 25 propiedades + hero vídeo + analytics engagement), Agency (349 €/mes, hasta 100 propiedades + white-label + multiusuario), Enterprise (bajo diagnóstico, para promotoras y grupos). Información completa en /pricing.',
   },
 ] as const;
 

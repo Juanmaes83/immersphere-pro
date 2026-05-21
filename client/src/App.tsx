@@ -22,6 +22,7 @@ import LeadsPage from '@/pages/LeadsPage';
 import PropertiesPage from '@/pages/PropertiesPage';
 import PropertyCreateWizardPage from '@/pages/PropertyCreateWizardPage';
 import HelpPage from '@/pages/HelpPage';
+import PricingPage from '@/pages/PricingPage';
 
 function useDarkMode(): [boolean, () => void] {
   const [dark, setDark] = useState<boolean>(() => {
@@ -190,6 +191,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
 
           <nav className="hidden items-center gap-2 lg:flex">
             <BrandNavLink to="/gallery">Galería</BrandNavLink>
+            <BrandNavLink to="/pricing">Precios</BrandNavLink>
             {isAuthenticated ? (
               <>
                 <BrandNavLink to="/dashboard">Dashboard</BrandNavLink>
@@ -266,10 +268,14 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
             <p className="text-xs font-bold text-slate-400">
               Powered by <span className="font-black text-slate-600 dark:text-slate-300">Immersphere Pro</span>
               <span className="mx-2 text-slate-200 dark:text-slate-700">·</span>
+              <Link to="/pricing" className="font-black text-slate-500 hover:underline dark:text-slate-400">Precios</Link>
+              <span className="mx-2 text-slate-200 dark:text-slate-700">·</span>
               <Link to="/ayuda" className="font-black text-slate-500 hover:underline dark:text-slate-400">Ayuda</Link>
             </p>
           ) : (
             <p className="text-xs font-bold text-slate-400">
+              <Link to="/pricing" className="font-black text-slate-500 hover:underline dark:text-slate-400">Precios</Link>
+              <span className="mx-2 text-slate-200 dark:text-slate-700">·</span>
               <Link to="/ayuda" className="font-black text-slate-500 hover:underline dark:text-slate-400">Ayuda</Link>
             </p>
           )}
@@ -313,6 +319,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
+        <Route path="/pricing" element={<PricingPage />} />
         <Route path="/ayuda" element={<HelpPage />} />
         <Route path="/compare" element={<ComparePage />} />
         <Route path="/property/:id" element={<PropertyRoutePage />} />
