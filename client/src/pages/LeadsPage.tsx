@@ -1,5 +1,5 @@
 import { Fragment, useState, useEffect, useMemo, useCallback } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, Link } from 'react-router-dom';
 import { Helmet } from 'react-helmet-async';
 import { useBrand } from '@/hooks/useBrand';
 import { markLeadsAsSeen } from '@/hooks/useLeadsBadge';
@@ -524,12 +524,12 @@ export default function LeadsPage(): JSX.Element {
                                 <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
                                   Publica tu primer tour, compártelo por WhatsApp o email y empieza a recibir leads con nombre, teléfono y propiedad visitada — todo centralizado aquí.
                                 </p>
-                                <a
-                                  href="/properties"
+                                <Link
+                                  to="/properties"
                                   className="mt-5 inline-flex w-fit items-center gap-2 rounded-full bg-violet-600 px-5 py-2.5 text-sm font-black text-white transition hover:bg-violet-500"
                                 >
                                   Ir a propiedades
-                                </a>
+                                </Link>
                               </div>
                             </div>
                           </div>

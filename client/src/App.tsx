@@ -1,4 +1,5 @@
 ﻿import { useCallback, useEffect, useState } from 'react';
+import { Sun, Moon } from 'lucide-react';
 import { HelmetProvider } from 'react-helmet-async';
 import { BrowserRouter, Link, Navigate, Route, Routes, useMatch, useLocation } from 'react-router-dom';
 import { useBrand } from '@/hooks/useBrand';
@@ -226,7 +227,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
               className="rounded-full border border-slate-200 px-3 py-2 text-sm transition hover:bg-slate-100 dark:border-slate-700 dark:hover:bg-slate-800"
               aria-label="Toggle dark mode"
             >
-              {dark ? 'â˜€ï¸' : 'ðŸŒ™'}
+              {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </button>
             {isAuthenticated ? (
               <>

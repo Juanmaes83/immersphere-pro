@@ -705,6 +705,36 @@ export default function HelpPage(): JSX.Element {
         </div>
       </section>
 
+      {/* ── TOUR EN VIVO — hotspots y recorrido ─────────────────── */}
+      <section className="bg-slate-950 px-5 py-20">
+        <div className="mx-auto max-w-5xl">
+          <p className="text-center text-xs font-black uppercase tracking-[0.22em] text-violet-400">
+            Tour en vivo · Ático Lumière
+          </p>
+          <h2 className="motion-help-h2 mt-2 text-center text-3xl font-black text-white md:text-4xl">
+            Así se ve un tour publicado en Immersphere
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-center text-base text-slate-400">
+            Hotspots interactivos encima del 3D, recorrido cinematográfico automático y captura de leads integrada.
+            Interactúa con el tour directamente — es el producto real.
+          </p>
+          <div className="mt-10 overflow-hidden rounded-[1.6rem] ring-1 ring-violet-500/20">
+            <iframe
+              src="https://immersphere-pro.vercel.app/embed/2fe0f03b-5631-4d21-8337-cf526428834c"
+              title="Tour en vivo — Ático Lumière con hotspots"
+              className="h-[600px] w-full border-0 md:h-[680px]"
+              allowFullScreen
+              loading="lazy"
+            />
+          </div>
+          <div className="mt-4 flex flex-wrap justify-center gap-6 text-xs text-slate-500">
+            <span>🖱 Arrastra para moverte</span>
+            <span>✦ Haz clic en los hotspots</span>
+            <span>▶ Inicia el recorrido cinematográfico</span>
+          </div>
+        </div>
+      </section>
+
       {/* ── GUÍA GAUSSIAN SPLAT ─────────────────────────────────── */}
       <section className="bg-white px-5 py-20 dark:bg-slate-950">
         {/* Full-width Gaussian visual */}
