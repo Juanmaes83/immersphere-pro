@@ -44,6 +44,17 @@ export const unlockRateLimit = rateLimit({
   }
 });
 
+export const chatRateLimit = rateLimit({
+  windowMs: 60 * 1000,
+  limit: 20,
+  standardHeaders: 'draft-8',
+  legacyHeaders: false,
+  message: {
+    success: false,
+    error: 'Demasiadas preguntas seguidas. Espera un momento.'
+  }
+});
+
 export const viewRateLimit = rateLimit({
   windowMs: 60 * 1000,
   limit: 30,
