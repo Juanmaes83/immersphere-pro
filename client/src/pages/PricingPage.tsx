@@ -322,11 +322,13 @@ export default function PricingPage(): JSX.Element {
                 Llamar al 629 554 870
               </a>
               <a
-                href="mailto:hola@immersphere.pro"
+                href="https://wa.me/34629554870"
+                target="_blank"
+                rel="noopener noreferrer"
                 className="flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-black text-white transition hover:opacity-90 active:scale-[0.98]"
                 style={bgStyle}
               >
-                Concertar reunión
+                Escribir por WhatsApp
               </a>
             </div>
           </div>
