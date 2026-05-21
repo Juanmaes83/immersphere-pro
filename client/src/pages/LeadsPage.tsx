@@ -236,30 +236,45 @@ export default function LeadsPage(): JSX.Element {
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      {/* ── Header ── */}
-      <div className="mb-8 flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <p className="text-sm font-black uppercase tracking-[0.22em]" style={{ color: brandColor }}>CRM</p>
-          <h1 className="mt-1 text-4xl font-black tracking-tight dark:text-white">Leads</h1>
-          <p className="mt-1 text-sm text-slate-500">{metrics.total} en total · {metrics.thisWeek} esta semana</p>
+      {/* ── Premium Header ── */}
+      <div className="mb-8 overflow-hidden rounded-3xl bg-slate-900 shadow-xl">
+        <div className="relative flex flex-wrap items-center justify-between gap-4 px-8 py-8">
+          {/* Background image */}
+          <div className="pointer-events-none absolute inset-0">
+            <img
+              src="/images/leads-dashboard-premium.webp"
+              alt=""
+              className="h-full w-full object-cover opacity-[0.18]"
+              aria-hidden="true"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 via-slate-900/70 to-transparent" />
+          </div>
+          {/* Left: title + metrics */}
+          <div className="relative">
+            <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-400">CRM · Gestión de interesados</p>
+            <h1 className="mt-1 text-4xl font-black tracking-tight text-white">Leads</h1>
+            <p className="mt-1.5 text-sm text-slate-400">{metrics.total} en total · {metrics.thisWeek} esta semana</p>
+          </div>
+          {/* Right: export */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => void handleExportCsv()}
+              disabled={exporting || leads.length === 0}
+              className="flex items-center gap-2 rounded-full border border-white/20 bg-white/10 px-5 py-2.5 text-sm font-black text-white backdrop-blur-sm transition hover:bg-white/20 disabled:opacity-50"
+              title={filtered.length < leads.length ? `Exporta los ${filtered.length} leads con los filtros activos del servidor` : `Exporta todos los ${leads.length} leads`}
+            >
+              {exporting ? (
+                <>
+                  <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+                  Exportando…
+                </>
+              ) : (
+                <>↓ CSV ({leads.length})</>
+              )}
+            </button>
+          </div>
         </div>
-        <button
-          type="button"
-          onClick={() => void handleExportCsv()}
-          disabled={exporting || leads.length === 0}
-          className="flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50"
-          style={bgStyle}
-          title={filtered.length < leads.length ? `Exporta los ${filtered.length} leads con los filtros activos del servidor` : `Exporta todos los ${leads.length} leads`}
-        >
-          {exporting ? (
-            <>
-              <span className="inline-block h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
-              Exportando…
-            </>
-          ) : (
-            <>↓ CSV ({leads.length})</>
-          )}
-        </button>
       </div>
 
       {/* ── B5: Stats row ── */}
@@ -488,8 +503,8 @@ export default function LeadsPage(): JSX.Element {
                       {leads.length === 0 ? (
                         <EmptyState
                           icon={IcoInbox}
-                          title="Aún no hay interesados"
-                          body="Comparte tu tour por WhatsApp, email o redes para empezar a recibir leads."
+                          title="Aún no tienes interesados"
+                          body="Publica tu primer tour, compártelo por WhatsApp o email y empieza a recibir leads con nombre, teléfono y propiedad visitada — todo centralizado en este panel."
                         />
                       ) : (
                         <EmptyState

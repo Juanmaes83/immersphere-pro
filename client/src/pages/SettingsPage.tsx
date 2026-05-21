@@ -504,33 +504,58 @@ export default function SettingsPage(): JSX.Element {
         </div>
       ) : null}
 
-      <div className="mt-8 grid grid-cols-1 gap-6 lg:grid-cols-3">
+      {/* ── Plans visual banner ── */}
+      <div className="mt-8 overflow-hidden rounded-3xl bg-slate-900 shadow-lg" style={{ minHeight: '160px' }}>
+        <div className="relative flex flex-col justify-center px-8 py-8 sm:flex-row sm:items-center sm:justify-between">
+          <div className="pointer-events-none absolute inset-0">
+            <img
+              src="/images/settings-plans-lifestyle.webp"
+              alt=""
+              className="h-full w-full object-cover opacity-[0.2]"
+              aria-hidden="true"
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-900/90 to-slate-800/60" />
+          </div>
+          <div className="relative">
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-400">Tu plan actual</p>
+            <h2 className="mt-1 text-2xl font-black text-white">Escala cuando lo necesites</h2>
+            <p className="mt-1 text-sm text-slate-400">
+              Comparativa completa en{' '}
+              <a href="/pricing" className="font-black text-violet-300 hover:underline">/pricing</a>
+              {' '}· Agency y Enterprise: llama al{' '}
+              <a href="tel:+34629554870" className="font-black text-white hover:underline">629 554 870</a>
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <PlanCard
           plan="STARTER"
           title="Starter"
-          price="0 €/mes"
-          description="Para validar el flujo con pocas propiedades y visor básico."
+          price="59 €/mes"
+          description="Para agentes y pequeñas agencias. Hasta 5 propiedades activas, 1 usuario, tours 360°, QR, WhatsApp CTA y lead capture."
           currentPlan={currentPlan}
           onPlanChanged={loadBillingState}
-          features={['10 propiedades', 'Visor 360° básico', 'Sin white label completo']}
+          features={['5 propiedades activas', '1 usuario', 'Tours 360°', 'Share link + QR', 'Lead capture básico', 'Analytics básicos']}
         />
         <PlanCard
           plan="PROFESSIONAL"
-          title="Professional"
-          price="49 €/mes"
-          description="Para inmobiliarias y estudios que necesitan analítica y marca propia."
+          title="Pro"
+          price="149 €/mes"
+          description="Para agencias consolidadas. Hasta 25 propiedades, 3 usuarios, hero vídeo, analytics de engagement y Gaussian viewer."
           currentPlan={currentPlan}
           onPlanChanged={loadBillingState}
-          features={['50 propiedades', 'Hotspots avanzados', 'Analytics', 'White label parcial']}
+          features={['25 propiedades activas', '3 usuarios', 'Hero vídeo por propiedad', 'Analytics engagement', 'Tours con contraseña', 'Gaussian viewer']}
         />
         <PlanCard
           plan="ENTERPRISE"
-          title="Enterprise"
-          price="199 €/mes"
-          description="Para promotoras, museos, mobiliario y experiencias volumétricas."
+          title="Agency"
+          price="349 €/mes"
+          description="Para agencias con volumen. Hasta 100 propiedades, 10 usuarios, white-label, iframe embed y soporte prioritario."
           currentPlan={currentPlan}
           onPlanChanged={loadBillingState}
-          features={['Propiedades ilimitadas', 'Gaussian Splats', 'API', 'Soporte prioritario']}
+          features={['100 propiedades activas', '10 usuarios', 'White-label completo', 'Iframe embed', 'PDF reports', 'Soporte prioritario']}
         />
       </div>
     </main>

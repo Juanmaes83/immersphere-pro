@@ -238,21 +238,31 @@ export default function PricingPage(): JSX.Element {
       <main className="mx-auto max-w-7xl px-5 pb-24 pt-16">
 
         {/* ── Hero ──────────────────────────────────────────────────────── */}
-        <div className="mb-16 text-center">
-          <span
-            className="mb-4 inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-slate-500 dark:border-slate-700 dark:text-slate-400"
-          >
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            SaaS inmobiliario · Activo desde el día 1
-          </span>
-          <h1 className="mt-4 text-4xl font-black tracking-tight text-slate-900 dark:text-white sm:text-5xl">
-            Planes claros.<br />
-            <span style={colorStyle}>Sin sorpresas.</span>
-          </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg text-slate-500 dark:text-slate-400">
-            Publica tours 360° profesionales, activa vídeo hero por propiedad y convierte visitas en leads.
-            Todo desde un mismo panel. Sin instalaciones. Sin comisiones.
-          </p>
+        <div className="mb-16">
+          {/* Image hero */}
+          <div className="relative mb-12 overflow-hidden rounded-3xl bg-slate-900 shadow-2xl" style={{ minHeight: '360px' }}>
+            <img
+              src="/images/pricing-hero-agent-tablet.webp"
+              alt="Agente inmobiliaria mostrando tour virtual en tablet dentro de villa premium"
+              className="h-full w-full object-cover opacity-80"
+              style={{ minHeight: '360px' }}
+            />
+            <div className="absolute inset-0 bg-gradient-to-r from-slate-900/80 via-slate-900/40 to-transparent" />
+            <div className="absolute inset-0 flex flex-col justify-center px-10 py-12 md:px-16">
+              <span className="mb-4 inline-flex w-fit items-center gap-2 rounded-full border border-white/20 bg-white/10 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-white/80 backdrop-blur-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                SaaS inmobiliario · Activo desde el día 1
+              </span>
+              <h1 className="text-4xl font-black tracking-tight text-white sm:text-5xl">
+                Planes claros.<br />
+                <span className="text-violet-300">Sin sorpresas.</span>
+              </h1>
+              <p className="mt-5 max-w-xl text-lg text-white/70">
+                Publica tours 360° profesionales, activa vídeo hero por propiedad y convierte visitas en leads.
+                Todo desde un panel. Sin instalaciones. Sin comisiones.
+              </p>
+            </div>
+          </div>
         </div>
 
         {/* ── Plan cards ───────────────────────────────────────────────── */}
@@ -339,7 +349,15 @@ export default function PricingPage(): JSX.Element {
 
         {/* ── Gaussian Studio ──────────────────────────────────────────── */}
         <section aria-label="Gaussian Studio — producción premium">
-          <div className="overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-xl dark:border-slate-700">
+          <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 shadow-xl dark:border-slate-700">
+            <div className="pointer-events-none absolute inset-0">
+              <img
+                src="/images/pricing-gaussian-villa.webp"
+                alt=""
+                className="h-full w-full object-cover opacity-[0.12]"
+                aria-hidden="true"
+              />
+            </div>
             <div className="px-8 py-12 md:px-12">
               <div className="flex flex-col gap-10 lg:flex-row lg:items-start lg:gap-16">
 
@@ -411,6 +429,83 @@ export default function PricingPage(): JSX.Element {
 
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* ── Por qué Immersphere ─────────────────────────────────────── */}
+        <section aria-label="Por qué Immersphere" className="mb-20">
+          <div className="mb-10 text-center">
+            <h2 className="text-3xl font-black tracking-tight text-slate-900 dark:text-white sm:text-4xl">
+              Por qué Immersphere
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-slate-500 dark:text-slate-400">
+              Diseñado para el ritmo real de una agencia. No para demos de feria.
+            </p>
+          </div>
+          <div className="grid gap-5 md:grid-cols-3">
+            <div className="rounded-3xl border border-slate-200 bg-white p-7 dark:border-slate-700 dark:bg-slate-900">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-100 dark:bg-violet-900/40">
+                <svg className="h-6 w-6 text-violet-600 dark:text-violet-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+              </div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">Publicado en 5 minutos</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                Sube el archivo, configura la propiedad y comparte el link. Sin instalaciones, sin dependencias técnicas, sin esperar a IT.
+              </p>
+            </div>
+            <div className="rounded-3xl border border-slate-200 bg-white p-7 dark:border-slate-700 dark:bg-slate-900">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-100 dark:bg-emerald-900/40">
+                <svg className="h-6 w-6 text-emerald-600 dark:text-emerald-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">Leads con contexto</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                Cada lead llega con nombre, teléfono, propiedad visitada y tiempo de sesión. Sabes exactamente qué le interesa antes de llamar.
+              </p>
+            </div>
+            <div className="rounded-3xl border border-slate-200 bg-white p-7 dark:border-slate-700 dark:bg-slate-900">
+              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-100 dark:bg-amber-900/40">
+                <svg className="h-6 w-6 text-amber-600 dark:text-amber-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><rect width="18" height="18" x="3" y="3" rx="2"/><path d="M3 9h18M9 21V9"/></svg>
+              </div>
+              <h3 className="text-lg font-black text-slate-900 dark:text-white">Tu marca, no la nuestra</h3>
+              <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">
+                Desde el plan Pro, el tour lleva tu logo, tu color y tu dominio. El comprador recuerda tu agencia, no la plataforma.
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* ── FAQ ──────────────────────────────────────────────────────────── */}
+        <section aria-label="Preguntas frecuentes" className="mb-20">
+          <div className="mb-8 text-center">
+            <h2 className="text-2xl font-black text-slate-900 dark:text-white">Preguntas frecuentes</h2>
+          </div>
+          <div className="mx-auto max-w-3xl divide-y divide-slate-100 rounded-3xl border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-700 dark:bg-slate-900">
+            {[
+              {
+                q: '¿El primer mes es realmente gratis en Starter?',
+                a: 'Sí. Al activar el plan Starter no se te cobra hasta el segundo mes. Sin tarjeta de crédito bloqueada. Cancela antes de los 30 días y no pagas nada.',
+              },
+              {
+                q: '¿Puedo cambiar de plan en cualquier momento?',
+                a: 'Sí. Puedes subir o bajar de plan desde el panel de ajustes. El cambio se aplica al inicio del siguiente ciclo de facturación.',
+              },
+              {
+                q: '¿La producción Gaussian está incluida?',
+                a: 'El visor Gaussian está disponible en planes Pro y superiores. La producción (captura, procesado y optimización del modelo 3D) es un servicio separado que se presupuesta bajo diagnóstico. Llama al 629 554 870 para más información.',
+              },
+              {
+                q: '¿Qué pasa si supero el límite de propiedades?',
+                a: 'No se desactivan tours publicados. Recibes un aviso en el panel y tienes 7 días para ampliar tu plan o archivar propiedades antes de que se bloquee la creación de nuevas.',
+              },
+              {
+                q: '¿Ofrecéis planes para varias agencias o franquicias?',
+                a: 'Sí. El plan Agency cubre hasta 100 propiedades con multiusuario y white-label. Para grupos inmobiliarios o redes de agencias con necesidades avanzadas, hay condiciones Enterprise bajo diagnóstico. Contacta al 629 554 870.',
+              },
+            ].map(({ q, a }) => (
+              <div key={q} className="px-7 py-5">
+                <p className="font-black text-slate-900 dark:text-white">{q}</p>
+                <p className="mt-1.5 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{a}</p>
+              </div>
+            ))}
           </div>
         </section>
 

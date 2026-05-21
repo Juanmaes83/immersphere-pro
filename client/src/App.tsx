@@ -204,6 +204,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
                     </span>
                   ) : null}
                 </div>
+                <BrandNavLink to="/pricing">Precios</BrandNavLink>
                 <BrandNavLink to="/settings">Planes</BrandNavLink>
               </>
             ) : null}
