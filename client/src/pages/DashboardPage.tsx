@@ -43,8 +43,9 @@ function TopPropertiesCard(): JSX.Element | null {
   return (
     <div className="mt-4 rounded-ip-card bg-white px-5 py-5 ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border">
       <div className="mb-4 flex items-center justify-between">
-        <p className="text-ip-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">
-          🏆 Lo más visto esta semana
+        <p className="flex items-center gap-2 text-ip-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-hidden="true"><path d="M6 9H4.5a2.5 2.5 0 0 1 0-5H6"/><path d="M18 9h1.5a2.5 2.5 0 0 0 0-5H18"/><path d="M4 22h16"/><path d="M10 14.66V17c0 .55-.47.98-.97 1.21C7.85 18.75 7 20.24 7 22"/><path d="M14 14.66V17c0 .55.47.98.97 1.21C16.15 18.75 17 20.24 17 22"/><path d="M18 2H6v7a6 6 0 0 0 12 0V2z"/></svg>
+          Lo más visto esta semana
         </p>
       </div>
 
@@ -79,10 +80,10 @@ function TopPropertiesCard(): JSX.Element | null {
                 </span>
                 <Link
                   to={`/properties/${entry.propertyId}`}
-                  className="text-ip-xs font-bold text-ip-accent transition hover:text-ip-accent-hover"
+                  className="flex items-center text-ip-xs font-bold text-ip-accent transition hover:text-ip-accent-hover"
                   aria-label={`Ver ${entry.title}`}
                 >
-                  →
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                 </Link>
               </div>
             </li>
@@ -174,9 +175,10 @@ export default function DashboardPage(): JSX.Element {
             Primera vez?{' '}
             <Link
               to="/ayuda"
-              className="font-bold text-ip-accent underline underline-offset-2 hover:text-ip-accent-hover"
+              className="inline-flex items-center gap-1 font-bold text-ip-accent underline underline-offset-2 hover:text-ip-accent-hover"
             >
-              Visita la guía rápida →
+              Visita la guía rápida
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
             </Link>
           </p>
           <button
@@ -225,9 +227,10 @@ export default function DashboardPage(): JSX.Element {
         <button
           type="button"
           onClick={() => navigate('/leads')}
-          className="shrink-0 rounded-ip-pill bg-ip-accent px-5 py-2.5 text-ip-sm font-semibold text-white transition duration-ip-base ease-ip-base hover:bg-ip-accent-hover focus:outline-none"
+          className="flex shrink-0 items-center gap-2 rounded-ip-pill bg-ip-accent px-5 py-2.5 text-ip-sm font-semibold text-white transition duration-ip-base ease-ip-base hover:bg-ip-accent-hover focus:outline-none"
         >
-          Ver interesados →
+          Ver interesados
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
         </button>
       </div>
 
@@ -289,9 +292,10 @@ export default function DashboardPage(): JSX.Element {
           <button
             type="button"
             onClick={() => navigate('/leads')}
-            className="text-ip-xs font-semibold text-ip-accent transition hover:text-ip-accent-hover"
+            className="flex items-center gap-1 text-ip-xs font-semibold text-ip-accent transition hover:text-ip-accent-hover"
           >
-            Ver todos →
+            Ver todos
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden="true"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
           </button>
         </div>
         {dashLeadsLoading ? (

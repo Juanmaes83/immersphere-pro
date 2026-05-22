@@ -84,7 +84,12 @@ export default function AgencyPage(): JSX.Element {
             <div className="p-5">
               <p className="text-xl font-black text-slate-950">{formatCurrency(property.price)}</p>
               <p className="mt-2 line-clamp-2 text-sm leading-6 text-slate-500">{property.description}</p>
-              {property.address ? <p className="mt-2 text-xs font-semibold text-slate-400">📍 {property.address}</p> : null}
+              {property.address ? (
+                <p className="mt-2 flex items-center gap-1 text-xs font-semibold text-slate-400">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                  {property.address}
+                </p>
+              ) : null}
               <button type="button" onClick={() => navigate(`/property/${property.id}`)} className="mt-4 w-full rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90" style={{ backgroundColor: primaryColor }}>
                 Ver tour inmersivo
               </button>

@@ -64,7 +64,7 @@ function CompareColumn({ propertyId }: { propertyId: string }): JSX.Element {
     return (
       <div className="overflow-hidden rounded-[1.7rem] bg-white ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
         <div className="flex aspect-[4/3] items-center justify-center bg-gradient-to-br from-slate-200 to-slate-300 dark:from-slate-700 dark:to-slate-600">
-          <span className="text-5xl">🔒</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-16 w-16 text-slate-400 dark:text-slate-500" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </div>
         <div className="p-5">
           <h3 className="text-xl font-black dark:text-white">{data.title}</h3>
@@ -104,7 +104,7 @@ function CompareColumn({ propertyId }: { propertyId: string }): JSX.Element {
           <img src={data.thumbnailUrl} alt={data.title} className="h-full w-full object-cover" />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center">
-            <span className="text-3xl text-white/30">✦</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="h-10 w-10 text-white/20" aria-hidden="true"><path d="M12 2l2.4 7.4H22l-6.2 4.5 2.4 7.4L12 17l-6.2 4.3 2.4-7.4L2 9.4h7.6z"/></svg>
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/5 to-transparent" />
@@ -121,13 +121,19 @@ function CompareColumn({ propertyId }: { propertyId: string }): JSX.Element {
           <p className="line-clamp-2 text-sm leading-6 text-slate-500 dark:text-slate-400">{data.description}</p>
         )}
         {data.address && (
-          <p className="text-xs text-slate-400">📍 {data.address}</p>
+          <p className="flex items-center gap-1 text-xs text-slate-400">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+            {data.address}
+          </p>
         )}
         <div className="flex flex-wrap gap-2 text-xs">
           <span className="rounded-full bg-slate-100 px-2.5 py-1 font-bold dark:bg-slate-700 dark:text-white">{data.bathrooms} baños</span>
           <span className="rounded-full bg-slate-100 px-2.5 py-1 font-bold dark:bg-slate-700 dark:text-white">{data.spaces.length} estancias</span>
           {data.views !== undefined && data.views > 0 && (
-            <span className="rounded-full bg-slate-100 px-2.5 py-1 font-bold dark:bg-slate-700 dark:text-white">👁 {data.views}</span>
+            <span className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2.5 py-1 font-bold dark:bg-slate-700 dark:text-white">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden="true"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+              {data.views}
+            </span>
           )}
         </div>
 
