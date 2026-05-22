@@ -75,7 +75,7 @@ const PLANS: Plan[] = [
       { text: 'Gaussian viewer disponible', note: 'Producción no incluida' },
       { text: 'Botón "Reservar visita" (Calendly)' },
       { text: 'Realidad Aumentada (AR) en móvil' },
-      { text: 'Hotspot tipo Precio (💰)' },
+      { text: 'Hotspot tipo Precio' },
       { text: 'Lead reminders automáticos' },
       { text: 'Mapa interactivo + análisis del barrio' },
     ],
@@ -430,10 +430,55 @@ export default function PricingPage(): JSX.Element {
           </div>
         </div>
 
+        {/* ── Platform preview ─────────────────────────────────────────── */}
+        <section className="mt-16" aria-label="Vista previa de la plataforma">
+          <div className="mb-8 text-center">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-violet-600 dark:text-violet-400">La plataforma por dentro</p>
+            <h2 className="motion-section-h2 mt-3 text-3xl font-black tracking-tight text-slate-900 dark:text-white">
+              Panel real. Sin demo de feria.
+            </h2>
+            <p className="mx-auto mt-3 max-w-xl text-sm leading-7 text-slate-500 dark:text-slate-400">
+              Dashboard de propiedades, gestión de leads y analytics de engagement. Todo en una plataforma que funciona desde el día 1.
+            </p>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-3">
+            {([
+              {
+                src: `https://d8j0ntlcm91z4.cloudfront.net/user_32tIBn1VWPFRvRlTsdl6JD8uoae/hf_20260515_113419_d90274ef-7e44-4ea0-ac2d-df325d381b89_min.webp`,
+                alt: 'Dashboard completo de Immersphere Pro — propiedades, leads y analytics',
+                label: 'Dashboard de agencia',
+              },
+              {
+                src: `https://d8j0ntlcm91z4.cloudfront.net/user_32tIBn1VWPFRvRlTsdl6JD8uoae/hf_20260515_113521_20cd50a0-fad4-4fcf-8cea-eb5ebc2a79e0_min.webp`,
+                alt: 'Bandeja de leads en tiempo real — estados, seguimiento y acciones WhatsApp',
+                label: 'Gestión de leads',
+              },
+              {
+                src: `https://d8j0ntlcm91z4.cloudfront.net/user_32tIBn1VWPFRvRlTsdl6JD8uoae/hf_20260515_113543_95afafcb-2537-4c08-be08-acb2da474b77_min.webp`,
+                alt: 'Estados vacíos y vistas móviles de Immersphere Pro',
+                label: 'Vista móvil operacional',
+              },
+            ] as { src: string; alt: string; label: string }[]).map(({ src, alt, label }) => (
+              <div key={label} className="group overflow-hidden rounded-2xl border border-slate-200 bg-slate-50 shadow-sm dark:border-slate-700 dark:bg-slate-900">
+                <div className="aspect-square overflow-hidden">
+                  <img
+                    src={src}
+                    alt={alt}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    loading="lazy"
+                  />
+                </div>
+                <p className="px-4 py-3 text-center text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{label}</p>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* ── Annual note ──────────────────────────────────────────────── */}
         <div className="mt-4 flex justify-center">
           <p className="rounded-2xl border border-slate-200 bg-slate-50 px-6 py-3 text-sm font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
-            💡 Pago anual: <span className="text-slate-700 dark:text-slate-200">10 meses + 2 gratis</span> el primer año · Pilot Agency: consulta condiciones especiales a{' '}
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="inline h-3.5 w-3.5 align-middle mr-1" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>{' '}
+            Pago anual: <span className="text-slate-700 dark:text-slate-200">10 meses + 2 gratis</span> el primer año · Pilot Agency: consulta condiciones especiales a{' '}
             <a href="tel:+34629554870" className="font-black text-slate-700 hover:underline dark:text-slate-200">629 554 870</a>
           </p>
         </div>

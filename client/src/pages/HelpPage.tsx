@@ -1467,6 +1467,52 @@ export default function HelpPage(): JSX.Element {
         </div>
       </section>
 
+      {/* ── PLATAFORMA EN IMÁGENES ──────────────────────────────── */}
+      <section className="bg-slate-50 px-5 py-20 dark:bg-slate-900">
+        <div className="mx-auto max-w-5xl">
+          <p className="text-center text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
+            Así es la plataforma
+          </p>
+          <h2 className="motion-help-h2 mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
+            Panel real. Sin demos de marketing.
+          </h2>
+          <p className="mx-auto mt-4 max-w-xl text-center text-base text-slate-500 dark:text-slate-400">
+            Dashboard de propiedades, bandeja de leads en tiempo real y vista móvil operacional. Todo en una plataforma que funciona desde el primer día.
+          </p>
+          <div className="mt-10 grid gap-4 sm:grid-cols-3">
+            {([
+              {
+                src: `https://d8j0ntlcm91z4.cloudfront.net/user_32tIBn1VWPFRvRlTsdl6JD8uoae/hf_20260515_113419_d90274ef-7e44-4ea0-ac2d-df325d381b89_min.webp`,
+                alt: 'Dashboard de propiedades e analytics de Immersphere Pro',
+                label: 'Dashboard de agencia',
+              },
+              {
+                src: `https://d8j0ntlcm91z4.cloudfront.net/user_32tIBn1VWPFRvRlTsdl6JD8uoae/hf_20260515_113521_20cd50a0-fad4-4fcf-8cea-eb5ebc2a79e0_min.webp`,
+                alt: 'Gestión de leads en tiempo real con acciones WhatsApp y seguimiento',
+                label: 'Gestión de leads',
+              },
+              {
+                src: `https://d8j0ntlcm91z4.cloudfront.net/user_32tIBn1VWPFRvRlTsdl6JD8uoae/hf_20260515_113543_95afafcb-2537-4c08-be08-acb2da474b77_min.webp`,
+                alt: 'Vista móvil y estados vacíos premium de Immersphere Pro',
+                label: 'Operacional en móvil',
+              },
+            ] as { src: string; alt: string; label: string }[]).map(({ src, alt, label }) => (
+              <div key={label} className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-950">
+                <div className="aspect-square overflow-hidden">
+                  <img
+                    src={src}
+                    alt={alt}
+                    className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.03]"
+                    loading="lazy"
+                  />
+                </div>
+                <p className="px-4 py-3 text-center text-[11px] font-black uppercase tracking-widest text-slate-500 dark:text-slate-400">{label}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* ── MULTI-ROOM GAUSSIAN BLUEPRINT — solo admin ──────────── */}
       {isAuthenticated && (
         <section id="gaussian-blueprint" className="bg-slate-950 px-5 py-20">
