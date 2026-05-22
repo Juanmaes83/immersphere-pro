@@ -1,7 +1,7 @@
 import type { NextFunction, Request, Response } from 'express';
 import { prisma } from '../index.js';
 import { AppError } from '../middleware/errorHandler.js';
-import { createViewerEvent, getPropertyAnalyticsSummary, getTenantAnalyticsSummary } from '../services/analytics.service.js';
+import { createViewerEvent, getPropertyAnalyticsSummary, getTenantAnalyticsSummary, getTopPropertiesByPeriod } from '../services/analytics.service.js';
 
 const ALLOWED_EVENT_TYPES = new Set([
   // ── Legacy names (kept for backward-compat with existing DB rows) ──────────
@@ -102,6 +102,28 @@ export async function getPropertySummaryController(
     const summary = await getPropertyAnalyticsSummary(propertyId);
 
     response.status(200).json({ success: true, data: summary });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getTopPropertiesController(
+  request: Request,
+  response: Response,
+  next: NextFunction
+): Promise<void> {
+  try {
+    const tenantId = request.auth?.tenantId;
+    if (!tenantId) {
+      throw new AppError(401, 'Autenticación requerida.');
+    }
+
+    const period = typeof request.query.period === 'string' ? request.query.period : '7d';
+    const days = period === '30d' ? 30 : period === '90d' ? 90 : 7;
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const data = await getTopPropertiesByPeriod(tenantId, since);
+    response.status(200).json({ success: true, data });
   } catch (error) {
     next(error);
   }

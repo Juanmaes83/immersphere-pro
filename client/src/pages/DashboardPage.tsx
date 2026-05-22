@@ -14,6 +14,85 @@ import AvatarWidget from '@/components/AvatarWidget';
 
 const HELP_BANNER_KEY = 'immersphere_help_banner_dismissed';
 
+// ─── TopPropertiesCard ────────────────────────────────────────────────────────
+
+interface TopPropertyEntry {
+  propertyId: string;
+  title: string;
+  viewerOpens: number;
+  leadCtas: number;
+  engagementScore: number;
+}
+
+function TopPropertiesCard(): JSX.Element | null {
+  const [data, setData] = useState<TopPropertyEntry[] | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    unwrapApiResponse<TopPropertyEntry[]>(api.get('/analytics/top-properties?period=7d'))
+      .then((res) => { if (!cancelled) setData(Array.isArray(res) ? res : []); })
+      .catch(() => { if (!cancelled) setData(null); })
+      .finally(() => { if (!cancelled) setLoading(false); });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Autónomo: si falla la API, no renderizar nada — no bloquea el dashboard
+  if (!loading && data === null) return null;
+
+  return (
+    <div className="mt-4 rounded-ip-card bg-white px-5 py-5 ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border">
+      <div className="mb-4 flex items-center justify-between">
+        <p className="text-ip-xs font-semibold uppercase tracking-[0.14em] text-slate-500 dark:text-white/35">
+          🏆 Lo más visto esta semana
+        </p>
+      </div>
+
+      {loading ? (
+        <div className="space-y-3">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="h-9 animate-pulse rounded-lg bg-slate-100 dark:bg-white/5" />
+          ))}
+        </div>
+      ) : data && data.length === 0 ? (
+        <p className="py-4 text-center text-ip-sm text-slate-400 dark:text-white/25">
+          Aún no hay visitas esta semana. ¡Comparte tus tours!
+        </p>
+      ) : (
+        <ol className="divide-y divide-slate-100 dark:divide-white/5">
+          {(data ?? []).map((entry, idx) => (
+            <li key={entry.propertyId} className="flex items-center gap-3 py-2.5">
+              <span className="w-4 shrink-0 text-ip-xs font-black text-slate-400 dark:text-white/25 tabular-nums">
+                {idx + 1}
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-ip-sm font-semibold text-slate-900 dark:text-white">
+                  {entry.title}
+                </p>
+              </div>
+              <div className="flex shrink-0 items-center gap-3">
+                <span className="text-ip-xs font-black text-slate-700 dark:text-white/70 tabular-nums">
+                  {entry.viewerOpens} visit{entry.viewerOpens !== 1 ? 'as' : 'a'}
+                </span>
+                <span className={`text-ip-xs font-semibold tabular-nums ${entry.leadCtas > 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 dark:text-white/25'}`}>
+                  {entry.leadCtas} lead{entry.leadCtas !== 1 ? 's' : ''}
+                </span>
+                <Link
+                  to={`/properties/${entry.propertyId}`}
+                  className="text-ip-xs font-bold text-ip-accent transition hover:text-ip-accent-hover"
+                  aria-label={`Ver ${entry.title}`}
+                >
+                  →
+                </Link>
+              </div>
+            </li>
+          ))}
+        </ol>
+      )}
+    </div>
+  );
+}
+
 export default function DashboardPage(): JSX.Element {
   const navigate = useNavigate();
   const user = useAuthStore((state) => state.user);
@@ -197,6 +276,9 @@ export default function DashboardPage(): JSX.Element {
           dim
         />
       </div>
+
+      {/* ── Top propiedades esta semana ── */}
+      <TopPropertiesCard />
 
       {/* ── Actividad reciente ── */}
       <div className="mt-4 rounded-ip-card bg-white px-5 py-5 ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border">

@@ -175,6 +175,56 @@ export async function getPropertyAnalyticsSummary(propertyId: string) {
   };
 }
 
+export interface TopPropertyEntry {
+  propertyId: string;
+  title: string;
+  viewerOpens: number;
+  leadCtas: number;
+  engagementScore: number;
+}
+
+export async function getTopPropertiesByPeriod(tenantId: string, since: Date): Promise<TopPropertyEntry[]> {
+  const [allEvents, properties] = await Promise.all([
+    prisma.viewerEvent.findMany({
+      where: { tenantId, createdAt: { gte: since } },
+      select: { propertyId: true, type: true }
+    }),
+    prisma.property.findMany({
+      where: { tenantId },
+      select: { id: true, title: true }
+    })
+  ]);
+
+  const propertyTitleMap = new Map(properties.map((p) => [p.id, p.title]));
+
+  const buckets = new Map<string, { open: number; lead: number; hotspot: number; space: number }>();
+  for (const ev of allEvents) {
+    const b = buckets.get(ev.propertyId) ?? { open: 0, lead: 0, hotspot: 0, space: 0 };
+    if (ev.type === 'viewer_open'  || ev.type === 'viewer_opened')  b.open    += 1;
+    if (ev.type === 'lead_cta'     || ev.type === 'lead_submitted') b.lead    += 1;
+    if (ev.type === 'hotspot_click'|| ev.type === 'hotspot_clicked')b.hotspot += 1;
+    if (ev.type === 'space_change' || ev.type === 'space_viewed')   b.space   += 1;
+    buckets.set(ev.propertyId, b);
+  }
+
+  return Array.from(buckets.entries())
+    .map(([propertyId, b]) => ({
+      propertyId,
+      title: propertyTitleMap.get(propertyId) ?? propertyId.slice(0, 8) + '…',
+      viewerOpens: b.open,
+      leadCtas: b.lead,
+      engagementScore: computeEngagementScore({
+        viewer_open:   b.open,
+        space_change:  b.space,
+        hotspot_click: b.hotspot,
+        lead_cta:      b.lead
+      })
+    }))
+    .filter((entry) => entry.viewerOpens > 0 || entry.leadCtas > 0)
+    .sort((a, b) => b.engagementScore - a.engagementScore)
+    .slice(0, 5);
+}
+
 export async function getTenantAnalyticsSummary(tenantId: string): Promise<TenantAnalyticsSummary> {
   const [allEvents, properties] = await Promise.all([
     prisma.viewerEvent.findMany({
