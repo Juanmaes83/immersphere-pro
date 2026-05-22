@@ -12,6 +12,7 @@ import { tenantsRoutes } from './routes/tenants.routes.js';
 import { uploadsRoutes } from './routes/uploads.routes.js';
 import { webhookRoutes } from './routes/webhook.routes.js';
 import { chatRoutes } from './routes/chat.routes.js';
+import { leadReminderRoutes } from './routes/lead-reminder.routes.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
 
 export const prisma = new PrismaClient();
@@ -94,6 +95,7 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/leads', leadsRoutes);
 app.use('/api/tenants', tenantsRoutes);
 app.use('/api/chat', chatRoutes);
+app.use('/api/lead-reminder', leadReminderRoutes);
 
 app.get('/sitemap.xml', async (_req, res) => {
   function escapeXml(str: string): string {
