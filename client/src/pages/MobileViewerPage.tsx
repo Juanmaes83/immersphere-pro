@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import UniversalViewer from '@/components/viewer/UniversalViewer';
 import ChatbotWidget from '@/components/ChatbotWidget';
+import RotateHint from '@/components/ui/RotateHint';
 import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore } from '@/store/propertyStore';
 import type { ViewerEvent } from '@/types/viewer';
@@ -123,7 +124,8 @@ export default function MobileViewerPage(): JSX.Element {
       </div>
 
       {/* Viewer fills all remaining height */}
-      <div className="min-h-0 flex-1 overflow-hidden">
+      <div className="relative min-h-0 flex-1 overflow-hidden">
+        <RotateHint />
         <UniversalViewer
           propertyId={selectedProperty.id}
           spaces={selectedProperty.spaces}
