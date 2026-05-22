@@ -1099,6 +1099,19 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                   Contactar agente
                 </button>
               )}
+              {/* Direct call button — only shown when the tenant has a phone number configured */}
+              {property.tenantPhone?.replace(/\D/g, '').length ? (
+                <a
+                  href={`tel:${property.tenantPhone.replace(/\s/g, '')}`}
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90"
+                  style={{ backgroundColor: primaryColor }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                    <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.6 1.27h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.91a16 16 0 0 0 6.1 6.1l.91-.91a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z" />
+                  </svg>
+                  Llamar agente
+                </a>
+              ) : null}
               {!embed ? (
                 <button
                   type="button"
