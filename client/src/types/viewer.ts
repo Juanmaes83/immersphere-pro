@@ -13,7 +13,7 @@ export type ViewerAssetFormat =
   | 'lod-meta.json'
   | 'iframe';
 
-export type HotspotType = 'info' | 'cta' | 'navigation' | 'measurement';
+export type HotspotType = 'info' | 'cta' | 'navigation' | 'measurement' | 'price';
 
 export type ViewerEventType =
   | 'viewer_ready'

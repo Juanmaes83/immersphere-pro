@@ -42,7 +42,8 @@ const HOTSPOT_TYPE_LABELS: Record<string, string> = {
   info: 'Información',
   cta: 'Contacto',
   navigation: 'Navegación',
-  measurement: 'Medición'
+  measurement: 'Medición',
+  price: 'Precio'
 };
 function translateHotspotType(type: string): string {
   return HOTSPOT_TYPE_LABELS[type] ?? type;
@@ -1950,8 +1951,15 @@ export default function PropertiesPage(): JSX.Element {
                                           <option value="cta">Contacto</option>
                                           <option value="navigation">Navegación</option>
                                           <option value="measurement">Medición</option>
+                                          <option value="price">💰 Precio</option>
                                         </select>
                                       </label>
+
+                                      {hotspotDraft.type === 'price' ? (
+                                        <p className="col-span-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
+                                          💡 El hotspot de precio muestra el valor directamente sobre la imagen. Ideal para obra nueva, tipologías o zonas con precios diferentes. Escribe el precio en el campo <strong>Etiqueta</strong> (ej: &quot;285.000€&quot;).
+                                        </p>
+                                      ) : null}
 
                                       {hotspotDraft.type === 'navigation' ? (
                                         <label className="col-span-2 block">

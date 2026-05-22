@@ -105,6 +105,7 @@ function getRuntimePanoramaUrl(asset: ViewerAsset, propertyId: string): string {
 function getHotspotDotColor(type: Hotspot['type'], primaryColor: string): string {
   if (type === 'info') return 'rgba(255,255,255,0.85)';
   if (type === 'measurement') return '#38BDF8';
+  if (type === 'price') return '#10B981';
   return primaryColor; // navigation + cta = brand color
 }
 
@@ -112,6 +113,7 @@ function getHotspotGlow(type: Hotspot['type'], primaryColor: string): string {
   if (type === 'navigation') return `0 0 14px ${primaryColor}55, 0 0 28px ${primaryColor}22`;
   if (type === 'cta')        return `0 0 10px ${primaryColor}44, 0 0 20px ${primaryColor}18`;
   if (type === 'info')       return '0 0 8px rgba(255,255,255,0.10)';
+  if (type === 'price')      return '0 0 10px rgba(16,185,129,0.35), 0 0 20px rgba(16,185,129,0.15)';
   return '0 0 6px rgba(56,189,248,0.22)'; // measurement
 }
 

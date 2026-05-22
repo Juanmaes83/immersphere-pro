@@ -212,6 +212,7 @@ function normalizeHotspotType(type: string): Hotspot['type'] {
   if (normalized === 'CTA') return 'cta';
   if (normalized === 'NAVIGATION') return 'navigation';
   if (normalized === 'MEASUREMENT') return 'measurement';
+  if (normalized === 'PRICE') return 'price';
 
   return 'info';
 }
@@ -261,6 +262,7 @@ function toApiHotspotType(type: Hotspot['type']): string {
   if (type === 'cta') return 'CTA';
   if (type === 'navigation') return 'NAVIGATION';
   if (type === 'measurement') return 'MEASUREMENT';
+  if (type === 'price') return 'PRICE';
 
   return 'INFO';
 }
