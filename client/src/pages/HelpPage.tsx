@@ -268,6 +268,107 @@ const CAPTURE_TOOLS_MAIN: Array<{
   },
 ];
 
+// ── Buyer Tools Guide ────────────────────────────────────────────────────────
+
+interface BuyerToolEntry {
+  icon: string;
+  title: string;
+  body: string;
+  steps?: readonly string[];
+  note?: string;
+}
+
+const BUYER_TOOLS: BuyerToolEntry[] = [
+  {
+    icon: '💳',
+    title: 'Simulador de hipoteca',
+    body: 'Es automático: si la propiedad tiene precio, el simulador aparece en la ficha para el comprador. No necesitas configurar nada. El comprador ajusta entrada (10–50%), plazo (15–40 años) e interés y ve la cuota mensual estimada al instante, junto con el préstamo total y los intereses acumulados.',
+    note: 'El cálculo es orientativo usando la fórmula francesa estándar en España. El comprador debe consultar condiciones reales con su banco.',
+  },
+  {
+    icon: '📅',
+    title: 'Botón "Reservar visita" (Calendly)',
+    body: 'Configura tu enlace de Calendly una sola vez y el botón aparece automáticamente en todos tus tours publicados.',
+    steps: [
+      'Ve a Ajustes → sección "Reservar visita (Calendly)"',
+      'Pega tu enlace completo de Calendly (ej: https://calendly.com/tu-nombre/visita)',
+      'Pulsa Guardar',
+      'El botón azul "Reservar visita" aparece en la ficha de todas tus propiedades',
+    ],
+    note: 'Solo visible si el tenant tiene URL de Calendly configurada. No requiere cambios por propiedad.',
+  },
+  {
+    icon: '📄',
+    title: 'Ficha PDF del comprador',
+    body: 'Cada propiedad publicada genera automáticamente una ficha PDF descargable. El comprador pulsa "Descargar ficha PDF" en la barra lateral y obtiene un documento A4 con: foto de portada, precio, m², habitaciones, baños, descripción comercial, enlace clickable al tour, código QR del tour y tu número de contacto.',
+    note: 'En planes Agency, el PDF lleva tu logo y color corporativo. En otros planes, usa el branding de Immersphere Pro.',
+  },
+  {
+    icon: '📱',
+    title: 'QR Kit — Descarga e imprime tu QR',
+    body: 'Cada propiedad publicada tiene su QR listo. Úsalo para conectar el mundo físico con el tour digital.',
+    steps: [
+      'Abre la ficha de cualquier propiedad publicada',
+      'En la barra lateral, localiza el widget de QR oscuro con el texto "SCAN"',
+      'Haz clic en ⛶ para abrirlo en pantalla completa',
+      'Pulsa "Descargar PNG" para obtener el archivo listo para imprimir',
+      'Ponlo en el cartel del escaparate, en la ficha de papel o en tu tarjeta de visita',
+    ],
+    note: 'El QR apunta siempre a la URL canónica del tour. Si cambias el título de la propiedad, el QR se actualiza automáticamente.',
+  },
+  {
+    icon: '💰',
+    title: 'Hotspot tipo Precio',
+    body: 'Además de los tipos habituales (Info, CTA, Navegación, Medición), puedes usar el hotspot de Precio para destacar el valor de un elemento específico dentro del tour.',
+    steps: [
+      'En el editor del tour, añade un nuevo hotspot',
+      'Selecciona el tipo "Precio" (icono 💰, color verde esmeralda)',
+      'Escribe el texto: por ejemplo "Cocina reformada · incluido en precio" o "Garaje · 15.000 €"',
+      'El hotspot aparece en verde dentro del visor, diferenciado del resto',
+    ],
+    note: 'Disponible en planes Pro y superiores. Útil para propiedades con elementos que tienen valor diferencial propio.',
+  },
+  {
+    icon: '🔮',
+    title: 'Realidad Aumentada (AR)',
+    body: 'El visitante puede activar la cámara del móvil y ver el espacio superpuesto en su entorno real — sin descargar ninguna app. Disponible en planes Pro, Agency y Enterprise.',
+    steps: [
+      'El comprador abre el tour desde su móvil',
+      'Pulsa el botón AR en el visor (solo visible en dispositivos compatibles)',
+      'Apunta la cámara a su salón, habitación o espacio',
+      'El tour 360° o 3D aparece superpuesto en su entorno real',
+    ],
+    note: 'Compatible con iOS y Android modernos. No requiere configuración adicional — se activa automáticamente en planes Pro+.',
+  },
+];
+
+const DASHBOARD_TOOLS: BuyerToolEntry[] = [
+  {
+    icon: '🏆',
+    title: 'Top Propiedades — Lo más visto esta semana',
+    body: 'La tarjeta "🏆 Lo más visto esta semana" en el Dashboard muestra tus 5 propiedades con más aperturas del visor en los últimos 7 días, junto al número de leads generados por cada una. Haz clic en "→" para ir directamente a la ficha de esa propiedad.',
+    note: 'Si no hay visitas esta semana, la tarjeta muestra el mensaje "Comparte tus tours". Se actualiza en tiempo real.',
+  },
+  {
+    icon: '📊',
+    title: 'Analytics de engagement por propiedad',
+    body: 'En la ficha de cada propiedad (sólo tú lo ves, no el comprador) encontrarás el panel de rendimiento: engagement score de 0 a 100, total de aperturas del visor, puntos interactivos clicados, contactos generados, estancia más visitada, hotspot más popular y un log de los últimos eventos en tiempo real.',
+    note: 'El engagement score se calcula ponderando: aperturas, hotspot clicks, space changes y lead CTAs. Cuanto más alto, más activos son los visitantes de esa propiedad.',
+  },
+  {
+    icon: '📋',
+    title: 'Leads capturados por propiedad',
+    body: 'En la sección "Leads capturados" de cada propiedad puedes ver todos los interesados que han completado el formulario desde los hotspots CTA, con email, teléfono, notas y fecha. También puedes exportar la lista completa en CSV con un clic.',
+    steps: [
+      'Abre la ficha de una propiedad publicada',
+      'Desplázate hasta "Leads capturados" (sólo visible si estás autenticado)',
+      'Haz clic en la cabecera para expandir la lista',
+      'Pulsa "↓ CSV" para exportar todos los leads de esa propiedad',
+    ],
+    note: 'El CSV incluye email, teléfono, notas, fuente y fecha de cada lead. Útil para importar en tu CRM.',
+  },
+];
+
 const CAPTURE_TOOLS_SECONDARY: Array<{
   name: string; type: string; url: string; desc: string; disclaimer: string;
 }> = [
@@ -1262,6 +1363,106 @@ export default function HelpPage(): JSX.Element {
                 </div>
               );
             })}
+          </div>
+        </div>
+      </section>
+
+      {/* ── HERRAMIENTAS DEL COMPRADOR ──────────────────────────── */}
+      <section className="bg-slate-50 px-5 py-20 dark:bg-slate-900">
+        <div className="mx-auto max-w-5xl">
+          <p className="text-center text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
+            Para el comprador
+          </p>
+          <h2 className="motion-help-h2 mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
+            Herramientas que convierten visitas en decisiones
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-center text-base text-slate-500 dark:text-slate-400">
+            Además del tour, el comprador tiene acceso a herramientas que le ayudan a decidir — sin salir de tu URL.
+          </p>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {BUYER_TOOLS.map((tool) => (
+              <article
+                key={tool.title}
+                className="flex flex-col rounded-[1.6rem] bg-white p-7 shadow-sm ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700"
+              >
+                <span className="mb-4 text-3xl">{tool.icon}</span>
+                <h3 className="text-lg font-black text-slate-950 dark:text-white">{tool.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{tool.body}</p>
+
+                {tool.steps && (
+                  <ol className="mt-5 space-y-2.5">
+                    {tool.steps.map((step, i) => (
+                      <li key={step} className="flex gap-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                        <span
+                          className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-black text-white"
+                          style={bgStyle}
+                        >
+                          {i + 1}
+                        </span>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+
+                {tool.note && (
+                  <p className="mt-auto pt-5 rounded-xl bg-slate-50 px-3 py-2.5 text-xs leading-relaxed text-slate-400 dark:bg-slate-700 dark:text-slate-500">
+                    📝 {tool.note}
+                  </p>
+                )}
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── DASHBOARD Y ANALYTICS ───────────────────────────────── */}
+      <section className="bg-white px-5 py-20 dark:bg-slate-950">
+        <div className="mx-auto max-w-5xl">
+          <p className="text-center text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
+            Para el agente
+          </p>
+          <h2 className="motion-help-h2 mt-2 text-center text-3xl font-black text-slate-950 dark:text-white md:text-4xl">
+            Dashboard y analytics
+          </h2>
+          <p className="mx-auto mt-4 max-w-2xl text-center text-base text-slate-500 dark:text-slate-400">
+            Sabes qué propiedad enamora, qué habitación retiene más y cuándo llaman — sin preguntar.
+          </p>
+
+          <div className="mt-12 grid gap-6 md:grid-cols-3">
+            {DASHBOARD_TOOLS.map((tool) => (
+              <article
+                key={tool.title}
+                className="flex flex-col rounded-[1.6rem] bg-slate-50 p-7 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700"
+              >
+                <span className="mb-4 text-3xl">{tool.icon}</span>
+                <h3 className="text-lg font-black text-slate-950 dark:text-white">{tool.title}</h3>
+                <p className="mt-2 text-sm leading-relaxed text-slate-500 dark:text-slate-400">{tool.body}</p>
+
+                {tool.steps && (
+                  <ol className="mt-5 space-y-2.5">
+                    {tool.steps.map((step, i) => (
+                      <li key={step} className="flex gap-3 text-sm leading-relaxed text-slate-700 dark:text-slate-300">
+                        <span
+                          className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-black text-white"
+                          style={bgStyle}
+                        >
+                          {i + 1}
+                        </span>
+                        {step}
+                      </li>
+                    ))}
+                  </ol>
+                )}
+
+                {tool.note && (
+                  <p className="mt-auto pt-5 rounded-xl bg-white px-3 py-2.5 text-xs leading-relaxed text-slate-400 dark:bg-slate-800 dark:text-slate-500">
+                    💡 {tool.note}
+                  </p>
+                )}
+              </article>
+            ))}
           </div>
         </div>
       </section>
