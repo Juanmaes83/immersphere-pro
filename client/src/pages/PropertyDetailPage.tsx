@@ -60,6 +60,131 @@ function formatNumber(value: number): string {
   return new Intl.NumberFormat('es-ES').format(value);
 }
 
+// ─── Mortgage Simulator ───────────────────────────────────────────────────────
+// Fórmula francesa — estándar en España. Cálculo 100% client-side, sin APIs.
+function calcularCuota(precio: number, entradaPct: number, anos: number, interesAnual: number): number {
+  const capital = precio * (1 - entradaPct / 100);
+  const r = (interesAnual / 100) / 12;
+  const n = anos * 12;
+  if (r === 0) return Math.round(capital / n);
+  return Math.round(capital * (r * Math.pow(1 + r, n)) / (Math.pow(1 + r, n) - 1));
+}
+
+function MortgageSimulator({ price, primaryColor }: { price: number; primaryColor: string }): JSX.Element | null {
+  const [entrada, setEntrada] = useState(20);   // %
+  const [anos, setAnos] = useState(30);
+  const [interes, setInteres] = useState(3.5);  // %
+
+  if (!price || price <= 0) return null;
+
+  const cuota = calcularCuota(price, entrada, anos, interes);
+  const capitalPrestado = Math.round(price * (1 - entrada / 100));
+  const entradaEur = Math.round(price * entrada / 100);
+  const totalPagado = cuota * anos * 12;
+  const totalIntereses = totalPagado - capitalPrestado;
+
+  const fmtEur = (n: number): string =>
+    new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR', minimumFractionDigits: 0, maximumFractionDigits: 0 }).format(n);
+
+  return (
+    <div className="mt-6 rounded-2xl bg-white p-5 ring-1 ring-slate-200">
+      {/* Header */}
+      <div className="flex items-center gap-2">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4 shrink-0" style={{ color: primaryColor }} aria-hidden="true">
+          <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+        </svg>
+        <p className="text-xs font-black uppercase tracking-[0.2em]" style={{ color: primaryColor }}>
+          Simulador de hipoteca
+        </p>
+      </div>
+
+      {/* Cuota destacada */}
+      <div className="mt-4 rounded-xl py-3 text-center" style={{ backgroundColor: `${primaryColor}12` }}>
+        <p className="text-xs font-bold uppercase tracking-widest" style={{ color: primaryColor }}>Cuota mensual estimada</p>
+        <p className="mt-1 text-3xl font-black text-slate-950">{fmtEur(cuota)}<span className="ml-1 text-base font-bold text-slate-400">/mes</span></p>
+      </div>
+
+      {/* Controls */}
+      <div className="mt-4 space-y-4">
+        {/* Entrada */}
+        <div>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-500">Entrada</label>
+            <span className="text-xs font-black text-slate-900">{entrada}% · {fmtEur(entradaEur)}</span>
+          </div>
+          <input
+            type="range"
+            min={10} max={50} step={5}
+            value={entrada}
+            onChange={(e) => setEntrada(Number(e.target.value))}
+            className="mt-1.5 w-full accent-violet-600"
+            style={{ accentColor: primaryColor }}
+            aria-label="Porcentaje de entrada"
+          />
+          <div className="flex justify-between text-[10px] text-slate-400">
+            <span>10%</span><span>50%</span>
+          </div>
+        </div>
+
+        {/* Plazo */}
+        <div>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-500">Plazo</label>
+            <span className="text-xs font-black text-slate-900">{anos} años</span>
+          </div>
+          <select
+            value={anos}
+            onChange={(e) => setAnos(Number(e.target.value))}
+            className="mt-1.5 w-full rounded-lg border border-slate-200 bg-white px-3 py-1.5 text-xs font-bold text-slate-800 outline-none focus:border-slate-400"
+            aria-label="Plazo en años"
+          >
+            {[15, 20, 25, 30, 35, 40].map((a) => (
+              <option key={a} value={a}>{a} años</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Interés */}
+        <div>
+          <div className="flex items-center justify-between">
+            <label className="text-xs font-bold text-slate-500">Tipo de interés</label>
+            <span className="text-xs font-black text-slate-900">{interes.toFixed(1)}%</span>
+          </div>
+          <input
+            type="range"
+            min={1} max={8} step={0.1}
+            value={interes}
+            onChange={(e) => setInteres(Number(e.target.value))}
+            className="mt-1.5 w-full"
+            style={{ accentColor: primaryColor }}
+            aria-label="Tipo de interés anual"
+          />
+          <div className="flex justify-between text-[10px] text-slate-400">
+            <span>1%</span><span>8%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Resumen compacto */}
+      <div className="mt-4 grid grid-cols-2 gap-2 rounded-xl bg-slate-50 p-3 text-center">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Préstamo</p>
+          <p className="text-sm font-black text-slate-800">{fmtEur(capitalPrestado)}</p>
+        </div>
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Total intereses</p>
+          <p className="text-sm font-black text-slate-800">{fmtEur(totalIntereses)}</p>
+        </div>
+      </div>
+
+      {/* Disclaimer legal */}
+      <p className="mt-3 text-[10px] leading-4 text-slate-400">
+        📝 Cálculo orientativo basado en tipo fijo. Consulta condiciones reales con tu banco o gestor financiero.
+      </p>
+    </div>
+  );
+}
+
 function DetailStat({ label, value }: { label: string; value: string | number }): JSX.Element {
   return (
     <div className="rounded-2xl bg-white p-4 ring-1 ring-slate-200 dark:bg-slate-800 dark:ring-slate-700">
@@ -1077,6 +1202,9 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                   </div>
                 </>
               ) : null}
+              {/* Mortgage simulator — visible to all visitors, hidden when price = 0 */}
+              <MortgageSimulator price={property.price} primaryColor={primaryColor} />
+
               {property.tenantWhatsapp?.replace(/\D/g, '').length ? (
                 <a
                   href={`https://wa.me/${property.tenantWhatsapp.replace(/\D/g, '')}?text=${encodeURIComponent(`${property.title} — ${t(lang, hasGaussian ? 'share_tour_suffix_3d' : 'share_tour_suffix')} · ${ogUrl}`)}`}
