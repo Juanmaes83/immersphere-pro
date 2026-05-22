@@ -386,6 +386,16 @@ export default function PricingPage(): JSX.Element {
                 Publica tours 360° profesionales, activa vídeo hero por propiedad y convierte visitas en leads.
                 Todo desde un panel. Sin instalaciones. Sin comisiones.
               </p>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-black text-white/80 backdrop-blur-sm">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Un link. Un clic. Dentro del tour.
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-black text-white/80 backdrop-blur-sm">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Abre en el navegador. Sin descargar nada.
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -399,8 +409,20 @@ export default function PricingPage(): JSX.Element {
           </div>
         </section>
 
-        {/* ── Annual note ──────────────────────────────────────────────── */}
+        {/* ── No-app guarantee ─────────────────────────────────────────── */}
         <div className="mt-8 flex justify-center">
+          <div className="inline-flex flex-wrap items-center justify-center gap-4 rounded-2xl border border-emerald-100 bg-emerald-50 px-6 py-3 dark:border-emerald-900/40 dark:bg-emerald-950/30">
+            <span className="flex items-center gap-2 text-sm font-black text-emerald-700 dark:text-emerald-400">
+              <span className="h-2 w-2 rounded-full bg-emerald-500" />
+              Accesible al instante desde cualquier dispositivo.
+            </span>
+            <span className="hidden text-emerald-200 dark:text-emerald-800 sm:inline">·</span>
+            <span className="text-sm font-bold text-emerald-600 dark:text-emerald-500">Sin app. Sin instalación. Desde cualquier móvil.</span>
+          </div>
+        </div>
+
+        {/* ── Annual note ──────────────────────────────────────────────── */}
+        <div className="mt-4 flex justify-center">
           <p className="rounded-2xl border border-slate-200 bg-slate-50 px-6 py-3 text-sm font-bold text-slate-500 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-400">
             💡 Pago anual: <span className="text-slate-700 dark:text-slate-200">10 meses + 2 gratis</span> el primer año · Pilot Agency: consulta condiciones especiales a{' '}
             <a href="tel:+34629554870" className="font-black text-slate-700 hover:underline dark:text-slate-200">629 554 870</a>

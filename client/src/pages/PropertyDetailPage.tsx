@@ -932,6 +932,12 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 className="mt-8"
               />
 
+              <div className="mt-8 flex items-center gap-2">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-200">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                  Abre en el navegador. Sin descargar nada.
+                </span>
+              </div>
               <UniversalViewer
                 propertyId={property.id}
                 spaces={property.spaces}
@@ -942,7 +948,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 agencyName={property.tenantLogoText || property.tenantName || 'Agencia inmobiliaria'}
                 agencyLogoUrl={property.tenantLogoUrl || undefined}
                 floorplanUrl={property.floorplanUrl || undefined}
-                className="mt-8"
+                className="mt-3"
                 onAnalyticsEvent={handleAnalyticsEvent}
               />
 

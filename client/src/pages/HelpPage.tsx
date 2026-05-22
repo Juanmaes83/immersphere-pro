@@ -28,7 +28,7 @@ const STEPS = [
     label: 'Publica',
     title: 'Comparte con un clic',
     body: 'Tu tour está online al instante. Comparte el link por WhatsApp, email o QR. Tus clientes lo ven desde el móvil sin instalar nada.',
-    note: 'Funciona en Chrome · Safari · Edge',
+    note: 'Un link. Un clic. Dentro del tour. · Chrome · Safari · Edge',
   },
 ] as const;
 
@@ -127,7 +127,7 @@ const BEFORE_AFTER = [
 const FAQS = [
   {
     q: '¿Necesito instalar algo?',
-    a: 'No. Todo funciona desde el navegador (Chrome, Safari, Edge). Ni tú ni tus clientes necesitáis instalar ninguna app.',
+    a: 'Nada que instalar. Todo en el navegador. Ni tú ni tus clientes necesitáis descargar nada — funciona en Chrome, Safari y Edge desde cualquier dispositivo.',
   },
   {
     q: '¿Necesito una cámara especial?',
@@ -151,7 +151,7 @@ const FAQS = [
   },
   {
     q: '¿Mis clientes necesitan descargar alguna app?',
-    a: 'No. Solo necesitan el link que les mandas. Funciona en móvil, tablet y PC directamente desde el navegador.',
+    a: 'Lo abre cualquier persona, en cualquier móvil, ahora mismo. Solo necesitan el link — sin app, sin registro, sin fricción. Funciona en móvil, tablet y PC directamente desde el navegador.',
   },
   {
     q: '¿Qué planes hay y cuánto cuestan?',
@@ -389,6 +389,12 @@ export default function HelpPage(): JSX.Element {
               <p className="motion-help-sub mx-auto mt-6 max-w-xl text-lg text-white/60 md:mx-0 md:text-xl">
                 Tours virtuales 360° y 3D en minutos. Desde tu móvil. Sin instalar nada.
               </p>
+              <div className="mt-5 flex flex-wrap justify-center gap-2 md:justify-start">
+                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-3.5 py-1.5 text-xs font-black text-white/75 backdrop-blur-sm">
+                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                  Sin app. Sin instalación. Desde cualquier móvil.
+                </span>
+              </div>
               <div className="motion-help-ctas mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row md:justify-start">
                 {isAuthenticated ? (
                   <Link

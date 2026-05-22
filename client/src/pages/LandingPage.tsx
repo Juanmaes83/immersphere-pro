@@ -17,7 +17,13 @@ export default function LandingPage(): JSX.Element {
           <p className="mt-7 max-w-2xl text-lg leading-8 text-white/65">
             Plataforma multi-tenant con 360°, Gaussian Splats, white label, analytics comercial y suscripciones Stripe.
           </p>
-          <div className="mt-10 flex flex-col gap-4 sm:flex-row">
+          <div className="mt-6 flex flex-wrap items-center gap-3">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-4 py-1.5 text-xs font-black text-white/80 backdrop-blur-sm">
+              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+              Sin app. Sin instalación. Desde cualquier móvil.
+            </span>
+          </div>
+          <div className="mt-6 flex flex-col gap-4 sm:flex-row">
             <Link to="/register" className="rounded-full bg-white px-7 py-4 text-center text-sm font-black text-slate-950 hover:bg-violet-300">
               Crear tenant demo
             </Link>
