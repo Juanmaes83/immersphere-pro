@@ -9,8 +9,10 @@ import type { Hotspot } from '@/types/viewer';
 import type { LeadRecord, UploadAssetResponse } from '@/types/api';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { FormInput, FormTextarea } from '@/components/ui/FormFields';
-import { IcoBuilding, IcoLink, IcoWhatsApp, IcoCode, IcoFilePdf, IcoUsers, IcoCheckSm, IcoPencil } from '@/components/ui/icons';
+import { IcoBuilding, IcoLink, IcoWhatsApp, IcoCode, IcoFilePdf, IcoUsers, IcoCheckSm, IcoPencil, IcoQrKit } from '@/components/ui/icons';
 import { formatCurrency } from '@/utils/format';
+import { downloadQrKit } from '@/utils/qrKit';
+import { useAuthStore } from '@/store/authStore';
 
 const GlbViewer = lazy(() => import('@/components/viewer/GlbViewer'));
 import FloorplanPinEditor from '@/components/admin/FloorplanPinEditor';
@@ -176,9 +178,11 @@ export default function PropertiesPage(): JSX.Element {
     label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: ''
   });
   const { bgStyle, colorStyle } = useBrand();
+  const tenant = useAuthStore((s) => s.user?.tenant);
 
   const [copiedPropId, setCopiedPropId] = useState<string>('');
   const [copiedPropType, setCopiedPropType] = useState<string>('');
+  const [qrKitLoadingId, setQrKitLoadingId] = useState<string | null>(null);
   // Visual hotspot editor: -1 = dragging draft pin, 0+ = dragging existing hotspot
   const [draggingHotspotIdx, setDraggingHotspotIdx] = useState<number | null>(null);
   // Index of the hotspot being edited (null = adding new); null | number
@@ -195,6 +199,19 @@ export default function PropertiesPage(): JSX.Element {
       setCopiedPropType(type);
       setTimeout(() => { setCopiedPropId(''); setCopiedPropType(''); }, 1800);
     });
+  }
+
+  async function handleQrKit(e: React.MouseEvent, property: { id: string; title: string; price: number; status: string }): Promise<void> {
+    e.stopPropagation();
+    if (!tenant || qrKitLoadingId) return;
+    setQrKitLoadingId(property.id);
+    try {
+      await downloadQrKit(property, tenant);
+    } catch (err) {
+      console.error('[QR Kit]', err);
+    } finally {
+      setQrKitLoadingId(null);
+    }
   }
 
   useEffect(() => {
@@ -1239,6 +1256,20 @@ export default function PropertiesPage(): JSX.Element {
                   </button>
                   <button type="button" title="Descargar PDF" onClick={(e) => { e.stopPropagation(); window.open(`/api/properties/${property.id}/report.pdf`, '_blank'); }} className="rounded-xl p-2.5 text-slate-400 opacity-60 transition hover:bg-slate-100 hover:text-slate-700 hover:opacity-100">
                     {IcoFilePdf}
+                  </button>
+                  <button
+                    type="button"
+                    title="Kit escaparate — QR para imprimir"
+                    onClick={(e) => { void handleQrKit(e, property); }}
+                    disabled={qrKitLoadingId === property.id}
+                    className="rounded-xl p-2.5 text-slate-400 transition hover:bg-violet-50 hover:text-violet-600 disabled:cursor-wait disabled:opacity-40"
+                  >
+                    {qrKitLoadingId === property.id ? (
+                      <svg className="h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                    ) : IcoQrKit}
                   </button>
                 </div>
               </div>

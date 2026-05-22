@@ -79,3 +79,14 @@ export const IcoPencil = (
     <path d="m15 5 4 4" />
   </svg>
 );
+export const IcoQrKit = (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+    <rect x="3" y="3" width="7" height="7" rx="1" />
+    <rect x="14" y="3" width="7" height="7" rx="1" />
+    <rect x="3" y="14" width="7" height="7" rx="1" />
+    <rect x="5" y="5" width="3" height="3" fill="currentColor" stroke="none" />
+    <rect x="16" y="5" width="3" height="3" fill="currentColor" stroke="none" />
+    <rect x="5" y="16" width="3" height="3" fill="currentColor" stroke="none" />
+    <path d="M14 14h2v2h-2zM18 14h3M14 18h2M18 18v3M21 18h-1" />
+  </svg>
+);
