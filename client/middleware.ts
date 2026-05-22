@@ -259,7 +259,9 @@ export default async function middleware(request: Request): Promise<Response | u
     // Step 2 — fetch the Vite-built index.html from this Vercel deployment.
     // /index.html is a static file — it doesn't match the middleware matcher,
     // so this fetch is served directly by Vercel's CDN with no recursion.
+    const bypassSecret = process.env.VERCEL_AUTOMATION_BYPASS_SECRET;
     const indexRes = await fetch(`${url.origin}/index.html`, {
+      headers: bypassSecret ? { 'x-vercel-protection-bypass': bypassSecret } : {},
       signal: AbortSignal.timeout(TIMEOUT_MS)
     });
 
