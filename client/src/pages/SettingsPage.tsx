@@ -26,6 +26,8 @@ export default function SettingsPage(): JSX.Element {
   const [brandingSaving, setBrandingSaving] = useState(false);
   const [whatsappInput, setWhatsappInput] = useState(user?.tenant.whatsappNumber ?? '');
   const [whatsappSaving, setWhatsappSaving] = useState(false);
+  const [calendlyInput, setCalendlyInput] = useState(user?.tenant.calendlyUrl ?? '');
+  const [calendlySaving, setCalendlySaving] = useState(false);
   const [primaryColorInput, setPrimaryColorInput] = useState(user?.tenant.primaryColor ?? '#7C3AED');
   const [colorSaving, setColorSaving] = useState(false);
   const [logoTextInput, setLogoTextInput] = useState(user?.tenant.logoText ?? '');
@@ -167,6 +169,19 @@ export default function SettingsPage(): JSX.Element {
       setSettingsMsg('Error al guardar el número de WhatsApp.');
     } finally {
       setWhatsappSaving(false);
+    }
+  }
+
+  async function handleSaveCalendly(): Promise<void> {
+    setCalendlySaving(true);
+    setSettingsMsg(null);
+    try {
+      await unwrapApiResponse(api.put('/tenants/settings', { calendlyUrl: calendlyInput.trim() }));
+      setSettingsMsg('URL de Calendly guardada correctamente.');
+    } catch {
+      setSettingsMsg('Error al guardar la URL de Calendly.');
+    } finally {
+      setCalendlySaving(false);
     }
   }
 
@@ -523,6 +538,29 @@ export default function SettingsPage(): JSX.Element {
             className={`relative shrink-0 inline-flex h-7 w-12 items-center rounded-full transition-colors disabled:opacity-50 ${removeBranding ? 'bg-violet-600' : 'bg-slate-200'}`}
           >
             <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow transition-transform ${removeBranding ? 'translate-x-6' : 'translate-x-1'}`} />
+          </button>
+        </div>
+      </div>
+
+      <div className="mt-6 rounded-[1.5rem] bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Reservar visita (Calendly)</p>
+        <p className="mt-1 text-sm text-slate-500">Pega aquí tu enlace de Calendly. Aparecerá como botón "📅 Reservar visita" en la ficha de cada propiedad.</p>
+        <div className="mt-4 flex gap-3">
+          <input
+            type="url"
+            value={calendlyInput}
+            onChange={(e) => setCalendlyInput(e.target.value)}
+            placeholder="https://calendly.com/tu-agencia/visita"
+            className="brand-focus flex-1 rounded-2xl border border-slate-200 px-4 py-3 text-sm font-semibold outline-none"
+          />
+          <button
+            type="button"
+            disabled={calendlySaving}
+            onClick={() => { void handleSaveCalendly(); }}
+            className="rounded-2xl px-5 py-3 text-sm font-black text-white transition hover:opacity-90 disabled:opacity-50"
+            style={bgStyle}
+          >
+            {calendlySaving ? 'Guardando...' : 'Guardar'}
           </button>
         </div>
       </div>

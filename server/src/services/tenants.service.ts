@@ -11,6 +11,7 @@ export interface TenantSettingsUpdateInput {
   phone?: string;
   removeBranding?: boolean;
   whatsappNumber?: string;
+  calendlyUrl?: string;
 }
 
 export interface TenantPlanUpdateInput {
@@ -78,6 +79,7 @@ function serializeTenantSettings(tenant: {
   plan: string;
   removeBranding: boolean;
   whatsappNumber: string;
+  calendlyUrl: string;
   createdAt: Date;
   subscription: {
     id: string;
@@ -101,6 +103,7 @@ function serializeTenantSettings(tenant: {
     plan: tenant.plan,
     removeBranding: tenant.removeBranding,
     whatsappNumber: tenant.whatsappNumber,
+    calendlyUrl: tenant.calendlyUrl,
     createdAt: tenant.createdAt,
     subscription: tenant.subscription
       ? {
@@ -153,7 +156,8 @@ export async function updateTenantSettings(tenantId: string, input: TenantSettin
       webhookUrl: input.webhookUrl !== undefined ? input.webhookUrl.trim() : currentTenant.webhookUrl,
       phone: input.phone !== undefined ? input.phone.trim() : currentTenant.phone,
       removeBranding: input.removeBranding !== undefined ? input.removeBranding : currentTenant.removeBranding,
-      whatsappNumber: input.whatsappNumber !== undefined ? input.whatsappNumber.trim() : currentTenant.whatsappNumber
+      whatsappNumber: input.whatsappNumber !== undefined ? input.whatsappNumber.trim() : currentTenant.whatsappNumber,
+      calendlyUrl: input.calendlyUrl !== undefined ? input.calendlyUrl.trim() : currentTenant.calendlyUrl
     },
     include: {
       subscription: true

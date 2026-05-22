@@ -13,6 +13,7 @@ export interface AuthTenant {
   plan: string;
   removeBranding?: boolean;
   whatsappNumber?: string;
+  calendlyUrl?: string;
 }
 
 export interface AuthUser {

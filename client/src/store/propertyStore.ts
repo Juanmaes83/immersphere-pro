@@ -64,7 +64,7 @@ interface ApiProperty {
   isPasswordProtected?: boolean;
   spaces: ApiSpace[];
   _count?: { leads: number };
-  tenant?: { phone?: string; whatsappNumber?: string; removeBranding?: boolean; primaryColor?: string; name?: string; logoUrl?: string; logoText?: string; plan?: string };
+  tenant?: { phone?: string; whatsappNumber?: string; calendlyUrl?: string; removeBranding?: boolean; primaryColor?: string; name?: string; logoUrl?: string; logoText?: string; plan?: string };
   createdAt: string;
   updatedAt: string;
 }
@@ -104,6 +104,7 @@ export interface ImmersiveProperty {
   leads: number;
   tenantPhone: string;
   tenantWhatsapp: string;
+  tenantCalendlyUrl: string;
   tenantPrimaryColor: string;
   tenantName: string;
   tenantLogoUrl: string;
@@ -482,6 +483,7 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
       leads: 0,
       tenantPhone: '',
       tenantWhatsapp: '',
+      tenantCalendlyUrl: '',
       tenantPrimaryColor: '#7C3AED',
       tenantName: '',
       tenantLogoUrl: '',
@@ -517,6 +519,7 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
     leads: property._count?.leads ?? 0,
     tenantPhone: property.tenant?.phone ?? '',
     tenantWhatsapp: property.tenant?.whatsappNumber ?? '',
+    tenantCalendlyUrl: property.tenant?.calendlyUrl ?? '',
     tenantPrimaryColor: property.tenant?.primaryColor || '#7C3AED',
     tenantName: property.tenant?.name ?? '',
     tenantLogoUrl: property.tenant?.logoUrl ?? '',

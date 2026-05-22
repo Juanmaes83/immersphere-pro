@@ -1227,6 +1227,25 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                   Contactar agente
                 </button>
               )}
+              {/* Calendly booking button — only shown when tenant has a Calendly URL configured */}
+              {property.tenantCalendlyUrl?.trim() ? (
+                <a
+                  href={property.tenantCalendlyUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90"
+                  style={{ backgroundColor: '#0069FF' }}
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+                    <line x1="16" y1="2" x2="16" y2="6" />
+                    <line x1="8" y1="2" x2="8" y2="6" />
+                    <line x1="3" y1="10" x2="21" y2="10" />
+                  </svg>
+                  📅 Reservar visita
+                </a>
+              ) : null}
+
               {/* Direct call button — only shown when the tenant has a phone number configured */}
               {property.tenantPhone?.replace(/\D/g, '').length ? (
                 <a
