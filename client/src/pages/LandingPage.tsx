@@ -4,91 +4,24 @@ import { Helmet } from 'react-helmet-async';
 import { useBrand } from '@/hooks/useBrand';
 import { M, loadGSAP } from '@/lib/motion';
 
-// ── Buyer Tools Mockup — pure JSX, no image needed ───────────────────────────
+// ── CDN image map ─────────────────────────────────────────────────────────────
 
-function BuyerToolsMockup({ primaryColor }: { primaryColor: string }): JSX.Element {
-  return (
-    <div className="rounded-[2rem] border border-white/10 bg-white/[0.06] p-4 shadow-2xl shadow-violet-950/40 backdrop-blur-sm">
-      <div className="overflow-hidden rounded-[1.5rem] bg-white shadow-xl">
-        {/* Property header strip */}
-        <div className="relative h-28 overflow-hidden bg-gradient-to-br from-slate-700 to-slate-900">
-          <img
-            src="/images/pricing-gaussian-villa.webp"
-            alt=""
-            className="h-full w-full object-cover opacity-60"
-            aria-hidden="true"
-          />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-          <div className="absolute bottom-3 left-4">
-            <p className="text-xs font-black uppercase tracking-[0.18em] text-white/70" style={{ color: primaryColor }}>
-              Tour inmersivo
-            </p>
-            <p className="text-base font-black text-white leading-tight">Ático Lumière · Madrid</p>
-          </div>
-        </div>
+const CDN = 'https://d8j0ntlcm91z4.cloudfront.net/user_32tIBn1VWPFRvRlTsdl6JD8uoae/';
 
-        {/* Mortgage simulator */}
-        <div className="px-5 pt-4 pb-3">
-          <div className="flex items-center gap-2 mb-3">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0" style={{ color: primaryColor }} aria-hidden="true">
-              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
-            </svg>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: primaryColor }}>
-              Simulador de hipoteca
-            </p>
-          </div>
-          <div className="rounded-xl py-2.5 text-center" style={{ backgroundColor: `${primaryColor}14` }}>
-            <p className="text-[9px] font-bold uppercase tracking-widest" style={{ color: primaryColor }}>Cuota mensual estimada</p>
-            <p className="mt-0.5 text-2xl font-black text-slate-950">1.284 €<span className="ml-1 text-xs font-bold text-slate-400">/mes</span></p>
-          </div>
-          <div className="mt-3 space-y-2">
-            <div className="flex justify-between text-[10px]">
-              <span className="font-bold text-slate-400">Entrada 20%</span>
-              <span className="font-black text-slate-700">64.000 €</span>
-            </div>
-            <div className="h-1.5 w-full rounded-full bg-slate-100">
-              <div className="h-1.5 rounded-full" style={{ width: '40%', backgroundColor: primaryColor }} />
-            </div>
-            <div className="flex justify-between text-[10px]">
-              <span className="font-bold text-slate-400">Plazo 30 años · 3,5%</span>
-              <span className="font-black text-slate-700">Tipo fijo</span>
-            </div>
-            <div className="h-1.5 w-full rounded-full bg-slate-100">
-              <div className="h-1.5 rounded-full" style={{ width: '75%', backgroundColor: primaryColor }} />
-            </div>
-          </div>
-        </div>
-
-        {/* Action buttons */}
-        <div className="px-5 pb-5 space-y-2">
-          {/* Calendly */}
-          <div className="flex items-center justify-center gap-2 rounded-2xl py-2.5 text-xs font-black text-white" style={{ backgroundColor: '#0069FF' }}>
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
-              <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
-              <line x1="16" y1="2" x2="16" y2="6" />
-              <line x1="8" y1="2" x2="8" y2="6" />
-              <line x1="3" y1="10" x2="21" y2="10" />
-            </svg>
-            📅 Reservar visita
-          </div>
-          {/* PDF */}
-          <div className="flex items-center justify-center gap-2 rounded-2xl border border-slate-200 py-2.5 text-xs font-black text-slate-700">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-              <polyline points="14 2 14 8 20 8" />
-              <line x1="12" y1="18" x2="12" y2="12" />
-              <line x1="9" y1="15" x2="15" y2="15" />
-            </svg>
-            Descargar ficha PDF
-          </div>
-          <p className="text-center text-[9px] text-slate-300 pt-0.5">
-            📝 Cálculo orientativo. Consulta condiciones reales con tu banco.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
+const IMG = {
+  /** MacBook Pro with SaaS UI — hero right column */
+  heroMacbook:  `${CDN}hf_20260522_132621_780ebefa-1d2d-4839-877d-8d51858e2f9e_min.webp`,
+  /** Agent in luxury kitchen holding tablet — Pillar 1 */
+  agentTablet:  `${CDN}hf_20260522_132608_1850e982-8dbf-46f6-97f5-01f93a691232_min.webp`,
+  /** Agent in kitchen with tablet v2 — Pillar 3 */
+  agentTablet2: `${CDN}hf_20260522_132611_c18ac9ef-e10e-4dc4-abd5-ffce69b182d3_min.webp`,
+  /** Couple looking at iPad — Pillar 2 */
+  coupleIpad:   `${CDN}hf_20260522_132615_08bc6a7d-dc65-4af6-8fa2-8777c8d97829_min.webp`,
+  /** Luxury living room + SaaS UI overlay — AR banner bg */
+  livingRoomUi: `${CDN}hf_20260522_132618_533e71ba-56e5-460a-9b21-9dc3b51aa362_min.webp`,
+  /** Villa magic-hour dusk — Final CTA bg */
+  villaDusk:    `${CDN}hf_20260522_132626_aa68d171-d7a0-416c-bcf1-4375eeb6ce71_min.webp`,
+} as const;
 
 // ── Feature pillars data ──────────────────────────────────────────────────────
 
@@ -107,13 +40,12 @@ const PILLARS = [
     visual: (
       <div className="relative mt-5 overflow-hidden rounded-xl">
         <img
-          src="/images/pricing-gaussian-villa.webp"
-          alt=""
-          className="h-28 w-full object-cover opacity-75"
+          src={IMG.agentTablet}
+          alt="Agente inmobiliaria mostrando tour 360° en tablet en cocina de lujo"
+          className="h-32 w-full object-cover"
           loading="lazy"
-          aria-hidden="true"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
         <div className="absolute bottom-2 left-3 flex items-center gap-1.5">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
           <span className="text-[10px] font-black text-white/90">Abre en el navegador · Sin descargar nada</span>
@@ -132,17 +64,22 @@ const PILLARS = [
     title: 'El comprador que ya viene decidido',
     body: 'Simulador de hipoteca integrado. Botón de reserva directa con Calendly. Ficha PDF con QR del tour. El comprador simula, reserva y se lleva la ficha — sin salir de tu URL.',
     visual: (
-      <div className="mt-5 flex flex-col gap-1.5">
-        {[
-          { emoji: '💳', label: 'Simula la hipoteca', color: 'text-violet-300' },
-          { emoji: '📅', label: 'Reserva visita', color: 'text-blue-300' },
-          { emoji: '📄', label: 'Descarga la ficha PDF', color: 'text-emerald-300' },
-        ].map((item) => (
-          <div key={item.label} className="flex items-center gap-2.5 rounded-lg bg-white/[0.07] px-3 py-2">
-            <span className="text-sm">{item.emoji}</span>
-            <span className={`text-xs font-bold ${item.color}`}>{item.label}</span>
-          </div>
-        ))}
+      <div className="relative mt-5 overflow-hidden rounded-xl">
+        <img
+          src={IMG.coupleIpad}
+          alt="Pareja compradora revisando propiedad en iPad con entusiasmo"
+          className="h-32 w-full object-cover"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+        <div className="absolute bottom-2 left-3 flex flex-col gap-0.5">
+          {[
+            { label: 'Simulador de hipoteca', color: 'text-violet-300' },
+            { label: 'Reserva visita · Descarga PDF', color: 'text-emerald-300' },
+          ].map((item) => (
+            <span key={item.label} className={`text-[10px] font-black ${item.color}`}>{item.label}</span>
+          ))}
+        </div>
       </div>
     ),
   },
@@ -158,22 +95,27 @@ const PILLARS = [
     title: 'Tu tour en el escaparate',
     body: 'QR descargable en PNG. En el cartel de la propiedad, en el escaparate, en tu tarjeta de visita. Los compradores abren el tour desde la calle. Sin teclear una URL.',
     visual: (
-      <div className="mt-5 flex items-center gap-4 rounded-xl bg-white/[0.07] px-4 py-3">
-        {/* QR placeholder */}
-        <div className="h-14 w-14 shrink-0 rounded-lg bg-white p-1.5">
-          <div className="grid h-full grid-cols-3 gap-0.5">
-            {Array.from({ length: 9 }).map((_, i) => (
-              <div
-                key={i}
-                className={`rounded-[1px] ${[0,2,4,6,8].includes(i) ? 'bg-slate-900' : 'bg-slate-200'}`}
-              />
-            ))}
+      <div className="relative mt-5 overflow-hidden rounded-xl">
+        <img
+          src={IMG.agentTablet2}
+          alt="Agente inmobiliaria mostrando QR del tour en tablet en cocina de lujo"
+          className="h-32 w-full object-cover"
+          loading="lazy"
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 to-transparent" />
+        <div className="absolute bottom-2 left-3 flex items-center gap-2.5">
+          {/* QR mini */}
+          <div className="h-10 w-10 shrink-0 rounded-md bg-white p-1">
+            <div className="grid h-full grid-cols-3 gap-[1px]">
+              {Array.from({ length: 9 }).map((_, i) => (
+                <div key={i} className={`rounded-[1px] ${[0,2,4,6,8].includes(i) ? 'bg-slate-900' : 'bg-slate-200'}`} />
+              ))}
+            </div>
           </div>
-        </div>
-        <div>
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300">SCAN</p>
-          <p className="mt-0.5 text-xs text-white/60">Descarga · Imprime · Comparte</p>
-          <p className="mt-1 text-[10px] text-white/35">PNG listo en un clic</p>
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-amber-300">SCAN</p>
+            <p className="mt-0.5 text-[9px] text-white/60">PNG listo en un clic</p>
+          </div>
         </div>
       </div>
     ),
@@ -253,7 +195,7 @@ const WHY_REASONS = [
 // ── Page ──────────────────────────────────────────────────────────────────────
 
 export default function LandingPage(): JSX.Element {
-  const { color, bgStyle, colorStyle } = useBrand();
+  const { bgStyle, colorStyle } = useBrand();
   const mainRef = useRef<HTMLElement>(null);
 
   useEffect(() => {
@@ -343,6 +285,13 @@ export default function LandingPage(): JSX.Element {
           name="description"
           content="El comprador ve el piso, simula la hipoteca y reserva visita — desde tu URL. Tours 360° y 3D para inmobiliarias. Sin app. Sin instalación."
         />
+        <meta property="og:title" content="Immersphere Pro · Tours inmersivos para inmobiliarias" />
+        <meta property="og:description" content="El comprador ve el piso, simula la hipoteca y reserva visita — desde tu URL. Tours 360° y 3D para inmobiliarias." />
+        <meta property="og:image" content={IMG.livingRoomUi} />
+        <meta property="og:image:width" content="2752" />
+        <meta property="og:image:height" content="1536" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:image" content={IMG.livingRoomUi} />
       </Helmet>
 
       {/* ── HERO ──────────────────────────────────────────────────────── */}
@@ -401,24 +350,76 @@ export default function LandingPage(): JSX.Element {
           </div>
         </div>
 
-        {/* Right — Buyer tools mockup */}
+        {/* Right — MacBook product shot */}
         <div className="motion-land-mockup hidden lg:block">
-          <BuyerToolsMockup primaryColor={color} />
+          <div className="relative overflow-hidden rounded-[2rem] shadow-2xl shadow-violet-950/60 ring-1 ring-white/10">
+            <img
+              src={IMG.heroMacbook}
+              alt="Plataforma Immersphere Pro en MacBook — tour inmersivo 360° con panel de analytics en salón de lujo"
+              className="w-full object-cover"
+              loading="eager"
+              width={2752}
+              height={1536}
+            />
+            {/* Subtle violet tint overlay to blend with dark bg */}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-violet-950/30 via-transparent to-transparent" aria-hidden="true" />
+          </div>
         </div>
       </section>
 
       {/* ── TRUST STRIP ───────────────────────────────────────────────── */}
       <div className="border-y border-white/[0.07] bg-white/[0.03] py-5">
         <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-center gap-x-10 gap-y-3 px-5">
-          {[
-            { icon: '⚡', text: 'Tour online en 5 minutos' },
-            { icon: '📱', text: 'Abre en cualquier móvil' },
-            { icon: '🔒', text: 'Tours con contraseña opcional' },
-            { icon: '🌐', text: 'Iframe embebible en tu web' },
-            { icon: '📊', text: 'Analytics de comportamiento' },
-          ].map(({ icon, text }) => (
+          {([
+            {
+              text: 'Tour online en 5 minutos',
+              svg: (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+                  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+                </svg>
+              ),
+            },
+            {
+              text: 'Abre en cualquier móvil',
+              svg: (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+                  <rect x="5" y="2" width="14" height="20" rx="2" ry="2" />
+                  <line x1="12" y1="18" x2="12.01" y2="18" />
+                </svg>
+              ),
+            },
+            {
+              text: 'Tours con contraseña opcional',
+              svg: (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2" />
+                  <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+                </svg>
+              ),
+            },
+            {
+              text: 'Iframe embebible en tu web',
+              svg: (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+                  <circle cx="12" cy="12" r="10" />
+                  <line x1="2" y1="12" x2="22" y2="12" />
+                  <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+                </svg>
+              ),
+            },
+            {
+              text: 'Analytics de comportamiento',
+              svg: (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5 shrink-0" aria-hidden="true">
+                  <line x1="18" y1="20" x2="18" y2="10" />
+                  <line x1="12" y1="20" x2="12" y2="4" />
+                  <line x1="6" y1="20" x2="6" y2="14" />
+                </svg>
+              ),
+            },
+          ] as { text: string; svg: JSX.Element }[]).map(({ svg, text }) => (
             <span key={text} className="flex items-center gap-2 text-xs font-bold text-white/45">
-              <span>{icon}</span>
+              {svg}
               {text}
             </span>
           ))}
@@ -459,14 +460,16 @@ export default function LandingPage(): JSX.Element {
       <section className="motion-land-ar px-5 pb-24">
         <div className="mx-auto max-w-7xl">
           <div className="motion-land-ar-img relative overflow-hidden rounded-[2rem] border border-violet-400/15">
-            {/* Background image */}
+            {/* Background image — luxury living room with SaaS UI overlay */}
             <div className="absolute inset-0">
               <img
-                src="/images/pricing-gaussian-villa.webp"
+                src={IMG.livingRoomUi}
                 alt=""
-                className="h-full w-full object-cover opacity-20"
+                className="h-full w-full object-cover opacity-30"
                 aria-hidden="true"
                 loading="lazy"
+                width={2752}
+                height={1536}
               />
             </div>
             {/* Glow */}
@@ -481,7 +484,10 @@ export default function LandingPage(): JSX.Element {
             {/* Content */}
             <div className="relative px-8 py-16 text-center md:px-16 md:py-20">
               <span className="mb-5 inline-flex items-center gap-2 rounded-full border border-violet-400/30 bg-violet-500/15 px-4 py-1.5 text-xs font-black uppercase tracking-[0.22em] text-violet-300">
-                ✦ Exclusivo Pro y Agency
+                <svg viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3" aria-hidden="true">
+                  <path d="M12 2l1.5 4.5H18l-3.75 2.75 1.5 4.5L12 11l-3.75 2.75 1.5-4.5L6 6.5h4.5z" />
+                </svg>
+                Exclusivo Pro y Agency
               </span>
               <h2 className="motion-land-h2 mx-auto max-w-3xl text-4xl font-black tracking-tight md:text-6xl">
                 Activa la cámara.
@@ -563,33 +569,49 @@ export default function LandingPage(): JSX.Element {
 
       {/* ── FINAL CTA ─────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-7xl px-5 pb-24">
-        <div className="rounded-[2rem] bg-gradient-to-br from-violet-600 via-violet-700 to-indigo-800 px-8 py-16 text-center shadow-2xl shadow-violet-950/60 md:px-12 md:py-20">
-          <p className="text-xs font-black uppercase tracking-[0.25em] text-violet-200/70">
-            Empieza hoy
-          </p>
-          <h2 className="mt-4 text-4xl font-black tracking-tight text-white md:text-5xl">
-            Tu primer tour esta tarde.
-          </h2>
-          <p className="mx-auto mt-4 max-w-md text-lg text-violet-100/70">
-            Plan Starter gratuito el primer mes. Sin tarjeta. Sin compromiso.
-          </p>
-          <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-            <Link
-              to="/register"
-              className="rounded-full bg-white px-10 py-4 text-base font-black text-violet-700 shadow-lg transition hover:bg-violet-50 active:scale-[0.98]"
-            >
-              Crear cuenta gratis →
-            </Link>
-            <Link
-              to="/pricing"
-              className="rounded-full border border-white/25 px-8 py-4 text-sm font-black text-white/80 transition hover:border-white/50 hover:text-white active:scale-[0.98]"
-            >
-              Ver todos los planes
-            </Link>
+        <div className="relative overflow-hidden rounded-[2rem] px-8 py-16 text-center shadow-2xl shadow-violet-950/60 md:px-12 md:py-20">
+          {/* Villa dusk background */}
+          <div className="absolute inset-0">
+            <img
+              src={IMG.villaDusk}
+              alt=""
+              className="h-full w-full object-cover"
+              aria-hidden="true"
+              loading="lazy"
+              width={2752}
+              height={1536}
+            />
+            <div className="absolute inset-0 bg-gradient-to-br from-violet-900/90 via-violet-800/85 to-indigo-900/90" />
           </div>
-          <p className="mt-6 text-xs font-bold text-violet-200/50">
-            Sin tarjeta de crédito · Cancela cuando quieras · Soporte incluido
-          </p>
+          {/* Content */}
+          <div className="relative">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-violet-200/70">
+              Empieza hoy
+            </p>
+            <h2 className="mt-4 text-4xl font-black tracking-tight text-white md:text-5xl">
+              Tu primer tour esta tarde.
+            </h2>
+            <p className="mx-auto mt-4 max-w-md text-lg text-violet-100/70">
+              Plan Starter gratuito el primer mes. Sin tarjeta. Sin compromiso.
+            </p>
+            <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+              <Link
+                to="/register"
+                className="rounded-full bg-white px-10 py-4 text-base font-black text-violet-700 shadow-lg transition hover:bg-violet-50 active:scale-[0.98]"
+              >
+                Crear cuenta gratis →
+              </Link>
+              <Link
+                to="/pricing"
+                className="rounded-full border border-white/25 px-8 py-4 text-sm font-black text-white/80 transition hover:border-white/50 hover:text-white active:scale-[0.98]"
+              >
+                Ver todos los planes
+              </Link>
+            </div>
+            <p className="mt-6 text-xs font-bold text-violet-200/50">
+              Sin tarjeta de crédito · Cancela cuando quieras · Soporte incluido
+            </p>
+          </div>
         </div>
       </section>
 
