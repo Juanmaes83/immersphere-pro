@@ -43,7 +43,7 @@ export default function ShareModal({
     });
   }
 
-  const encodedText = encodeURIComponent(`${title} — Tour inmersivo · ${canonicalUrl}`);
+  const encodedText = encodeURIComponent(`🏠 Mira este piso que he encontrado: ${title}\n¿Qué te parece?\n${canonicalUrl}`);
   const encodedDesc = encodeURIComponent(description ?? title);
 
   const socials = [
@@ -164,7 +164,7 @@ export default function ShareModal({
           <button
             type="button"
             onClick={() => {
-              void navigator.share({ title, url: canonicalUrl }).catch(() => {});
+              void navigator.share({ title, text: `🏠 Mira este piso que he encontrado: ${title}\n¿Qué te parece?`, url: canonicalUrl }).catch(() => {});
             }}
             className="mt-3 w-full rounded-2xl border border-slate-200 py-3 text-sm font-black text-slate-700 hover:bg-slate-50"
           >
