@@ -20,6 +20,7 @@ import {
 } from '../controllers/properties.controller.js';
 import { exportPropertyTourController } from '../controllers/tour.controller.js';
 import { exportPropertyReportController } from '../controllers/pdf-report.controller.js';
+import { buyerPdfController } from '../controllers/buyer-pdf.controller.js';
 import { requireAuth, optionalAuth } from '../middleware/auth.js';
 import { enforcePropertyLimit } from '../middleware/planLimits.js';
 import { unlockRateLimit, viewRateLimit } from '../middleware/rateLimit.js';
@@ -52,6 +53,8 @@ propertiesRoutes.post('/', requireAuth, enforcePropertyLimit, createProperty);
 
 propertiesRoutes.get('/:propertyId/export-tour', requireAuth, exportPropertyTourController);
 propertiesRoutes.get('/:propertyId/report.pdf', requireAuth, exportPropertyReportController);
+// Public: no auth — buyer-facing property sheet
+propertiesRoutes.get('/:propertyId/buyer-pdf', buyerPdfController);
 
 propertiesRoutes.get('/:propertyId/spaces', requireAuth, listPropertySpaces);
 propertiesRoutes.post('/:propertyId/spaces', requireAuth, createPropertySpace);
