@@ -64,7 +64,7 @@ interface ApiProperty {
   isPasswordProtected?: boolean;
   spaces: ApiSpace[];
   _count?: { leads: number };
-  tenant?: { phone?: string; whatsappNumber?: string; removeBranding?: boolean; primaryColor?: string; name?: string; logoUrl?: string; logoText?: string };
+  tenant?: { phone?: string; whatsappNumber?: string; removeBranding?: boolean; primaryColor?: string; name?: string; logoUrl?: string; logoText?: string; plan?: string };
   createdAt: string;
   updatedAt: string;
 }
@@ -109,6 +109,8 @@ export interface ImmersiveProperty {
   tenantLogoUrl: string;
   tenantLogoText: string;
   removeBranding: boolean;
+  /** Tenant plan slug: 'STARTER' | 'PROFESSIONAL' | 'AGENCY' | 'ENTERPRISE' */
+  tenantPlan: string;
   spaces: Space[];
 }
 
@@ -483,6 +485,7 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
       tenantLogoUrl: '',
       tenantLogoText: '',
       removeBranding: false,
+      tenantPlan: 'STARTER',
       spaces: []
     };
   }
@@ -517,6 +520,7 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
     tenantLogoUrl: property.tenant?.logoUrl ?? '',
     tenantLogoText: property.tenant?.logoText ?? '',
     removeBranding: property.tenant?.removeBranding ?? false,
+    tenantPlan: property.tenant?.plan ?? 'STARTER',
     spaces: normalizeSpacesWithFallbacks(property.spaces ?? [], property)
   };
 }

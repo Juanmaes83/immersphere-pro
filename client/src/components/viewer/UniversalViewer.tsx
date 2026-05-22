@@ -193,6 +193,7 @@ export default function UniversalViewer({
   agencyName,
   agencyLogoUrl,
   floorplanUrl,
+  arEnabled = false,
   onAnalyticsEvent
 }: UniversalViewerProps): JSX.Element {
   const sortedSpaces = useMemo(() => sortSpaces(spaces), [spaces]);
@@ -1396,7 +1397,7 @@ export default function UniversalViewer({
                   alt={activeSpace.name}
                   autoRotate
                   cameraControls
-                  ar={false}
+                  ar={arEnabled}
                   className="min-h-[520px]"
                 />
               </Suspense>

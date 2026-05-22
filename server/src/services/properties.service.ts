@@ -134,7 +134,7 @@ const propertyInclude = {
     select: { leads: true }
   },
   tenant: {
-    select: { phone: true, whatsappNumber: true, removeBranding: true, primaryColor: true, name: true, logoUrl: true, logoText: true }
+    select: { phone: true, whatsappNumber: true, removeBranding: true, primaryColor: true, name: true, logoUrl: true, logoText: true, plan: true }
   }
 };
 

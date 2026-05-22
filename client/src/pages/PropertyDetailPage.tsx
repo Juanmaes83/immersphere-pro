@@ -819,6 +819,10 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   const lang = property.language ?? 'es';
   const hasGaussian = property.spaces.some((s) => s.assets.some((a) => a.type === 'gaussian_splat'));
 
+  // AR is available on Pro, Agency and Enterprise plans (not Starter).
+  const AR_PLANS = new Set(['PROFESSIONAL', 'AGENCY', 'ENTERPRISE']);
+  const arEnabled = AR_PLANS.has(property.tenantPlan ?? '');
+
   // ── Embed mode: render ONLY the 3D viewer, no ficha ─────────────────────────
   if (embed) {
     return (
@@ -833,6 +837,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
           agencyName={property.tenantLogoText || property.tenantName || 'Agencia inmobiliaria'}
           agencyLogoUrl={property.tenantLogoUrl || undefined}
           floorplanUrl={property.floorplanUrl || undefined}
+          arEnabled={arEnabled}
           onAnalyticsEvent={handleAnalyticsEvent}
         />
       </div>
@@ -948,6 +953,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 agencyName={property.tenantLogoText || property.tenantName || 'Agencia inmobiliaria'}
                 agencyLogoUrl={property.tenantLogoUrl || undefined}
                 floorplanUrl={property.floorplanUrl || undefined}
+                arEnabled={arEnabled}
                 className="mt-3"
                 onAnalyticsEvent={handleAnalyticsEvent}
               />

@@ -127,6 +127,13 @@ export interface UniversalViewerProps {
   agencyLogoUrl?: string;
   /** Optional URL to a floorplan image (PNG/JPG). Enables the interactive floorplan view. */
   floorplanUrl?: string;
+  /**
+   * Enable the native AR button on GLB/MESH assets (model-viewer).
+   * Only activates on Android (Scene Viewer) and iOS (Quick Look).
+   * Desktop and unsupported browsers silently ignore it — no broken UI.
+   * Gate to Pro+ plans.
+   */
+  arEnabled?: boolean;
   onAnalyticsEvent: (event: ViewerEvent) => void;
 }
 
