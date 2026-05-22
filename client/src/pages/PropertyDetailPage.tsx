@@ -178,8 +178,9 @@ function MortgageSimulator({ price, primaryColor }: { price: number; primaryColo
       </div>
 
       {/* Disclaimer legal */}
-      <p className="mt-3 text-[10px] leading-4 text-slate-400">
-        📝 Cálculo orientativo basado en tipo fijo. Consulta condiciones reales con tu banco o gestor financiero.
+      <p className="mt-3 flex items-start gap-1.5 text-[10px] leading-4 text-slate-400">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="mt-0.5 h-3 w-3 shrink-0" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Cálculo orientativo basado en tipo fijo. Consulta condiciones reales con tu banco o gestor financiero.
       </p>
     </div>
   );
@@ -214,6 +215,29 @@ function PropertyHero({ property, primaryColor }: { property: ImmersiveProperty;
           </span>
         </div>
         <h1 className="max-w-4xl text-5xl font-black tracking-tight md:text-7xl">{property.title}</h1>
+        {/* Price + key stats overlay — buyer-first info above the fold */}
+        <div className="mt-4 flex flex-wrap items-center gap-3">
+          {property.price && property.price > 0 ? (
+            <span className="rounded-2xl bg-white/15 px-4 py-2 text-xl font-black backdrop-blur">
+              {formatCurrency(property.price)}
+            </span>
+          ) : null}
+          {property.area ? (
+            <span className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-bold backdrop-blur text-white/85">
+              {property.area} m²
+            </span>
+          ) : null}
+          {property.rooms ? (
+            <span className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-bold backdrop-blur text-white/85">
+              {property.rooms} hab.
+            </span>
+          ) : null}
+          {property.bathrooms ? (
+            <span className="rounded-full bg-white/10 px-3 py-1.5 text-sm font-bold backdrop-blur text-white/85">
+              {property.bathrooms} baños
+            </span>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -479,7 +503,7 @@ function PropertyLeadsList({ propertyId, leadCount }: { propertyId: string; lead
           <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-black text-emerald-700">
             {loaded ? leads.length : leadCount}
           </span>
-          <span className="text-slate-400 text-sm">{open ? '▲' : '▼'}</span>
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={`h-3.5 w-3.5 text-slate-400 transition-transform ${open ? 'rotate-180' : ''}`} aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
         </button>
 
         <button
@@ -489,7 +513,12 @@ function PropertyLeadsList({ propertyId, leadCount }: { propertyId: string; lead
           title="Descargar CSV"
           className="flex items-center gap-1.5 rounded-full border border-slate-200 px-3 py-1.5 text-xs font-black text-slate-600 transition hover:border-emerald-400 hover:bg-emerald-50 hover:text-emerald-700 disabled:opacity-40"
         >
-          {downloading ? 'Exportando…' : '↓ CSV'}
+          {downloading ? 'Exportando…' : (
+            <>
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              CSV
+            </>
+          )}
         </button>
       </div>
 
@@ -1030,9 +1059,10 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
         {!embed ? (
           <Link
             to="/gallery"
-            className="mb-5 inline-flex rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50"
+            className="mb-5 inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-5 py-2 text-sm font-black text-slate-700 hover:bg-slate-50"
           >
-            ← Volver a galería
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3.5 w-3.5" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            Volver a galería
           </Link>
         ) : null}
 
@@ -1050,7 +1080,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
 
               <section className="mt-8 rounded-[1.6rem] bg-slate-50 p-6 ring-1 ring-slate-200">
                 <p className="text-sm font-black uppercase tracking-[0.22em]" style={{ color: primaryColor }}>
-                  Descripción comercial
+                  Sobre esta propiedad
                 </p>
                 <p className="mt-4 leading-8 text-slate-600">{property.description}</p>
               </section>
@@ -1062,10 +1092,19 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 className="mt-8"
               />
 
-              <div className="mt-8 flex items-center gap-2">
+              {/* ── Trust strip: buyer signals before the viewer ──────── */}
+              <div className="mt-8 flex flex-wrap items-center gap-2">
                 <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1 text-xs font-black text-emerald-700 ring-1 ring-emerald-200">
                   <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                  Abre en el navegador. Sin descargar nada.
+                  Sin descargar nada
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden="true"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+                  Pide info sin llamar
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-slate-100 px-3 py-1 text-xs font-bold text-slate-600">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="h-3 w-3" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                  24/7 disponible
                 </span>
               </div>
               <UniversalViewer
@@ -1105,7 +1144,10 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 </>
               ) : isAuthenticated ? (
                 <div className="mt-8 rounded-[1.6rem] border-2 border-dashed border-slate-200 p-6 dark:border-slate-700">
-                  <p className="text-sm font-black text-slate-500">📍 Sin ubicación — añade la dirección para mostrar el mapa</p>
+                  <div className="flex items-center gap-2 text-sm font-black text-slate-500">
+                    <svg className="h-4 w-4 shrink-0 text-slate-400" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                    Sin ubicación — añade la dirección para mostrar el mapa
+                  </div>
                   {!editingAddress ? (
                     <button type="button" onClick={() => { setAddressDraft(''); setEditingAddress(true); setAddrGeoStatus('idle'); }} className="mt-3 text-sm font-black text-blue-600 hover:underline">
                       + Añadir dirección
@@ -1242,7 +1284,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                     <line x1="8" y1="2" x2="8" y2="6" />
                     <line x1="3" y1="10" x2="21" y2="10" />
                   </svg>
-                  📅 Reservar visita
+                  Reservar visita
                 </a>
               ) : null}
 
@@ -1259,46 +1301,72 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                   Llamar agente
                 </a>
               ) : null}
-              {!embed ? (
+              {/* ── Sección: Compartir ─────────────────────────────────── */}
+              <div className="mt-6 border-t border-slate-200 pt-5">
+                <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Compartir</p>
+                {!embed ? (
+                  <button
+                    type="button"
+                    onClick={() => { setShowShareModal(true); trackShareEvent('native'); }}
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-5 py-3.5 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/></svg>
+                    {t(lang, 'share_btn')}
+                  </button>
+                ) : null}
                 <button
                   type="button"
-                  onClick={() => { setShowShareModal(true); trackShareEvent('native'); }}
-                  className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700"
+                  onClick={handleCopyLink}
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-5 py-3.5 text-sm font-black text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
                 >
-                  {t(lang, 'share_btn')}
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                  {linkCopied ? t(lang, 'share_link_copied') : t(lang, 'share_copy_link')}
                 </button>
-              ) : null}
-              <button
-                type="button"
-                onClick={handleCopyLink}
-                className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-slate-400 hover:bg-slate-50"
-              >
-                {linkCopied ? t(lang, 'share_link_copied') : t(lang, 'share_copy_link')}
-              </button>
-              {!embed ? (
-                <a
-                  href={`${API_BASE}/properties/${property.id}/buyer-pdf`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700"
+                {!embed ? (
+                  <a
+                    href={`${API_BASE}/properties/${property.id}/buyer-pdf`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-5 py-3.5 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700"
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                      <polyline points="14 2 14 8 20 8" />
+                      <line x1="12" y1="18" x2="12" y2="12" />
+                      <line x1="9" y1="15" x2="15" y2="15" />
+                    </svg>
+                    Descargar ficha PDF
+                  </a>
+                ) : null}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const url = `/property/${property.id}/mobile`;
+                    const isMobile = navigator.maxTouchPoints > 0 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+                    if (isMobile) {
+                      window.location.href = url;
+                    } else {
+                      window.open(url, '_blank', 'noopener,noreferrer');
+                    }
+                  }}
+                  className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-5 py-3.5 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700"
                 >
-                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
-                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                    <polyline points="14 2 14 8 20 8" />
-                    <line x1="12" y1="18" x2="12" y2="12" />
-                    <line x1="9" y1="15" x2="15" y2="15" />
-                  </svg>
-                  Descargar ficha PDF
-                </a>
-              ) : null}
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true"><rect x="5" y="2" width="14" height="20" rx="2" ry="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg>
+                  {t(lang, 'share_mobile_view')}
+                </button>
+              </div>
+
+              {/* ── Sección: Herramientas agente (auth-only) ───────────── */}
               {isAuthenticated ? (
-                <>
+                <div className="mt-5 border-t border-slate-200 pt-4">
+                  <p className="mb-3 text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Herramientas agente</p>
                   <button
                     type="button"
                     onClick={() => { void handleDownloadTour(); }}
                     disabled={downloadingTour}
-                    className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 disabled:opacity-40"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-5 py-3.5 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700 disabled:opacity-40"
                   >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
                     {downloadingTour ? t(lang, 'share_generating') : t(lang, 'share_download')}
                   </button>
                   {tourErrorMsg ? (
@@ -1309,27 +1377,13 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                   <button
                     type="button"
                     onClick={handleCopyIframe}
-                    className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:opacity-40"
+                    className="mt-2 flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 px-5 py-3.5 text-sm font-black text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 disabled:opacity-40"
                   >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
                     {iframeCopied ? t(lang, 'share_iframe_copied') : t(lang, 'share_copy_iframe')}
                   </button>
-                </>
+                </div>
               ) : null}
-              <button
-                type="button"
-                onClick={() => {
-                  const url = `/property/${property.id}/mobile`;
-                  const isMobile = navigator.maxTouchPoints > 0 || /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-                  if (isMobile) {
-                    window.location.href = url;
-                  } else {
-                    window.open(url, '_blank', 'noopener,noreferrer');
-                  }
-                }}
-                className="mt-3 w-full rounded-2xl border border-slate-200 px-5 py-4 text-sm font-black text-slate-700 transition hover:border-violet-400 hover:bg-violet-50 hover:text-violet-700"
-              >
-                {t(lang, 'share_mobile_view')}
-              </button>
               {!embed ? (
                 <PropertyQRCode propertyId={property.id} primaryColor={primaryColor} propertyTitle={property.title} agencyName={property.tenantLogoText || property.tenantName || undefined} lang={lang} onQrOpen={() => { trackShareEvent('qr'); }} />
               ) : null}
