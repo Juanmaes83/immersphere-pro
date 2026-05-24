@@ -21,6 +21,68 @@ import { useAuthStore } from '@/store/authStore';
 import { usePropertyStore, type ImmersiveProperty } from '@/store/propertyStore';
 import type { Space, ViewerEvent } from '@/types/viewer';
 import { formatCurrency } from '@/utils/format';
+import { getAccessLevel, getDaysUntilNextRestriction } from '@/utils/gracePeriod';
+
+// ── Pantalla de bloqueo (grace period día 16+) ────────────────────────────────
+function SubscriptionBlockedScreen({ property }: { property: ImmersiveProperty }): JSX.Element {
+  return (
+    <main className="flex min-h-screen items-center justify-center bg-slate-950 px-5 text-center">
+      <div className="w-full max-w-md">
+        {property.coverImage ? (
+          <img
+            src={property.coverImage}
+            alt={property.title}
+            className="mx-auto mb-8 h-32 w-full rounded-2xl object-cover opacity-30 saturate-0"
+          />
+        ) : null}
+        <div
+          className="mx-auto mb-6 flex h-14 w-14 items-center justify-center rounded-2xl"
+          style={{ background: '#1e1b4b' }}
+        >
+          <svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-6 w-6">
+            <rect width="18" height="11" x="3" y="11" rx="2" ry="2" />
+            <path d="M7 11V7a5 5 0 0 1 10 0v4" />
+          </svg>
+        </div>
+        <p className="text-xs font-black uppercase tracking-widest text-violet-500">Tour no disponible</p>
+        <h1 className="mt-3 text-2xl font-black text-white">{property.title}</h1>
+        <p className="mt-3 text-sm leading-relaxed text-slate-400">
+          La suscripción de esta agencia ha expirado.<br />
+          El tour virtual no está disponible en este momento.
+        </p>
+        {property.tenantPhone ? (
+          <a
+            href={`tel:${property.tenantPhone}`}
+            className="mt-6 inline-flex items-center gap-2 rounded-full bg-violet-600 px-6 py-3 text-sm font-black text-white transition hover:bg-violet-500"
+          >
+            Contactar agencia →
+          </a>
+        ) : null}
+        <p className="mt-8 text-xs text-slate-600">
+          ¿Eres el propietario?{' '}
+          <a href="https://immersphere-pro.vercel.app/settings" className="font-bold text-violet-500 hover:underline">
+            Reactivar plan →
+          </a>
+        </p>
+      </div>
+    </main>
+  );
+}
+
+// ── Banner readonly (grace period días 8-15) ──────────────────────────────────
+function ReadonlyBanner({ daysLeft }: { daysLeft: number }): JSX.Element {
+  return (
+    <div className="flex items-center justify-center gap-3 bg-amber-500/10 px-4 py-2.5 text-center text-xs font-bold text-amber-700">
+      <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 shrink-0 text-amber-500">
+        <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
+      </svg>
+      <span>
+        Suscripción expirada — contacto desactivado.
+        {daysLeft > 0 ? ` Este tour se bloqueará en ${daysLeft} día${daysLeft !== 1 ? 's' : ''}.` : ' Tour bloqueado próximamente.'}
+      </span>
+    </div>
+  );
+}
 
 interface AnalyticsCountByKey {
   key: string;
@@ -973,6 +1035,15 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   const lang = property.language ?? 'es';
   const hasGaussian = property.spaces.some((s) => s.assets.some((a) => a.type === 'gaussian_splat'));
 
+  // ── Grace period ──────────────────────────────────────────────────────────
+  const accessLevel = getAccessLevel(property.tenantSubscriptionStatus, property.tenantSubscriptionUpdatedAt);
+  const daysUntilBlock = getDaysUntilNextRestriction(property.tenantSubscriptionUpdatedAt);
+  const isLeadDisabled = accessLevel !== 'full';
+
+  if (accessLevel === 'blocked') {
+    return <SubscriptionBlockedScreen property={property} />;
+  }
+
   // AR is available on Pro, Agency and Enterprise plans (not Starter).
   const AR_PLANS = new Set(['PROFESSIONAL', 'AGENCY', 'ENTERPRISE']);
   const arEnabled = AR_PLANS.has(property.tenantPlan ?? '');
@@ -981,6 +1052,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   if (embed) {
     return (
       <div className="flex min-h-screen flex-col bg-slate-950">
+        {accessLevel === 'readonly' ? <ReadonlyBanner daysLeft={daysUntilBlock} /> : null}
         <UniversalViewer
           propertyId={property.id}
           spaces={property.spaces}
@@ -993,6 +1065,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
           floorplanUrl={property.floorplanUrl || undefined}
           arEnabled={arEnabled}
           onAnalyticsEvent={handleAnalyticsEvent}
+          disableLeadCapture={isLeadDisabled}
         />
       </div>
     );
@@ -1107,6 +1180,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                   24/7 disponible
                 </span>
               </div>
+              {accessLevel === 'readonly' ? <ReadonlyBanner daysLeft={daysUntilBlock} /> : null}
               <UniversalViewer
                 propertyId={property.id}
                 spaces={property.spaces}
@@ -1120,6 +1194,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 arEnabled={arEnabled}
                 className="mt-3"
                 onAnalyticsEvent={handleAnalyticsEvent}
+                disableLeadCapture={isLeadDisabled}
               />
 
               {/* ── Map + address editor ── */}
@@ -1262,11 +1337,13 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
               ) : (
                 <button
                   type="button"
-                  onClick={() => setShowContactModal(true)}
-                  className="mt-6 w-full rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90"
+                  onClick={() => { if (!isLeadDisabled) setShowContactModal(true); }}
+                  disabled={isLeadDisabled}
+                  title={isLeadDisabled ? 'Contacto desactivado — suscripción expirada' : undefined}
+                  className="mt-6 w-full rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
                   style={{ backgroundColor: primaryColor }}
                 >
-                  Contactar agente
+                  {isLeadDisabled ? 'Contacto no disponible' : 'Contactar agente'}
                 </button>
               )}
               {/* Calendly booking button — only shown when tenant has a Calendly URL configured */}

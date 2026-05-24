@@ -64,7 +64,7 @@ interface ApiProperty {
   isPasswordProtected?: boolean;
   spaces: ApiSpace[];
   _count?: { leads: number };
-  tenant?: { phone?: string; whatsappNumber?: string; calendlyUrl?: string; removeBranding?: boolean; primaryColor?: string; name?: string; logoUrl?: string; logoText?: string; plan?: string };
+  tenant?: { phone?: string; whatsappNumber?: string; calendlyUrl?: string; removeBranding?: boolean; primaryColor?: string; name?: string; logoUrl?: string; logoText?: string; plan?: string; subscription?: { status: string; updatedAt: string } };
   createdAt: string;
   updatedAt: string;
 }
@@ -112,6 +112,10 @@ export interface ImmersiveProperty {
   removeBranding: boolean;
   /** Tenant plan slug: 'STARTER' | 'PROFESSIONAL' | 'AGENCY' | 'ENTERPRISE' */
   tenantPlan: string;
+  /** Subscription status: 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'EXPIRED' */
+  tenantSubscriptionStatus: string;
+  /** ISO date string of last subscription update (used for grace period calculation) */
+  tenantSubscriptionUpdatedAt: string;
   spaces: Space[];
 }
 
@@ -490,6 +494,8 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
       tenantLogoText: '',
       removeBranding: false,
       tenantPlan: 'STARTER',
+      tenantSubscriptionStatus: '',
+      tenantSubscriptionUpdatedAt: '',
       spaces: []
     };
   }
@@ -526,6 +532,8 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
     tenantLogoText: property.tenant?.logoText ?? '',
     removeBranding: property.tenant?.removeBranding ?? false,
     tenantPlan: property.tenant?.plan ?? 'STARTER',
+    tenantSubscriptionStatus: property.tenant?.subscription?.status ?? '',
+    tenantSubscriptionUpdatedAt: property.tenant?.subscription?.updatedAt ?? '',
     spaces: normalizeSpacesWithFallbacks(property.spaces ?? [], property)
   };
 }

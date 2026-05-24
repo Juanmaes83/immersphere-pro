@@ -135,6 +135,8 @@ export interface UniversalViewerProps {
    */
   arEnabled?: boolean;
   onAnalyticsEvent: (event: ViewerEvent) => void;
+  /** Si true, oculta el modal de lead capture (grace period readonly/blocked). */
+  disableLeadCapture?: boolean;
 }
 
 

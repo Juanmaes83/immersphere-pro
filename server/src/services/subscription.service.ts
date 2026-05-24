@@ -2,6 +2,7 @@ import { prisma } from '../index.js';
 import Stripe from 'stripe';
 import { env } from '../config/env.js';
 import { AppError } from '../middleware/errorHandler.js';
+import { Resend } from 'resend';
 type Plan = 'STARTER' | 'PROFESSIONAL' | 'ENTERPRISE';
 type SubscriptionStatus = 'TRIAL' | 'ACTIVE' | 'PAST_DUE' | 'CANCELED' | 'EXPIRED';
 
@@ -408,6 +409,11 @@ async function handleCustomerSubscriptionDeleted(subscription: Stripe.Subscripti
     stripeSubscriptionId
   });
 
+  // ── Email de aviso de grace period (silencioso si falla) ──────────────
+  void sendCancellationWarningEmail(tenantId).catch((err: Error) => {
+    console.warn('[subscription] Cancellation warning email failed:', err.message);
+  });
+
   return {
     handled: true,
     type: 'customer.subscription.deleted',
@@ -415,6 +421,54 @@ async function handleCustomerSubscriptionDeleted(subscription: Stripe.Subscripti
     plan: 'STARTER',
     status: 'CANCELED'
   };
+}
+
+async function sendCancellationWarningEmail(tenantId: string): Promise<void> {
+  if (!env.RESEND_API_KEY) return;
+
+  const tenant = await prisma.tenant.findUnique({
+    where: { id: tenantId },
+    include: { users: { take: 1, orderBy: { createdAt: 'asc' }, select: { email: true, name: true } } }
+  });
+
+  const adminUser = tenant?.users?.[0];
+  if (!adminUser?.email) return;
+
+  const resend = new Resend(env.RESEND_API_KEY);
+  const firstName = adminUser.name?.split(' ')[0] ?? 'Hola';
+
+  await resend.emails.send({
+    from: env.RESEND_FROM_EMAIL,
+    to: adminUser.email,
+    subject: `Tus tours siguen activos — tienes 15 días antes del bloqueo`,
+    html: `
+      <div style="font-family: system-ui, sans-serif; max-width: 520px; margin: 0 auto; padding: 32px 24px; color: #0f172a;">
+        <p style="font-size: 13px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.2em; color: #7c3aed; margin: 0 0 16px;">Immersphere Pro</p>
+        <h1 style="font-size: 26px; font-weight: 900; margin: 0 0 16px; line-height: 1.2;">
+          ${firstName}, tu suscripción ha sido cancelada
+        </h1>
+        <p style="font-size: 15px; line-height: 1.7; color: #475569; margin: 0 0 24px;">
+          Tus tours siguen publicados y accesibles hoy. Pero ten en cuenta el calendario de grace period:
+        </p>
+        <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin: 0 0 24px;">
+          <p style="margin: 0 0 10px; font-size: 14px;"><strong>✅ Días 1-7:</strong> Tours activos, leads funcionando con normalidad.</p>
+          <p style="margin: 0 0 10px; font-size: 14px;"><strong>⚠️ Días 8-15:</strong> Tours visibles, pero el formulario de contacto se desactiva.</p>
+          <p style="margin: 0; font-size: 14px;"><strong>🔒 Día 16+:</strong> Tours bloqueados — tus clientes verán una pantalla de error.</p>
+        </div>
+        <p style="font-size: 15px; line-height: 1.7; color: #475569; margin: 0 0 24px;">
+          Si tienes tours embebidos en Idealista, tu web o portales, dejarán de funcionar el día 16.
+          <strong>Reactiva tu plan ahora para evitar interrupciones.</strong>
+        </p>
+        <a href="https://immersphere-pro.vercel.app/settings"
+           style="display: inline-block; background: #7c3aed; color: white; font-weight: 900; font-size: 14px; padding: 14px 28px; border-radius: 100px; text-decoration: none;">
+          Reactivar mi plan →
+        </a>
+        <p style="margin-top: 32px; font-size: 12px; color: #94a3b8;">
+          Immersphere Pro · Si tienes dudas, responde a este email.
+        </p>
+      </div>
+    `
+  });
 }
 
 export async function handleStripeWebhook(rawBody: Buffer, signature: string) {

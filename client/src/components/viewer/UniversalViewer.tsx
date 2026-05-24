@@ -194,7 +194,8 @@ export default function UniversalViewer({
   agencyLogoUrl,
   floorplanUrl,
   arEnabled = false,
-  onAnalyticsEvent
+  onAnalyticsEvent,
+  disableLeadCapture = false
 }: UniversalViewerProps): JSX.Element {
   const sortedSpaces = useMemo(() => sortSpaces(spaces), [spaces]);
   const firstSpaceId = sortedSpaces[0]?.id ?? '';
@@ -823,6 +824,7 @@ export default function UniversalViewer({
   }
 
   function handleLeadCtaOpen(): void {
+    if (disableLeadCapture) return; // grace period: readonly o blocked
     setShowLeadModal(true);
     trackToBackend({
       propertyId,
@@ -977,7 +979,7 @@ export default function UniversalViewer({
         </div>
       ) : null}
 
-      {showLeadModal ? (
+      {showLeadModal && !disableLeadCapture ? (
         <LeadCaptureModal
           propertyId={propertyId}
           hotspotLabel={leadModalLabel}

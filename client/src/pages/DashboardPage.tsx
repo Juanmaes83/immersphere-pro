@@ -11,8 +11,51 @@ import { CommercialCard } from '@/components/ui/CommercialCard';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { IcoInbox } from '@/components/ui/icons';
 import AvatarWidget from '@/components/AvatarWidget';
+import { getDaysSinceCancellation, getDaysUntilNextRestriction } from '@/utils/gracePeriod';
 
 const HELP_BANNER_KEY = 'immersphere_help_banner_dismissed';
+
+// ── Banner de grace period ────────────────────────────────────────────────────
+function GracePeriodBanner({ updatedAt }: { updatedAt: string }): JSX.Element | null {
+  const daysSince = getDaysSinceCancellation(updatedAt);
+  const daysLeft = getDaysUntilNextRestriction(updatedAt);
+
+  // Día 0-7: aviso suave (tours activos, contacto activo)
+  // Día 8-15: aviso urgente (contacto ya desactivado)
+  const isReadonly = daysSince > 7;
+
+  return (
+    <div className={`mt-5 flex flex-col gap-3 rounded-2xl border px-5 py-4 sm:flex-row sm:items-center sm:justify-between ${
+      isReadonly
+        ? 'border-red-200 bg-red-50 dark:border-red-900/40 dark:bg-red-950/20'
+        : 'border-amber-200 bg-amber-50 dark:border-amber-800/30 dark:bg-amber-950/20'
+    }`}>
+      <div className="flex items-start gap-3">
+        <svg viewBox="0 0 20 20" fill="currentColor" className={`mt-0.5 h-5 w-5 shrink-0 ${isReadonly ? 'text-red-500' : 'text-amber-500'}`}>
+          <path fillRule="evenodd" d="M8.485 2.495c.673-1.167 2.357-1.167 3.03 0l6.28 10.875c.673 1.167-.17 2.625-1.516 2.625H3.72c-1.347 0-2.189-1.458-1.515-2.625L8.485 2.495ZM10 5a.75.75 0 0 1 .75.75v3.5a.75.75 0 0 1-1.5 0v-3.5A.75.75 0 0 1 10 5Zm0 9a1 1 0 1 0 0-2 1 1 0 0 0 0 2Z" clipRule="evenodd" />
+        </svg>
+        <div>
+          <p className={`text-sm font-black ${isReadonly ? 'text-red-800 dark:text-red-300' : 'text-amber-800 dark:text-amber-300'}`}>
+            {isReadonly
+              ? `Formulario de contacto desactivado — tours se bloquearán en ${daysLeft} día${daysLeft !== 1 ? 's' : ''}`
+              : `Suscripción cancelada — tours activos durante ${daysLeft} día${daysLeft !== 1 ? 's' : ''} más`}
+          </p>
+          <p className={`mt-0.5 text-xs ${isReadonly ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'}`}>
+            {isReadonly
+              ? 'Tus tours embebidos en Idealista o tu web dejarán de funcionar pronto. Reactiva tu plan ahora.'
+              : 'Día 8: formulario de contacto se desactiva. Día 16: tours bloqueados para tus clientes.'}
+          </p>
+        </div>
+      </div>
+      <Link
+        to="/settings"
+        className={`shrink-0 rounded-full px-4 py-2 text-xs font-black text-white transition hover:opacity-90 ${isReadonly ? 'bg-red-600' : 'bg-amber-500'}`}
+      >
+        Reactivar plan →
+      </Link>
+    </div>
+  );
+}
 
 // ─── TopPropertiesCard ────────────────────────────────────────────────────────
 
@@ -191,6 +234,11 @@ export default function DashboardPage(): JSX.Element {
           </button>
         </div>
       )}
+
+      {/* ── Grace period banner ── */}
+      {subscription?.subscription?.status === 'CANCELED' && subscription.subscription.updatedAt ? (
+        <GracePeriodBanner updatedAt={subscription.subscription.updatedAt} />
+      ) : null}
 
       {error ? (
         <div className="mt-4 rounded-ip-card bg-ip-danger/10 px-5 py-4 text-ip-sm font-semibold text-ip-danger ring-1 ring-ip-danger/20">

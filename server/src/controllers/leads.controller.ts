@@ -1,6 +1,18 @@
 import type { NextFunction, Request, Response } from 'express';
 import { AppError } from '../middleware/errorHandler.js';
 import { createLead, exportPropertyLeadsCsv, getPropertyLeads, getAllTenantLeads, exportAllTenantLeadsCsv, getTenantLeadsCount, updateLead } from '../services/leads.service.js';
+import { prisma } from '../index.js';
+
+// ── Grace period helpers ──────────────────────────────────────────────────────
+// full     → dias 0-7 tras cancelación (o nunca cancelado)
+// readonly → dias 8-15: viewer funciona, lead capture bloqueado
+// blocked  → dia 16+: viewer bloqueado completamente (gestionado en frontend)
+function getLeadAccessLevel(status: string, updatedAt: Date): 'full' | 'readonly' | 'blocked' {
+  if (status !== 'CANCELED') return 'full';
+  const daysSince = (Date.now() - updatedAt.getTime()) / (1000 * 60 * 60 * 24);
+  if (daysSince <= 7) return 'full';
+  return 'readonly'; // día 8 en adelante: no más leads
+}
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -33,6 +45,20 @@ export async function createLeadController(
     }
     if (!email || typeof email !== 'string' || !EMAIL_RE.test(email.trim())) {
       response.status(400).json({ success: false, error: 'Email válido requerido.' });
+      return;
+    }
+
+    // ── Comprobación de grace period ──────────────────────────────────────
+    const propWithSub = await prisma.property.findUnique({
+      where: { id: propertyId },
+      select: { tenant: { select: { subscription: { select: { status: true, updatedAt: true } } } } }
+    });
+    const sub = propWithSub?.tenant?.subscription;
+    if (sub && getLeadAccessLevel(sub.status, sub.updatedAt) !== 'full') {
+      response.status(403).json({
+        success: false,
+        error: 'El plan de esta agencia ha expirado. El formulario de contacto no está disponible.'
+      });
       return;
     }
 
