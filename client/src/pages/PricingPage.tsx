@@ -154,6 +154,14 @@ const STUDIO_CDN = 'https://d8j0ntlcm91z4.cloudfront.net/user_32tIBn1VWPFRvRlTsd
 const STUDIO_BG = `${STUDIO_CDN}hf_20260522_132626_aa68d171-d7a0-416c-bcf1-4375eeb6ce71_min.webp`;
 const STUDIO_INTERIOR = `${STUDIO_CDN}hf_20260519_071439_c326a27b-7139-4e2a-9a23-0f498086c353.png`;
 
+// ── Studio videos (Cloudinary CDN) ───────────────────────────────────────────
+const CDN_VIDEO = 'https://res.cloudinary.com/dgbgriykc/video/upload';
+const STUDIO_VIDEOS: { src: string; label: string; tag: string }[] = [
+  { src: `${CDN_VIDEO}/v1779831021/immersphere-studio/studio/inmobiliarias_01.mp4`, label: 'Tour inmersivo en ático de lujo', tag: 'Inmobiliaria' },
+  { src: `${CDN_VIDEO}/v1779831030/immersphere-studio/studio/inmobiliarias_02.mp4`, label: 'Vídeo comercial con drone', tag: 'Promotora' },
+  { src: `${CDN_VIDEO}/v1779831037/immersphere-studio/studio/inmobiliarias_03.mp4`, label: 'Reportaje interior cinemático', tag: 'Agencia' },
+];
+
 // ── Subcomponents ─────────────────────────────────────────────────────────────
 
 function CheckIcon(): JSX.Element {
@@ -501,7 +509,7 @@ export default function PricingPage(): JSX.Element {
         <div className="my-20 border-t border-slate-100 dark:border-slate-800" />
 
         {/* ── Immersphere Studio ───────────────────────────────────────── */}
-        <section aria-label="Immersphere Studio — servicios opcionales">
+        <section id="studio" aria-label="Immersphere Studio — servicios opcionales">
           {/* Header */}
           <div className="mb-10 text-center">
             <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
@@ -616,6 +624,50 @@ export default function PricingPage(): JSX.Element {
                   </div>
                 </div>
               </div>
+            </div>
+
+            {/* Block 1b — Video reel strip (Cloudinary CDN) */}
+            <div>
+              <p className="mb-4 text-center text-xs font-black uppercase tracking-widest text-slate-400">
+                Muestra de trabajos reales — producción Immersphere Studio
+              </p>
+              <div className="grid gap-4 sm:grid-cols-3">
+                {STUDIO_VIDEOS.map((v) => (
+                  <div key={v.src} className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-black dark:border-slate-700">
+                    <video
+                      src={v.src}
+                      muted
+                      loop
+                      playsInline
+                      preload="none"
+                      className="h-44 w-full object-cover opacity-80 transition-opacity duration-300 group-hover:opacity-100"
+                      onMouseEnter={(e) => (e.currentTarget as HTMLVideoElement).play()}
+                      onMouseLeave={(e) => { const el = e.currentTarget as HTMLVideoElement; el.pause(); el.currentTime = 0; }}
+                    />
+                    <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/70 to-transparent px-3 pb-3 pt-8">
+                      <p className="text-xs font-bold leading-tight text-white">{v.label}</p>
+                      <span className="rounded-full bg-amber-400/90 px-2 py-0.5 text-[10px] font-black text-slate-900">{v.tag}</span>
+                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center opacity-60 transition-opacity group-hover:opacity-0">
+                      <svg className="h-10 w-10 text-white drop-shadow" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <circle cx="12" cy="12" r="12" fillOpacity="0.4" />
+                        <polygon points="10,8 17,12 10,16" fill="white" />
+                      </svg>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-3 text-center text-xs text-slate-400">
+                Pasa el ratón sobre cada vídeo para reproducirlo ·{' '}
+                <a
+                  href="https://juanmaes83.github.io/IMMERSPHERE-PRO-INMOBILIARIAS/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-bold text-amber-500 hover:underline"
+                >
+                  Ver portfolio completo →
+                </a>
+              </p>
             </div>
 
             {/* Block 2 — Marketing & Performance (secondary card) */}

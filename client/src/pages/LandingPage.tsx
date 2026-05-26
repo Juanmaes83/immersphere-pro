@@ -567,6 +567,30 @@ export default function LandingPage(): JSX.Element {
         </div>
       </section>
 
+      {/* ── STUDIO STRIP (subtle) ─────────────────────────────────────── */}
+      <section className="mx-auto max-w-7xl px-5 pb-16">
+        <div className="flex flex-col items-center justify-between gap-4 rounded-2xl border border-white/[0.07] bg-white/[0.03] px-6 py-5 sm:flex-row sm:gap-6">
+          <div className="flex items-center gap-3">
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/10 text-amber-400">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+              </svg>
+            </span>
+            <p className="text-sm text-white/60">
+              <span className="font-black text-white/90">¿No tienes el contenido?</span>{' '}
+              Nosotros producimos el vídeo, los renders y el tour por ti —{' '}
+              <span className="text-amber-400/90">Immersphere Studio.</span>
+            </p>
+          </div>
+          <Link
+            to="/pricing#studio"
+            className="shrink-0 rounded-xl border border-amber-400/30 bg-amber-400/10 px-4 py-2 text-xs font-black text-amber-400 transition hover:bg-amber-400/20 active:scale-[0.98]"
+          >
+            Ver servicios →
+          </Link>
+        </div>
+      </section>
+
       {/* ── FINAL CTA ─────────────────────────────────────────────────── */}
       <section className="mx-auto max-w-7xl px-5 pb-24">
         <div className="relative overflow-hidden rounded-[2rem] px-8 py-16 text-center shadow-2xl shadow-violet-950/60 md:px-12 md:py-20">
