@@ -126,8 +126,18 @@ const PLANS: Plan[] = [
   },
 ];
 
-const STUDIO_SERVICES: string[] = [
-  'Vídeo comercial de propiedad',
+// Producción visual — el servicio estrella (GitHub Pages portfolio)
+const VISUAL_SERVICES: string[] = [
+  'Vídeo comercial de propiedad (drone + interior cinemático)',
+  'Renders fotorrealistas 3D',
+  'Tour virtual producido (lo hacemos nosotros)',
+  'Visualización arquitectónica y pre-venta sobre plano',
+  'Reportaje fotográfico profesional',
+  'Animación y walkthrough cinematográfico',
+];
+
+// Marketing & performance — servicios complementarios
+const MARKETING_SERVICES: string[] = [
   'Landing premium de campaña',
   'SEO / GEO local inmobiliario',
   'Campañas Google Ads / SEM',
@@ -139,6 +149,10 @@ const STUDIO_SERVICES: string[] = [
   'Lead generation',
   'Automatización CRM',
 ];
+
+const STUDIO_CDN = 'https://d8j0ntlcm91z4.cloudfront.net/user_32tIBn1VWPFRvRlTsdl6JD8uoae/';
+const STUDIO_BG = `${STUDIO_CDN}hf_20260522_132626_aa68d171-d7a0-416c-bcf1-4375eeb6ce71_min.webp`;
+const STUDIO_INTERIOR = `${STUDIO_CDN}hf_20260519_071439_c326a27b-7139-4e2a-9a23-0f498086c353.png`;
 
 // ── Subcomponents ─────────────────────────────────────────────────────────────
 
@@ -488,6 +502,7 @@ export default function PricingPage(): JSX.Element {
 
         {/* ── Immersphere Studio ───────────────────────────────────────── */}
         <section aria-label="Immersphere Studio — servicios opcionales">
+          {/* Header */}
           <div className="mb-10 text-center">
             <span className="mb-3 inline-flex items-center gap-2 rounded-full bg-amber-50 px-4 py-1.5 text-xs font-black uppercase tracking-widest text-amber-700 dark:bg-amber-900/30 dark:text-amber-400">
               Studio opcional
@@ -496,51 +511,169 @@ export default function PricingPage(): JSX.Element {
               Immersphere Studio
             </h2>
             <p className="mx-auto mt-4 max-w-2xl text-base text-slate-500 dark:text-slate-400">
-              No solo publicamos tours. Ayudamos a convertir propiedades en campañas comerciales
-              listas para captar visitas, leads y compradores.
+              No solo publicamos tours. Producimos el contenido visual y lanzamos la campaña completa
+              para que cada propiedad llegue a más compradores, más rápido.
             </p>
           </div>
 
-          <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-900 md:p-10">
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {STUDIO_SERVICES.map((service) => (
-                <div
-                  key={service}
-                  className="motion-studio-item flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60"
-                >
-                  <span className="h-2 w-2 shrink-0 rounded-full bg-amber-400" aria-hidden="true" />
-                  <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{service}</span>
+          <div className="flex flex-col gap-6">
+            {/* Block 1 — Producción Visual (hero dark card) */}
+            <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-slate-900 shadow-xl dark:border-slate-700">
+              {/* Background image */}
+              <div className="pointer-events-none absolute inset-0">
+                <img
+                  src={STUDIO_BG}
+                  alt=""
+                  aria-hidden="true"
+                  className="h-full w-full object-cover opacity-20"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-slate-900/95 via-slate-900/80 to-slate-900/40" />
+              </div>
+
+              <div className="relative z-10 grid gap-10 p-8 md:grid-cols-2 md:p-12">
+                {/* Left: text + services */}
+                <div>
+                  <span className="mb-4 inline-flex items-center gap-2 rounded-full border border-amber-400/30 bg-amber-400/10 px-3 py-1 text-xs font-black uppercase tracking-widest text-amber-400">
+                    🎬 Producción Visual
+                  </span>
+                  <h3 className="mt-2 text-2xl font-black leading-tight text-white sm:text-3xl">
+                    Nosotros lo producimos<br />por ti.
+                  </h3>
+                  <p className="mt-3 text-sm leading-relaxed text-slate-400">
+                    Desde el drone hasta el render. Entregamos contenido listo para publicar en portales,
+                    webs y redes sociales — sin que muevas un dedo.
+                  </p>
+
+                  <ul className="mt-6 flex flex-col gap-2.5">
+                    {VISUAL_SERVICES.map((service) => (
+                      <li key={service} className="flex items-start gap-3">
+                        <span className="mt-1 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-400" aria-hidden="true" />
+                        <span className="text-sm font-semibold text-slate-200">{service}</span>
+                      </li>
+                    ))}
+                  </ul>
+
+                  {/* Stats */}
+                  <div className="mt-8 flex gap-6">
+                    <div>
+                      <p className="text-2xl font-black text-white">40+</p>
+                      <p className="text-xs font-semibold text-slate-400">proyectos producidos</p>
+                    </div>
+                    <div className="w-px bg-slate-700" />
+                    <div>
+                      <p className="text-2xl font-black text-white">98%</p>
+                      <p className="text-xs font-semibold text-slate-400">clientes satisfechos</p>
+                    </div>
+                  </div>
                 </div>
-              ))}
+
+                {/* Right: portfolio preview + CTAs */}
+                <div className="flex flex-col justify-between gap-6">
+                  {/* Portfolio thumbnail */}
+                  <div className="overflow-hidden rounded-2xl border border-white/10">
+                    <div className="relative">
+                      <img
+                        src={STUDIO_INTERIOR}
+                        alt="Portfolio Immersphere Studio — producción visual inmobiliaria"
+                        className="h-48 w-full object-cover transition-transform duration-500 hover:scale-[1.04] md:h-56"
+                        loading="lazy"
+                      />
+                      <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 to-transparent p-4">
+                        <p className="text-xs font-black uppercase tracking-widest text-white/80">
+                          Ver portfolio completo →
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* CTAs */}
+                  <div className="flex flex-col gap-3">
+                    <a
+                      href="https://juanmaes83.github.io/IMMERSPHERE-PRO-INMOBILIARIAS/"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-5 py-3 text-sm font-black text-white backdrop-blur-sm transition hover:bg-white/20 active:scale-[0.98]"
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                        <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                      </svg>
+                      Ver portfolio de producción
+                    </a>
+                    <a
+                      href="https://wa.me/34629554870?text=Hola%2C%20me%20interesa%20la%20producci%C3%B3n%20visual%20de%20Immersphere%20Studio"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 rounded-2xl px-5 py-3 text-sm font-black text-white transition hover:opacity-90 active:scale-[0.98]"
+                      style={bgStyle}
+                    >
+                      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                        <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z" />
+                        <path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.117 1.528 5.845L.057 23.272a.75.75 0 00.921.921l5.427-1.471A11.943 11.943 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 22c-1.934 0-3.745-.512-5.308-1.407l-.38-.218-3.94 1.069 1.069-3.94-.218-.38A9.952 9.952 0 012 12C2 6.477 6.477 2 12 2s10 4.477 10 10-4.477 10-10 10z" />
+                      </svg>
+                      Pedir presupuesto por WhatsApp
+                    </a>
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="mt-8 rounded-2xl bg-slate-50 p-5 dark:bg-slate-800/60">
-              <p className="text-sm text-slate-500 dark:text-slate-400">
-                <span className="font-black text-slate-700 dark:text-slate-200">Sin precios publicados por diseño.</span>{' '}
-                Los servicios Studio se presupuestan según alcance, propiedad, mercado y objetivos comerciales.
-                Cada campaña es diferente. Hablamos.
-              </p>
-            </div>
+            {/* Block 2 — Marketing & Performance (secondary card) */}
+            <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm dark:border-slate-700 dark:bg-slate-900 md:p-10">
+              <div className="mb-6 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <span className="mb-2 inline-flex items-center gap-2 rounded-full bg-violet-50 px-3 py-1 text-xs font-black uppercase tracking-widest text-violet-600 dark:bg-violet-900/30 dark:text-violet-400">
+                    📈 Marketing &amp; Performance
+                  </span>
+                  <h3 className="text-xl font-black text-slate-900 dark:text-white">
+                    De la propiedad a la venta
+                  </h3>
+                  <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                    Estrategia digital completa para que cada tour genere leads reales.
+                  </p>
+                </div>
+              </div>
 
-            <div className="mt-6 flex flex-col gap-3 sm:flex-row">
-              <a
-                href="tel:+34629554870"
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 py-3 text-sm font-black text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
-              >
-                <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                  <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.07 1.18 2 2 0 012.07.03h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11l-1.27 1.27a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7a2 2 0 011.72 2.01z" />
-                </svg>
-                Llamar al 629 554 870
-              </a>
-              <a
-                href="https://wa.me/34629554870"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-black text-white transition hover:opacity-90 active:scale-[0.98]"
-                style={bgStyle}
-              >
-                Escribir por WhatsApp
-              </a>
+              <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
+                {MARKETING_SERVICES.map((service) => (
+                  <div
+                    key={service}
+                    className="motion-studio-item flex items-center gap-3 rounded-2xl border border-slate-100 bg-slate-50 px-4 py-3 dark:border-slate-800 dark:bg-slate-800/60"
+                  >
+                    <span className="h-2 w-2 shrink-0 rounded-full bg-violet-400" aria-hidden="true" />
+                    <span className="text-sm font-bold text-slate-700 dark:text-slate-300">{service}</span>
+                  </div>
+                ))}
+              </div>
+
+              <div className="mt-8 rounded-2xl bg-slate-50 p-5 dark:bg-slate-800/60">
+                <p className="text-sm text-slate-500 dark:text-slate-400">
+                  <span className="font-black text-slate-700 dark:text-slate-200">Sin precios publicados por diseño.</span>{' '}
+                  Los servicios Studio se presupuestan según alcance, propiedad, mercado y objetivos.
+                  Cada campaña es única. Hablamos.
+                </p>
+              </div>
+
+              <div className="mt-6 flex flex-col gap-3 sm:flex-row">
+                <a
+                  href="tel:+34629554870"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl border-2 border-slate-200 py-3 text-sm font-black text-slate-700 transition hover:border-slate-400 hover:bg-slate-50 active:scale-[0.98] dark:border-slate-700 dark:text-slate-200 dark:hover:bg-slate-800"
+                >
+                  <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                    <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 013.07 9.81 19.79 19.79 0 01.07 1.18 2 2 0 012.07.03h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11l-1.27 1.27a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7a2 2 0 011.72 2.01z" />
+                  </svg>
+                  Llamar al 629 554 870
+                </a>
+                <a
+                  href="https://wa.me/34629554870?text=Hola%2C%20me%20interesa%20el%20servicio%20de%20Marketing%20%26%20Performance%20de%20Immersphere%20Studio"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="flex flex-1 items-center justify-center gap-2 rounded-2xl py-3 text-sm font-black text-white transition hover:opacity-90 active:scale-[0.98]"
+                  style={bgStyle}
+                >
+                  Escribir por WhatsApp
+                </a>
+              </div>
             </div>
           </div>
         </section>
