@@ -362,7 +362,8 @@ export default function LandingPage(): JSX.Element {
           <div className="relative overflow-hidden rounded-[2rem] shadow-2xl shadow-violet-950/80 ring-1 ring-white/10">
             {/* Video: real property tour footage */}
             <video
-              src="https://res.cloudinary.com/dgbgriykc/video/upload/f_auto,q_auto:good,w_1280/immersphere-studio/inmobiliarias/01.mp4"
+              src="https://res.cloudinary.com/dgbgriykc/video/upload/f_auto,q_auto:good,w_1280/immersphere-studio/renders/render_inmobiliarias_02.mp4"
+              poster="https://res.cloudinary.com/dgbgriykc/video/upload/so_2,w_1280/immersphere-studio/renders/render_inmobiliarias_02.jpg"
               autoPlay
               muted
               loop

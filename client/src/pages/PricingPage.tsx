@@ -158,14 +158,14 @@ const STUDIO_INTERIOR = `${STUDIO_CDN}hf_20260519_071439_c326a27b-7139-4e2a-9a23
 const CDN_VIDEO = 'https://res.cloudinary.com/dgbgriykc/video/upload/f_auto,q_auto:good,w_960/immersphere-studio';
 const CDN_POSTER = 'https://res.cloudinary.com/dgbgriykc/video/upload/so_2,w_960/immersphere-studio';
 const STUDIO_VIDEOS: { src: string; poster: string; label: string; tag: string }[] = [
-  { src: `${CDN_VIDEO}/renders/inmobiliarias_09.mp4`,        poster: `${CDN_POSTER}/renders/inmobiliarias_09.jpg`,        label: 'Tour inmobiliario — producción propia',    tag: 'Inmobiliaria' },
-  { src: `${CDN_VIDEO}/renders/render_inmobiliarias_02.mp4`, poster: `${CDN_POSTER}/renders/render_inmobiliarias_02.jpg`, label: 'Render inmobiliario cinemático',           tag: 'Inmobiliaria' },
-  { src: `${CDN_VIDEO}/constructoras/07.mp4`,                poster: `${CDN_POSTER}/constructoras/07.jpg`,                label: 'TM Building — producción premium',         tag: 'Arquitectura' },
-  { src: `${CDN_VIDEO}/renders/reel_0527.mp4`,               poster: `${CDN_POSTER}/renders/reel_0527.jpg`,               label: 'Reel de producción 2025',                  tag: 'Studio'       },
-  { src: `${CDN_VIDEO}/renders/render_espacios_01.mp4`,      poster: `${CDN_POSTER}/renders/render_espacios_01.jpg`,      label: 'Espacios interiores — render fotorrealista', tag: 'Interior'    },
-  { src: `${CDN_VIDEO}/renders/render_espacios_02.mp4`,      poster: `${CDN_POSTER}/renders/render_espacios_02.jpg`,      label: 'Espacios de lujo — visualización 3D',      tag: 'Interior'     },
-  { src: `${CDN_VIDEO}/renders/render_decoracion.mp4`,       poster: `${CDN_POSTER}/renders/render_decoracion.jpg`,       label: 'Decoración e interiorismo premium',        tag: 'Decoración'   },
-  { src: `${CDN_VIDEO}/hero_showreel.mp4`,                   poster: `${CDN_POSTER}/hero_showreel.jpg`,                   label: 'Showreel completo de producción',          tag: 'Studio'       },
+  { src: `${CDN_VIDEO}/renders/inmobiliarias_09.mp4`,        poster: `${CDN_POSTER}/renders/inmobiliarias_09.jpg`,        label: 'Tour inmobiliario — producción propia',       tag: 'Inmobiliaria' },
+  { src: `${CDN_VIDEO}/renders/render_inmobiliarias_02.mp4`, poster: `${CDN_POSTER}/renders/render_inmobiliarias_02.jpg`, label: 'Render inmobiliario cinemático',              tag: 'Inmobiliaria' },
+  { src: `${CDN_VIDEO}/renders/render_01.mp4`,               poster: `${CDN_POSTER}/renders/render_01.jpg`,               label: 'Render cinemático — producción propia',       tag: 'Studio'       },
+  { src: `${CDN_VIDEO}/renders/reel_0527.mp4`,               poster: `${CDN_POSTER}/renders/reel_0527.jpg`,               label: 'Reel de producción 2025',                     tag: 'Studio'       },
+  { src: `${CDN_VIDEO}/renders/render_espacios_01.mp4`,      poster: `${CDN_POSTER}/renders/render_espacios_01.jpg`,      label: 'Espacios interiores — render fotorrealista',  tag: 'Interior'     },
+  { src: `${CDN_VIDEO}/renders/render_espacios_02.mp4`,      poster: `${CDN_POSTER}/renders/render_espacios_02.jpg`,      label: 'Espacios de lujo — visualización 3D',         tag: 'Interior'     },
+  { src: `${CDN_VIDEO}/renders/render_decoracion.mp4`,       poster: `${CDN_POSTER}/renders/render_decoracion.jpg`,       label: 'Decoración e interiorismo premium',           tag: 'Decoración'   },
+  { src: `${CDN_VIDEO}/inmobiliarias/06.mp4`,                poster: `${CDN_POSTER}/inmobiliarias/06.jpg`,                label: 'Tour exclusivo — captación premium',          tag: 'Inmobiliaria' },
 ];
 
 // ── Subcomponents ─────────────────────────────────────────────────────────────
@@ -456,6 +456,33 @@ export default function PricingPage(): JSX.Element {
             >
               Empezar gratis →
             </Link>
+          </div>
+        </div>
+
+        {/* ── Showcase video (above plans) ─────────────────────────────── */}
+        <div className="mb-10 overflow-hidden rounded-3xl bg-slate-950 shadow-2xl ring-1 ring-white/10">
+          <div className="relative">
+            <video
+              src={`${CDN_VIDEO.replace('w_960', 'w_1280')}/renders/reel_0527.mp4`}
+              poster={`${CDN_POSTER.replace('w_960', 'w_1280')}/renders/reel_0527.jpg`}
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              className="h-64 w-full object-cover opacity-90 md:h-80"
+              aria-hidden="true"
+            />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/80 via-slate-950/20 to-transparent" />
+            <div className="absolute bottom-0 inset-x-0 p-6 md:p-8">
+              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-amber-400">Immersphere Studio · Producción propia</p>
+              <p className="mt-1 text-xl font-black text-white md:text-2xl">
+                Tu cliente ya querrá vivir allí desde que recibe tu primera imagen.
+              </p>
+              <p className="mt-1 text-sm text-white/55">
+                Renders fotorrealistas · Vídeo con drone · Tours producidos · Fotografía · Marketing digital
+              </p>
+            </div>
           </div>
         </div>
 

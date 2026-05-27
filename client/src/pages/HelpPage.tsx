@@ -527,14 +527,24 @@ export default function HelpPage(): JSX.Element {
                 </Link>
               </div>
             </div>
-            {/* Image side */}
+            {/* Video side — render fotorrealista de espacios */}
             <div className="motion-help-hero-img relative hidden overflow-hidden rounded-[2rem] md:block">
-              <img
-                src="/images/help-hero-immersive-tour.webp"
-                alt="Agente inmobiliaria explorando un tour 3D inmersivo en tablet"
+              <video
+                src="https://res.cloudinary.com/dgbgriykc/video/upload/f_auto,q_auto:good,w_960/immersphere-studio/renders/render_espacios_01.mp4"
+                poster="https://res.cloudinary.com/dgbgriykc/video/upload/so_2,w_960/immersphere-studio/renders/render_espacios_01.jpg"
+                autoPlay
+                muted
+                loop
+                playsInline
+                preload="metadata"
                 className="h-auto w-full object-cover"
-                loading="eager"
+                aria-hidden="true"
               />
+              {/* Badge */}
+              <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-white/20 bg-black/50 px-3 py-1.5 backdrop-blur-sm">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-400" aria-hidden="true" />
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/80">Producción propia · Studio</span>
+              </div>
               {/* Subtle gradient overlay at bottom */}
               <div className="pointer-events-none absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-slate-950/60 to-transparent" />
             </div>
