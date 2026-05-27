@@ -160,7 +160,7 @@ const CDN_POSTER = 'https://res.cloudinary.com/dgbgriykc/video/upload/so_2,w_960
 const STUDIO_VIDEOS: { src: string; poster: string; label: string; tag: string }[] = [
   { src: `${CDN_VIDEO}/inmobiliarias/01.mp4`,    poster: `${CDN_POSTER}/inmobiliarias/01.jpg`,    label: 'Tour interior ático de lujo',       tag: 'Inmobiliaria' },
   { src: `${CDN_VIDEO}/inmobiliarias/02.mp4`,    poster: `${CDN_POSTER}/inmobiliarias/02.jpg`,    label: 'Vídeo comercial con drone',          tag: 'Inmobiliaria' },
-  { src: `${CDN_VIDEO}/arquitectura/01.mp4`,     poster: `${CDN_POSTER}/arquitectura/01.jpg`,     label: 'Edificio corporativo premium',        tag: 'Arquitectura' },
+  { src: `${CDN_VIDEO}/constructoras/07.mp4`,    poster: `${CDN_POSTER}/constructoras/07.jpg`,    label: 'TM Building — producción premium',    tag: 'Arquitectura' },
   { src: `${CDN_VIDEO}/arquitectura/02.mp4`,     poster: `${CDN_POSTER}/arquitectura/02.jpg`,     label: 'Visualización arquitectónica',        tag: 'Arquitectura' },
   { src: `${CDN_VIDEO}/constructoras/01.mp4`,    poster: `${CDN_POSTER}/constructoras/01.jpg`,    label: 'Obra nueva en construcción',          tag: 'Constructora' },
   { src: `${CDN_VIDEO}/promotoras/01.mp4`,       poster: `${CDN_POSTER}/promotoras/01.jpg`,       label: 'Proyecto de promotora residencial',   tag: 'Promotora'    },
