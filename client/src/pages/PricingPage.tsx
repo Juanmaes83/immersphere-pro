@@ -422,25 +422,47 @@ export default function PricingPage(): JSX.Element {
                 <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
                 SaaS inmobiliario · Activo desde el día 1
               </span>
-              <h1 className="motion-hero-h1 text-4xl font-black tracking-tight text-white sm:text-5xl">
-                Planes claros.<br />
-                <span className="text-violet-300">Sin sorpresas.</span>
+              <h1 className="motion-hero-h1 text-3xl font-black tracking-tight text-white sm:text-4xl md:text-5xl">
+                La plataforma de tours inmersivos<br />
+                <span className="text-white">para agencias inmobiliarias.</span>
               </h1>
-              <p className="motion-hero-sub mt-5 max-w-xl text-lg text-white/70">
-                Publica tours 360° profesionales, activa vídeo hero por propiedad y convierte visitas en leads.
-                Todo desde un panel. Sin instalaciones. Sin comisiones.
+              <p className="motion-hero-hook mt-3 text-lg font-black text-violet-300 sm:text-xl">
+                Tu cliente ya querrá vivir allí desde que recibe tu primera imagen.
+              </p>
+              <p className="motion-hero-sub mt-3 max-w-xl text-sm text-white/65 md:text-base">
+                Publica un tour 360° o 3D en 5 minutos. El comprador lo recorre desde su móvil,
+                sin app, sin instalar nada. Tú recibes el lead directo.
               </p>
               <div className="mt-4 flex flex-wrap gap-2">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-black text-white/80 backdrop-blur-sm">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Un link. Un clic. Dentro del tour.
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-black text-white/80 backdrop-blur-sm">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Abre en el navegador. Sin descargar nada.
-                </span>
+                {['Sin app · Sin instalación · Cualquier dispositivo', 'Tour en 5 minutos · 1er mes gratis', 'Leads directo a tu panel'].map((c) => (
+                  <span key={c} className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/10 px-3.5 py-1.5 text-xs font-black text-white/80 backdrop-blur-sm">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    {c}
+                  </span>
+                ))}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* ── Why Immersphere strip (above plans) ──────────────────────── */}
+        <div className="mb-8 rounded-2xl border border-violet-200/40 bg-violet-50/60 px-6 py-5 dark:border-violet-800/30 dark:bg-violet-950/20">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="text-xs font-black uppercase tracking-widest text-violet-500 dark:text-violet-400">¿Por qué Immersphere?</p>
+              <p className="mt-1 text-base font-black text-slate-900 dark:text-white">
+                Tu cliente ya querrá vivir allí desde que recibe tu primera imagen.
+              </p>
+              <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+                Tours 360° y 3D · Sin app · Lead directo · Simulador de hipoteca incluido · Comparte en portales, RRSS y WhatsApp
+              </p>
+            </div>
+            <Link
+              to="/register"
+              className="shrink-0 rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-black text-white transition hover:bg-violet-500 active:scale-[0.98]"
+            >
+              Empezar gratis →
+            </Link>
           </div>
         </div>
 
@@ -646,7 +668,29 @@ export default function PricingPage(): JSX.Element {
               </p>
               <div className="grid gap-4 sm:grid-cols-3">
                 {STUDIO_VIDEOS.map((v) => (
-                  <div key={v.src} className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-black dark:border-slate-700">
+                  <button
+                    key={v.src}
+                    type="button"
+                    aria-label={`Reproducir: ${v.label}`}
+                    className="group relative w-full cursor-pointer overflow-hidden rounded-2xl border border-slate-200 bg-black text-left dark:border-slate-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                    onClick={(e) => {
+                      const vid = e.currentTarget.querySelector('video') as HTMLVideoElement | null;
+                      if (!vid) return;
+                      const icon = e.currentTarget.querySelector('.play-icon') as HTMLElement | null;
+                      if (vid.paused) { void vid.play(); if (icon) icon.style.opacity = '0'; }
+                      else { vid.pause(); if (icon) icon.style.opacity = '1'; }
+                    }}
+                    onMouseEnter={(e) => {
+                      const vid = e.currentTarget.querySelector('video') as HTMLVideoElement | null;
+                      if (vid?.paused) void vid.play();
+                    }}
+                    onMouseLeave={(e) => {
+                      const vid = e.currentTarget.querySelector('video') as HTMLVideoElement | null;
+                      if (vid) { vid.pause(); vid.currentTime = 0; }
+                      const icon = e.currentTarget.querySelector('.play-icon') as HTMLElement | null;
+                      if (icon) icon.style.opacity = '1';
+                    }}
+                  >
                     <video
                       src={v.src}
                       poster={v.poster}
@@ -655,24 +699,23 @@ export default function PricingPage(): JSX.Element {
                       playsInline
                       preload="none"
                       className="h-44 w-full object-cover opacity-90 transition-opacity duration-300 group-hover:opacity-100"
-                      onMouseEnter={(e) => (e.currentTarget as HTMLVideoElement).play()}
-                      onMouseLeave={(e) => { const el = e.currentTarget as HTMLVideoElement; el.pause(); el.currentTime = 0; }}
                     />
                     <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/70 to-transparent px-3 pb-3 pt-8">
                       <p className="text-xs font-bold leading-tight text-white">{v.label}</p>
                       <span className="rounded-full bg-amber-400/90 px-2 py-0.5 text-[10px] font-black text-slate-900">{v.tag}</span>
                     </div>
-                    <div className="absolute inset-0 flex items-center justify-center opacity-60 transition-opacity group-hover:opacity-0">
-                      <svg className="h-10 w-10 text-white drop-shadow" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-                        <circle cx="12" cy="12" r="12" fillOpacity="0.4" />
-                        <polygon points="10,8 17,12 10,16" fill="white" />
-                      </svg>
+                    <div className="play-icon absolute inset-0 flex items-center justify-center transition-opacity duration-200 group-hover:opacity-70" style={{ opacity: 1 }}>
+                      <span className="flex h-12 w-12 items-center justify-center rounded-full bg-black/40 backdrop-blur-sm ring-2 ring-white/30">
+                        <svg className="h-5 w-5 translate-x-0.5 text-white" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+                          <polygon points="5,3 19,12 5,21" />
+                        </svg>
+                      </span>
                     </div>
-                  </div>
+                  </button>
                 ))}
               </div>
               <p className="mt-3 text-center text-xs text-slate-400">
-                Pasa el ratón sobre cada vídeo para reproducirlo ·{' '}
+                Haz clic o pasa el ratón para reproducir ·{' '}
                 <a
                   href="https://juanmaes83.github.io/IMMERSPHERE-PRO-INMOBILIARIAS/"
                   target="_blank"

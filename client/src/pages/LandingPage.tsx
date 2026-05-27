@@ -306,15 +306,19 @@ export default function LandingPage(): JSX.Element {
             SaaS inmobiliario · Activo desde el día 1
           </span>
 
-          <h1 className="motion-land-h1 max-w-xl text-5xl font-black leading-[0.95] tracking-[-0.04em] md:text-6xl lg:text-7xl">
-            El comprador ve el piso,{' '}
-            <span style={colorStyle}>simula la hipoteca</span>
-            {' '}y reserva visita.
+          <h1 className="motion-land-h1 max-w-xl text-4xl font-black leading-[1.05] tracking-[-0.03em] md:text-5xl lg:text-6xl">
+            La plataforma de tours inmersivos para{' '}
+            <span className="text-white">agencias inmobiliarias.</span>
           </h1>
 
-          <p className="motion-land-sub mt-6 max-w-lg text-lg leading-8 text-white/55 md:text-xl">
-            Tours inmersivos 360° y 3D con herramientas de comprador integradas.
-            El agente publica en 5 minutos. El comprador decide sin visitar.
+          {/* Emotional hook */}
+          <p className="motion-land-hook mt-5 max-w-lg text-xl font-black leading-tight tracking-tight md:text-2xl" style={colorStyle}>
+            Tu cliente ya querrá vivir allí desde que recibe tu primera imagen.
+          </p>
+
+          <p className="motion-land-sub mt-4 max-w-lg text-base leading-7 text-white/55 md:text-lg">
+            Publica un tour 360° o 3D en 5 minutos. El comprador recorre su nuevo hogar
+            desde su móvil, sin app, sin instalar nada. Tú recibes el lead directo.
           </p>
 
           <div className="motion-land-cta mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -333,21 +337,24 @@ export default function LandingPage(): JSX.Element {
             </Link>
           </div>
 
-          <div className="motion-land-chips mt-6 flex flex-wrap gap-2">
+          {/* Benefit bullets */}
+          <ul className="motion-land-chips mt-7 flex flex-col gap-2">
             {[
-              '1er mes gratis',
-              'Sin app · Sin instalación',
-              'Cancela cuando quieras',
-            ].map((chip) => (
-              <span
-                key={chip}
-                className="inline-flex items-center gap-1.5 rounded-full border border-white/10 bg-white/[0.05] px-3.5 py-1.5 text-xs font-bold text-white/60"
+              { text: 'Sin app · Sin instalación · Cualquier dispositivo' },
+              { text: 'Tour publicado en 5 minutos · 1er mes gratis' },
+              { text: 'Comparte en tu web, portales, RRSS y WhatsApp' },
+              { text: 'Leads de calidad directo a tu panel' },
+              { text: 'Simulador de hipotecas incluido: tu comprador llega a la visita ya sabiendo que puede comprarlo', highlight: true },
+            ].map(({ text, highlight }) => (
+              <li
+                key={text}
+                className={`flex items-start gap-2.5 text-sm font-bold leading-snug ${highlight ? 'text-emerald-300' : 'text-white/60'}`}
               >
-                <span className="h-1 w-1 rounded-full bg-emerald-400" />
-                {chip}
-              </span>
+                <span className={`mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full ${highlight ? 'bg-emerald-400' : 'bg-white/30'}`} aria-hidden="true" />
+                {text}
+              </li>
             ))}
-          </div>
+          </ul>
         </div>
 
         {/* Right — MacBook product shot */}

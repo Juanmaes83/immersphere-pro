@@ -484,17 +484,22 @@ export default function HelpPage(): JSX.Element {
                 Immersphere Pro · Guía rápida
               </span>
               <h1 className="motion-help-h1 text-4xl font-black leading-[1.08] tracking-tight md:text-6xl">
-                Convierte tus espacios en{' '}
-                <span style={colorStyle}>experiencias que venden</span>
+                La plataforma de tours inmersivos{' '}
+                <span style={colorStyle}>para agencias inmobiliarias.</span>
               </h1>
-              <p className="motion-help-sub mx-auto mt-6 max-w-xl text-lg text-white/60 md:mx-0 md:text-xl">
-                Tours virtuales 360° y 3D en minutos. Desde tu móvil. Sin instalar nada.
+              <p className="motion-help-hook mx-auto mt-4 max-w-xl text-lg font-black text-white/90 md:mx-0">
+                Tu cliente ya querrá vivir allí desde que recibe tu primera imagen.
+              </p>
+              <p className="motion-help-sub mx-auto mt-3 max-w-xl text-base text-white/55 md:mx-0">
+                Publica un tour 360° o 3D en 5 minutos. Sin app. Sin instalar nada. Desde cualquier dispositivo.
               </p>
               <div className="mt-5 flex flex-wrap justify-center gap-2 md:justify-start">
-                <span className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/8 px-3.5 py-1.5 text-xs font-black text-white/75 backdrop-blur-sm">
-                  <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
-                  Sin app. Sin instalación. Desde cualquier móvil.
-                </span>
+                {['Sin app · Sin instalación', 'Tour en 5 minutos', 'Lead directo a tu panel', 'Simulador de hipoteca incluido'].map((c) => (
+                  <span key={c} className="inline-flex items-center gap-1.5 rounded-full border border-white/15 bg-white/[0.08] px-3.5 py-1.5 text-xs font-black text-white/75 backdrop-blur-sm">
+                    <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
+                    {c}
+                  </span>
+                ))}
               </div>
               <div className="motion-help-ctas mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row md:justify-start">
                 {isAuthenticated ? (

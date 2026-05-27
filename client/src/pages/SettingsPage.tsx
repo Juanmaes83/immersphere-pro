@@ -672,6 +672,39 @@ export default function SettingsPage(): JSX.Element {
         </div>
       </div>
 
+      {/* ── Value reminder (above plan cards) ───────────────────────── */}
+      <div className="mt-6 mb-5 rounded-2xl border border-slate-200 bg-gradient-to-r from-slate-50 to-violet-50/40 px-6 py-5 dark:border-slate-700 dark:from-slate-800/60 dark:to-violet-900/10">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-xs font-black uppercase tracking-widest text-violet-500 dark:text-violet-400">
+              Lo que estás consiguiendo con Immersphere
+            </p>
+            <p className="mt-1 text-base font-black text-slate-900 dark:text-white">
+              Tu cliente ya querrá vivir allí desde que recibe tu primera imagen.
+            </p>
+            <ul className="mt-2 flex flex-wrap gap-x-5 gap-y-1">
+              {[
+                'Tours 360° y 3D sin app',
+                'Lead directo a tu panel',
+                'Comparte en portales, RRSS y WhatsApp',
+                'Simulador de hipoteca incluido',
+              ].map((b) => (
+                <li key={b} className="flex items-center gap-1.5 text-xs font-bold text-slate-500 dark:text-slate-400">
+                  <span className="h-1 w-1 rounded-full bg-emerald-400" aria-hidden="true" />
+                  {b}
+                </li>
+              ))}
+            </ul>
+          </div>
+          <a
+            href="/pricing"
+            className="shrink-0 rounded-xl border border-violet-200 bg-white px-4 py-2 text-xs font-black text-violet-600 transition hover:bg-violet-50 active:scale-[0.98] dark:border-violet-700 dark:bg-violet-950/50 dark:text-violet-300"
+          >
+            Ver todos los planes →
+          </a>
+        </div>
+      </div>
+
       <div className="mt-5 grid grid-cols-1 gap-6 lg:grid-cols-3">
         <PlanCard
           plan="STARTER"
