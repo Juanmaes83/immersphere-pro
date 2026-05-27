@@ -158,14 +158,14 @@ const STUDIO_INTERIOR = `${STUDIO_CDN}hf_20260519_071439_c326a27b-7139-4e2a-9a23
 const CDN_VIDEO = 'https://res.cloudinary.com/dgbgriykc/video/upload/f_auto,q_auto:good,w_960/immersphere-studio';
 const CDN_POSTER = 'https://res.cloudinary.com/dgbgriykc/video/upload/so_2,w_960/immersphere-studio';
 const STUDIO_VIDEOS: { src: string; poster: string; label: string; tag: string }[] = [
-  { src: `${CDN_VIDEO}/inmobiliarias/01.mp4`,    poster: `${CDN_POSTER}/inmobiliarias/01.jpg`,    label: 'Tour interior ático de lujo',       tag: 'Inmobiliaria' },
-  { src: `${CDN_VIDEO}/inmobiliarias/02.mp4`,    poster: `${CDN_POSTER}/inmobiliarias/02.jpg`,    label: 'Vídeo comercial con drone',          tag: 'Inmobiliaria' },
-  { src: `${CDN_VIDEO}/constructoras/07.mp4`,    poster: `${CDN_POSTER}/constructoras/07.jpg`,    label: 'TM Building — producción premium',    tag: 'Arquitectura' },
-  { src: `${CDN_VIDEO}/arquitectura/02.mp4`,     poster: `${CDN_POSTER}/arquitectura/02.jpg`,     label: 'Visualización arquitectónica',        tag: 'Arquitectura' },
-  { src: `${CDN_VIDEO}/constructoras/01.mp4`,    poster: `${CDN_POSTER}/constructoras/01.jpg`,    label: 'Obra nueva en construcción',          tag: 'Constructora' },
-  { src: `${CDN_VIDEO}/promotoras/01.mp4`,       poster: `${CDN_POSTER}/promotoras/01.jpg`,       label: 'Proyecto de promotora residencial',   tag: 'Promotora'    },
-  { src: `${CDN_VIDEO}/decoradores/01.mp4`,      poster: `${CDN_POSTER}/decoradores/01.jpg`,      label: 'Interiorismo y decoración',           tag: 'Decoración'   },
-  { src: `${CDN_VIDEO}/hero_showreel.mp4`,       poster: `${CDN_POSTER}/hero_showreel.jpg`,       label: 'Showreel completo de producción',     tag: 'Studio'       },
+  { src: `${CDN_VIDEO}/renders/inmobiliarias_09.mp4`,        poster: `${CDN_POSTER}/renders/inmobiliarias_09.jpg`,        label: 'Tour inmobiliario — producción propia',    tag: 'Inmobiliaria' },
+  { src: `${CDN_VIDEO}/renders/render_inmobiliarias_02.mp4`, poster: `${CDN_POSTER}/renders/render_inmobiliarias_02.jpg`, label: 'Render inmobiliario cinemático',           tag: 'Inmobiliaria' },
+  { src: `${CDN_VIDEO}/constructoras/07.mp4`,                poster: `${CDN_POSTER}/constructoras/07.jpg`,                label: 'TM Building — producción premium',         tag: 'Arquitectura' },
+  { src: `${CDN_VIDEO}/renders/reel_0527.mp4`,               poster: `${CDN_POSTER}/renders/reel_0527.jpg`,               label: 'Reel de producción 2025',                  tag: 'Studio'       },
+  { src: `${CDN_VIDEO}/renders/render_espacios_01.mp4`,      poster: `${CDN_POSTER}/renders/render_espacios_01.jpg`,      label: 'Espacios interiores — render fotorrealista', tag: 'Interior'    },
+  { src: `${CDN_VIDEO}/renders/render_espacios_02.mp4`,      poster: `${CDN_POSTER}/renders/render_espacios_02.jpg`,      label: 'Espacios de lujo — visualización 3D',      tag: 'Interior'     },
+  { src: `${CDN_VIDEO}/renders/render_decoracion.mp4`,       poster: `${CDN_POSTER}/renders/render_decoracion.jpg`,       label: 'Decoración e interiorismo premium',        tag: 'Decoración'   },
+  { src: `${CDN_VIDEO}/hero_showreel.mp4`,                   poster: `${CDN_POSTER}/hero_showreel.jpg`,                   label: 'Showreel completo de producción',          tag: 'Studio'       },
 ];
 
 // ── Subcomponents ─────────────────────────────────────────────────────────────
@@ -616,7 +616,7 @@ export default function PricingPage(): JSX.Element {
                   >
                     <div className="relative">
                       <video
-                        src="https://res.cloudinary.com/dgbgriykc/video/upload/f_auto,q_auto:good,w_800/immersphere-studio/arquitectura/01.mp4"
+                        src="https://res.cloudinary.com/dgbgriykc/video/upload/f_auto,q_auto:good,w_800/immersphere-studio/renders/render_01.mp4"
                         autoPlay
                         muted
                         loop
