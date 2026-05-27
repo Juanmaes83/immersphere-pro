@@ -307,6 +307,15 @@ function BrandNavLink({ to, children }: { to: string; children: React.ReactNode 
 
 
 
+// ── Scroll to top on route change ────────────────────────────────────────────
+function ScrollToTop(): null {
+  const { pathname } = useLocation();
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'instant' });
+  }, [pathname]);
+  return null;
+}
+
 function AppRoutes(): JSX.Element {
   const hydrateFromStorage = useAuthStore((state) => state.hydrateFromStorage);
 
@@ -316,6 +325,7 @@ function AppRoutes(): JSX.Element {
 
   return (
     <AppLayout>
+      <ScrollToTop />
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />

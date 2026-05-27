@@ -864,6 +864,52 @@ export default function SettingsPage(): JSX.Element {
         </div>
       </section>
 
+      {/* ── Immersphere Studio strip ─────────────────────────────────────── */}
+      <section className="mt-8 mb-4" aria-label="Immersphere Studio — producción visual">
+        <div className="overflow-hidden rounded-3xl border border-amber-200/60 bg-gradient-to-r from-amber-50 to-orange-50 dark:border-amber-900/30 dark:from-amber-950/30 dark:to-orange-950/20">
+          <div className="flex flex-col gap-6 p-6 sm:flex-row sm:items-center sm:justify-between md:p-8">
+            {/* Left */}
+            <div className="flex items-start gap-4">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-amber-300/50 bg-amber-100 text-amber-600 dark:border-amber-700/40 dark:bg-amber-900/40 dark:text-amber-400">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5" aria-hidden="true">
+                  <polygon points="23 7 16 12 23 17 23 7" /><rect x="1" y="5" width="15" height="14" rx="2" ry="2" />
+                </svg>
+              </span>
+              <div>
+                <p className="font-black text-slate-900 dark:text-white">
+                  ¿No tienes el contenido visual? <span className="text-amber-600 dark:text-amber-400">Immersphere Studio lo produce por ti.</span>
+                </p>
+                <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
+                  Vídeo comercial con drone · Renders 3D fotorrealistas · Tour virtual producido · Fotografía profesional · Marketing digital
+                </p>
+              </div>
+            </div>
+            {/* Right: CTAs */}
+            <div className="flex shrink-0 flex-col gap-2 sm:flex-row">
+              <a
+                href="https://juanmaes83.github.io/IMMERSPHERE-PRO-INMOBILIARIAS/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 rounded-xl border border-amber-300/70 bg-white px-4 py-2.5 text-sm font-black text-amber-700 transition hover:bg-amber-50 active:scale-[0.98] dark:border-amber-700/50 dark:bg-amber-950/50 dark:text-amber-300 dark:hover:bg-amber-900/40"
+              >
+                <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                  <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" /><polyline points="15 3 21 3 21 9" /><line x1="10" y1="14" x2="21" y2="3" />
+                </svg>
+                Ver portfolio
+              </a>
+              <a
+                href="https://wa.me/34629554870?text=Hola%2C%20me%20interesa%20el%20servicio%20de%20producci%C3%B3n%20visual%20de%20Immersphere%20Studio"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center justify-center gap-2 rounded-xl bg-amber-500 px-4 py-2.5 text-sm font-black text-white transition hover:bg-amber-400 active:scale-[0.98]"
+              >
+                Pedir presupuesto
+              </a>
+            </div>
+          </div>
+        </div>
+      </section>
+
     </main>
   );
 }

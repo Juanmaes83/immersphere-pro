@@ -155,11 +155,24 @@ const STUDIO_BG = `${STUDIO_CDN}hf_20260522_132626_aa68d171-d7a0-416c-bcf1-4375e
 const STUDIO_INTERIOR = `${STUDIO_CDN}hf_20260519_071439_c326a27b-7139-4e2a-9a23-0f498086c353.png`;
 
 // ── Studio videos (Cloudinary CDN) ───────────────────────────────────────────
-const CDN_VIDEO = 'https://res.cloudinary.com/dgbgriykc/video/upload';
-const STUDIO_VIDEOS: { src: string; label: string; tag: string }[] = [
-  { src: `${CDN_VIDEO}/v1779831021/immersphere-studio/studio/inmobiliarias_01.mp4`, label: 'Tour inmersivo en ático de lujo', tag: 'Inmobiliaria' },
-  { src: `${CDN_VIDEO}/v1779831030/immersphere-studio/studio/inmobiliarias_02.mp4`, label: 'Vídeo comercial con drone', tag: 'Promotora' },
-  { src: `${CDN_VIDEO}/v1779831037/immersphere-studio/studio/inmobiliarias_03.mp4`, label: 'Reportaje interior cinemático', tag: 'Agencia' },
+const CDN_VIDEO = 'https://res.cloudinary.com/dgbgriykc/video/upload/immersphere-studio';
+// poster = same URL but .jpg — Cloudinary auto-generates thumbnail from frame 0
+const STUDIO_VIDEOS: { src: string; poster: string; label: string; tag: string }[] = [
+  {
+    src:    `${CDN_VIDEO}/inmobiliarias/01.mp4`,
+    poster: `${CDN_VIDEO}/inmobiliarias/01.jpg`,
+    label: 'Tour inmersivo en ático de lujo', tag: 'Inmobiliaria',
+  },
+  {
+    src:    `${CDN_VIDEO}/inmobiliarias/02.mp4`,
+    poster: `${CDN_VIDEO}/inmobiliarias/02.jpg`,
+    label: 'Vídeo comercial con drone', tag: 'Promotora',
+  },
+  {
+    src:    `${CDN_VIDEO}/inmobiliarias/03.mp4`,
+    poster: `${CDN_VIDEO}/inmobiliarias/03.jpg`,
+    label: 'Reportaje interior cinemático', tag: 'Agencia',
+  },
 ];
 
 // ── Subcomponents ─────────────────────────────────────────────────────────────
@@ -636,11 +649,12 @@ export default function PricingPage(): JSX.Element {
                   <div key={v.src} className="group relative overflow-hidden rounded-2xl border border-slate-200 bg-black dark:border-slate-700">
                     <video
                       src={v.src}
+                      poster={v.poster}
                       muted
                       loop
                       playsInline
                       preload="none"
-                      className="h-44 w-full object-cover opacity-80 transition-opacity duration-300 group-hover:opacity-100"
+                      className="h-44 w-full object-cover opacity-90 transition-opacity duration-300 group-hover:opacity-100"
                       onMouseEnter={(e) => (e.currentTarget as HTMLVideoElement).play()}
                       onMouseLeave={(e) => { const el = e.currentTarget as HTMLVideoElement; el.pause(); el.currentTime = 0; }}
                     />
