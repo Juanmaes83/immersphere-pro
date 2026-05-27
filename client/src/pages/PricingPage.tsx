@@ -155,24 +155,17 @@ const STUDIO_BG = `${STUDIO_CDN}hf_20260522_132626_aa68d171-d7a0-416c-bcf1-4375e
 const STUDIO_INTERIOR = `${STUDIO_CDN}hf_20260519_071439_c326a27b-7139-4e2a-9a23-0f498086c353.png`;
 
 // ── Studio videos (Cloudinary CDN) ───────────────────────────────────────────
-const CDN_VIDEO = 'https://res.cloudinary.com/dgbgriykc/video/upload/immersphere-studio';
-// poster = same URL but .jpg — Cloudinary auto-generates thumbnail from frame 0
+const CDN_VIDEO = 'https://res.cloudinary.com/dgbgriykc/video/upload/f_auto,q_auto:good,w_960/immersphere-studio';
+const CDN_POSTER = 'https://res.cloudinary.com/dgbgriykc/video/upload/so_2,w_960/immersphere-studio';
 const STUDIO_VIDEOS: { src: string; poster: string; label: string; tag: string }[] = [
-  {
-    src:    `${CDN_VIDEO}/inmobiliarias/01.mp4`,
-    poster: `${CDN_VIDEO}/inmobiliarias/01.jpg`,
-    label: 'Tour inmersivo en ático de lujo', tag: 'Inmobiliaria',
-  },
-  {
-    src:    `${CDN_VIDEO}/inmobiliarias/02.mp4`,
-    poster: `${CDN_VIDEO}/inmobiliarias/02.jpg`,
-    label: 'Vídeo comercial con drone', tag: 'Promotora',
-  },
-  {
-    src:    `${CDN_VIDEO}/inmobiliarias/03.mp4`,
-    poster: `${CDN_VIDEO}/inmobiliarias/03.jpg`,
-    label: 'Reportaje interior cinemático', tag: 'Agencia',
-  },
+  { src: `${CDN_VIDEO}/inmobiliarias/01.mp4`,    poster: `${CDN_POSTER}/inmobiliarias/01.jpg`,    label: 'Tour interior ático de lujo',       tag: 'Inmobiliaria' },
+  { src: `${CDN_VIDEO}/inmobiliarias/02.mp4`,    poster: `${CDN_POSTER}/inmobiliarias/02.jpg`,    label: 'Vídeo comercial con drone',          tag: 'Inmobiliaria' },
+  { src: `${CDN_VIDEO}/arquitectura/01.mp4`,     poster: `${CDN_POSTER}/arquitectura/01.jpg`,     label: 'Edificio corporativo premium',        tag: 'Arquitectura' },
+  { src: `${CDN_VIDEO}/arquitectura/02.mp4`,     poster: `${CDN_POSTER}/arquitectura/02.jpg`,     label: 'Visualización arquitectónica',        tag: 'Arquitectura' },
+  { src: `${CDN_VIDEO}/constructoras/01.mp4`,    poster: `${CDN_POSTER}/constructoras/01.jpg`,    label: 'Obra nueva en construcción',          tag: 'Constructora' },
+  { src: `${CDN_VIDEO}/promotoras/01.mp4`,       poster: `${CDN_POSTER}/promotoras/01.jpg`,       label: 'Proyecto de promotora residencial',   tag: 'Promotora'    },
+  { src: `${CDN_VIDEO}/decoradores/01.mp4`,      poster: `${CDN_POSTER}/decoradores/01.jpg`,      label: 'Interiorismo y decoración',           tag: 'Decoración'   },
+  { src: `${CDN_VIDEO}/hero_showreel.mp4`,       poster: `${CDN_POSTER}/hero_showreel.jpg`,       label: 'Showreel completo de producción',     tag: 'Studio'       },
 ];
 
 // ── Subcomponents ─────────────────────────────────────────────────────────────
@@ -613,22 +606,33 @@ export default function PricingPage(): JSX.Element {
 
                 {/* Right: portfolio preview + CTAs */}
                 <div className="flex flex-col justify-between gap-6">
-                  {/* Portfolio thumbnail */}
-                  <div className="overflow-hidden rounded-2xl border border-white/10">
+                  {/* Portfolio — autoplay video */}
+                  <a
+                    href="https://juanmaes83.github.io/IMMERSPHERE-PRO-INMOBILIARIAS/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="group block overflow-hidden rounded-2xl border border-white/10"
+                    aria-label="Ver portfolio de producción Immersphere Studio"
+                  >
                     <div className="relative">
-                      <img
-                        src={STUDIO_INTERIOR}
-                        alt="Portfolio Immersphere Studio — producción visual inmobiliaria"
-                        className="h-48 w-full object-cover transition-transform duration-500 hover:scale-[1.04] md:h-56"
-                        loading="lazy"
+                      <video
+                        src="https://res.cloudinary.com/dgbgriykc/video/upload/f_auto,q_auto:good,w_800/immersphere-studio/arquitectura/01.mp4"
+                        autoPlay
+                        muted
+                        loop
+                        playsInline
+                        preload="auto"
+                        className="h-48 w-full object-cover transition-transform duration-500 group-hover:scale-[1.03] md:h-56"
+                        aria-hidden="true"
                       />
-                      <div className="absolute inset-0 flex items-end bg-gradient-to-t from-black/60 to-transparent p-4">
-                        <p className="text-xs font-black uppercase tracking-widest text-white/80">
+                      <div className="absolute inset-0 flex items-end justify-between bg-gradient-to-t from-black/70 to-transparent p-4">
+                        <p className="text-xs font-black uppercase tracking-widest text-white/90 group-hover:text-amber-300 transition-colors">
                           Ver portfolio completo →
                         </p>
+                        <span className="rounded-full bg-amber-400/90 px-2 py-0.5 text-[10px] font-black text-slate-900">40+ proyectos</span>
                       </div>
                     </div>
-                  </div>
+                  </a>
 
                   {/* CTAs */}
                   <div className="flex flex-col gap-3">
@@ -666,7 +670,7 @@ export default function PricingPage(): JSX.Element {
               <p className="mb-4 text-center text-xs font-black uppercase tracking-widest text-slate-400">
                 Muestra de trabajos reales — producción Immersphere Studio
               </p>
-              <div className="grid gap-4 sm:grid-cols-3">
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
                 {STUDIO_VIDEOS.map((v) => (
                   <button
                     key={v.src}

@@ -357,19 +357,53 @@ export default function LandingPage(): JSX.Element {
           </ul>
         </div>
 
-        {/* Right — MacBook product shot */}
+        {/* Right — Live tour video */}
         <div className="motion-land-mockup hidden lg:block">
-          <div className="relative overflow-hidden rounded-[2rem] shadow-2xl shadow-violet-950/60 ring-1 ring-white/10">
-            <img
-              src={IMG.heroMacbook}
-              alt="Plataforma Immersphere Pro en MacBook — tour inmersivo 360° con panel de analytics en salón de lujo"
+          <div className="relative overflow-hidden rounded-[2rem] shadow-2xl shadow-violet-950/80 ring-1 ring-white/10">
+            {/* Video: real property tour footage */}
+            <video
+              src="https://res.cloudinary.com/dgbgriykc/video/upload/f_auto,q_auto:good,w_1280/immersphere-studio/inmobiliarias/01.mp4"
+              autoPlay
+              muted
+              loop
+              playsInline
+              preload="auto"
               className="w-full object-cover"
-              loading="eager"
-              width={2752}
-              height={1536}
+              style={{ aspectRatio: '16/10' }}
+              aria-label="Tour inmersivo de propiedad de lujo — Immersphere Pro"
             />
-            {/* Subtle violet tint overlay to blend with dark bg */}
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-violet-950/30 via-transparent to-transparent" aria-hidden="true" />
+            {/* Gradient overlay */}
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-tr from-violet-950/40 via-transparent to-transparent" aria-hidden="true" />
+            {/* Live badge */}
+            <div className="absolute left-4 top-4 flex items-center gap-2 rounded-full border border-white/20 bg-black/50 px-3 py-1.5 backdrop-blur-sm">
+              <span className="h-2 w-2 animate-pulse rounded-full bg-red-500" aria-hidden="true" />
+              <span className="text-[11px] font-black uppercase tracking-widest text-white/90">Tour en vivo</span>
+            </div>
+            {/* Bottom tag */}
+            <div className="absolute inset-x-0 bottom-0 flex items-end justify-between bg-gradient-to-t from-black/70 to-transparent px-5 pb-4 pt-10">
+              <div>
+                <p className="text-xs font-black text-white/50 uppercase tracking-widest">Immersphere Pro</p>
+                <p className="text-sm font-black text-white">Ático de lujo · Madrid</p>
+              </div>
+              <span className="rounded-full bg-emerald-500/90 px-2.5 py-1 text-[10px] font-black text-white">Sin app</span>
+            </div>
+          </div>
+          {/* Social proof below video */}
+          <div className="mt-4 flex items-center justify-center gap-6">
+            <div className="text-center">
+              <p className="text-2xl font-black text-white">127</p>
+              <p className="text-xs font-bold text-white/40">agencias activas</p>
+            </div>
+            <div className="h-8 w-px bg-white/10" />
+            <div className="text-center">
+              <p className="text-2xl font-black text-white">2.341</p>
+              <p className="text-xs font-bold text-white/40">tours publicados</p>
+            </div>
+            <div className="h-8 w-px bg-white/10" />
+            <div className="text-center">
+              <p className="text-2xl font-black text-white">5 min</p>
+              <p className="text-xs font-bold text-white/40">de alta a tour online</p>
+            </div>
           </div>
         </div>
       </section>
