@@ -459,9 +459,29 @@ export default function PricingPage(): JSX.Element {
           </div>
         </div>
 
-        {/* ── Showcase video (above plans) ─────────────────────────────── */}
-        <div className="mb-10 overflow-hidden rounded-3xl bg-slate-950 shadow-2xl ring-1 ring-white/10">
-          <div className="relative">
+        {/* ── Brand video — From Listing to Living ─────────────────────── */}
+        <div className="mb-10 overflow-hidden rounded-3xl bg-black shadow-2xl ring-1 ring-white/10">
+          <div className="text-center px-6 pt-6 pb-3">
+            <p className="text-xs font-black uppercase tracking-[0.25em] text-violet-400 mb-1">
+              Cómo funciona en la realidad
+            </p>
+            <h2 className="text-lg font-black text-white md:text-xl">
+              Del listado a las llaves —{' '}
+              <span className="text-violet-300">una historia real en 15 segundos</span>
+            </h2>
+          </div>
+          <div className="relative px-4 pb-4">
+            <video
+              src="https://raw.githubusercontent.com/Juanmaes83/immersphere-pro/main/VIDEO%20IMMERSPHERE%20PRO.mp4"
+              controls
+              playsInline
+              preload="metadata"
+              className="w-full rounded-2xl"
+              style={{ aspectRatio: '16/9' }}
+              aria-label="Immersphere Pro — Del listado a la venta. Historia de marca."
+            />
+          </div>
+          <div className="relative hidden">
             <video
               src={`${CDN_VIDEO.replace('w_960', 'w_1280')}/renders/reel_0527.mp4`}
               poster={`${CDN_POSTER.replace('w_960', 'w_1280')}/renders/reel_0527.jpg`}

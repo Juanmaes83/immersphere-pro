@@ -468,6 +468,36 @@ export default function LandingPage(): JSX.Element {
         </div>
       </div>
 
+      {/* ── BRAND VIDEO — FROM LISTING TO LIVING ─────────────────────── */}
+      <section className="mx-auto max-w-7xl px-5 py-16">
+        <div className="text-center mb-8">
+          <p className="text-xs font-black uppercase tracking-[0.25em] text-violet-400 mb-3">
+            Cómo funciona en la realidad
+          </p>
+          <h2 className="text-2xl font-black text-white md:text-3xl">
+            Del listado a las llaves.{' '}
+            <span className="text-violet-300">En una historia de 15 segundos.</span>
+          </h2>
+        </div>
+        <div className="relative overflow-hidden rounded-3xl bg-black shadow-2xl shadow-violet-950/60 ring-1 ring-white/10">
+          <video
+            src="https://raw.githubusercontent.com/Juanmaes83/immersphere-pro/main/VIDEO%20IMMERSPHERE%20PRO.mp4"
+            controls
+            playsInline
+            preload="metadata"
+            className="w-full"
+            style={{ aspectRatio: '16/9' }}
+            aria-label="Immersphere Pro — Del listado a la venta. Historia de marca en 15 segundos."
+          />
+          <div className="absolute top-4 left-4 flex items-center gap-2 rounded-full border border-white/20 bg-black/60 px-3 py-1.5 backdrop-blur-sm pointer-events-none">
+            <span className="text-[11px] font-black uppercase tracking-widest text-white/80">▶ From Listing to Living</span>
+          </div>
+        </div>
+        <p className="text-center mt-4 text-xs font-bold text-white/30 tracking-widest uppercase">
+          Immersphere Pro · La plataforma que cierra ventas
+        </p>
+      </section>
+
       {/* ── FEATURE PILLARS ───────────────────────────────────────────── */}
       <section className="mx-auto max-w-7xl px-5 py-24">
         <div className="mb-14 text-center">
