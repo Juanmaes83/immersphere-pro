@@ -479,6 +479,7 @@ export default function PricingPage(): JSX.Element {
               className="w-full rounded-2xl"
               style={{ aspectRatio: '16/9' }}
               aria-label="Immersphere Pro — Del listado a la venta. Historia de marca."
+              onLoadedMetadata={(e) => { (e.currentTarget as HTMLVideoElement).currentTime = 0.8; }}
             />
           </div>
           <div className="relative hidden">

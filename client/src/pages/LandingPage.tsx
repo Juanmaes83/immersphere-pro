@@ -488,6 +488,7 @@ export default function LandingPage(): JSX.Element {
             className="w-full"
             style={{ aspectRatio: '16/9' }}
             aria-label="Immersphere Pro — Del listado a la venta. Historia de marca en 15 segundos."
+            onLoadedMetadata={(e) => { (e.currentTarget as HTMLVideoElement).currentTime = 0.8; }}
           />
           <div className="absolute top-4 left-4 flex items-center gap-2 rounded-full border border-white/20 bg-black/60 px-3 py-1.5 backdrop-blur-sm pointer-events-none">
             <span className="text-[11px] font-black uppercase tracking-widest text-white/80">▶ From Listing to Living</span>
