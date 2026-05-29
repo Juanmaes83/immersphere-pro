@@ -472,14 +472,13 @@ export default function PricingPage(): JSX.Element {
           </div>
           <div className="relative px-4 pb-4">
             <video
-              src="https://raw.githubusercontent.com/Juanmaes83/immersphere-pro/main/VIDEO%20IMMERSPHERE%20PRO.mp4"
+              src="https://res.cloudinary.com/dgbgriykc/video/upload/f_auto,q_auto:good/v1780073015/0529_xm3ihu.mp4"
               controls
               playsInline
               preload="metadata"
               className="w-full rounded-2xl"
               style={{ aspectRatio: '16/9' }}
               aria-label="Immersphere Pro — Del listado a la venta. Historia de marca."
-              onLoadedMetadata={(e) => { (e.currentTarget as HTMLVideoElement).currentTime = 0.8; }}
             />
           </div>
           <div className="relative hidden">
