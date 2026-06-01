@@ -380,3 +380,33 @@ GET /health/services
 **Teléfono:** 629 554 870  
 **Plataforma:** https://immersphere-pro.vercel.app  
 **Repositorio:** https://github.com/Juanmaes83/immersphere-pro
+
+---
+
+## Research / Future 3D Pipeline
+
+### LichtFeld Studio - Gaussian Splatting
+
+LichtFeld Studio queda registrado como tecnología candidata para el futuro pipeline 3D de Immersphere Pro SaaS.
+
+Enlaces:
+- Web oficial: https://lichtfeld.io/
+- Showcase: https://lichtfeld.io/showcase/
+- Repositorio GitHub: https://github.com/MrNeRF/LichtFeld-Studio
+
+Uso previsto:
+- pruebas internas de Gaussian Splatting;
+- experiencias 3D para inmuebles, showrooms, arquitectura y espacios premium;
+- posible exportación a visor web / HTML;
+- conexión futura con landings comerciales, CTA y CRM Leads.
+
+Estado actual:
+- Research / I+D candidate.
+- No integrado en producción.
+- No copiar código ni usar como dependencia hasta revisar licencia, rendimiento móvil, hosting, costes GPU y viabilidad comercial.
+
+Documento técnico:
+`docs/research/lichtfeld-studio-gaussian-splatting.md`
+
+Decisión:
+Mantener como módulo Immersphere Pro Lab / 3D Capture Pipeline para prueba futura controlada.
