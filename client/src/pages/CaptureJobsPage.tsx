@@ -41,6 +41,8 @@ const OUTPUT_TYPES = [
   'external_3d_viewer'
 ];
 const PREMIUM_3D_OUTPUT_TYPES = ['gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
+const PREMIUM_3D_PRIORITY = ['gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
+const EMBEDDABLE_3D_HOSTS = ['superspl.at', 'sparkjs.dev', 'playcanvas.com', 'luma.ai', 'lumalabs.ai', 'immersphere.io', 'immersphere-pro.vercel.app'];
 
 interface CaptureJobForm {
   leadId: string;
@@ -116,6 +118,59 @@ function isPremium3dOutput(type: string): boolean {
 
 function getOutputUrl(asset: CaptureOutputAsset): string {
   return asset.publishedUrl || asset.url;
+}
+
+function getProviderLabel(assetOrType: CaptureOutputAsset | string, rawUrl = ''): string {
+  const type = typeof assetOrType === 'string' ? assetOrType : assetOrType.type;
+  const url = typeof assetOrType === 'string' ? rawUrl : getOutputUrl(assetOrType);
+  const normalizedUrl = url.toLowerCase();
+  if (type === 'supersplat' || normalizedUrl.includes('superspl.at')) return 'SuperSplat';
+  if (type === 'spark_viewer' || normalizedUrl.includes('spark')) return 'Spark';
+  if (normalizedUrl.includes('luma.ai') || normalizedUrl.includes('lumalabs.ai')) return 'Luma';
+  if (type === 'external_3d_viewer') return 'Viewer propio/externo';
+  if (type === 'gaussian_splat' || type === 'splat_viewer') return 'Viewer Gaussian/Splat';
+  return 'Otro';
+}
+
+function canEmbedOutput(asset: CaptureOutputAsset): boolean {
+  const url = getOutputUrl(asset);
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    return EMBEDDABLE_3D_HOSTS.some((allowed) => host === allowed || host.endsWith(`.${allowed}`));
+  } catch {
+    return false;
+  }
+}
+
+function getPremium3dPriority(type: string): number {
+  const index = PREMIUM_3D_PRIORITY.indexOf(type);
+  return index === -1 ? 99 : index;
+}
+
+function sortPremium3dOutputs(assets: CaptureOutputAsset[]): CaptureOutputAsset[] {
+  return [...assets].sort((a, b) => {
+    const priorityDiff = getPremium3dPriority(a.type) - getPremium3dPriority(b.type);
+    if (priorityDiff !== 0) return priorityDiff;
+    return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+  });
+}
+
+function getPrimaryPremium3dOutput(job: Pick<CaptureJob, 'outputAssets'>): CaptureOutputAsset | null {
+  const premium = (job.outputAssets ?? []).filter((asset) => isPremium3dOutput(asset.type));
+  const published = premium.filter((asset) => asset.status === 'published');
+  return sortPremium3dOutputs(published.length > 0 ? published : premium)[0] ?? null;
+}
+
+function get3dWarnings(asset: CaptureOutputAsset | null): string[] {
+  if (!asset) return ['Sin output 3D premium registrado.'];
+  const warnings: string[] = [];
+  const url = getOutputUrl(asset);
+  if (!url) warnings.push('Falta URL del viewer.');
+  if (asset.status === 'published' && !asset.viewerReady) warnings.push('Publicado sin validar desktop.');
+  if (asset.status === 'published' && !asset.mobileReady) warnings.push('Publicado sin validar móvil.');
+  if (isPremium3dOutput(asset.type) && !url) warnings.push('Revisar fallback externo.');
+  return warnings;
 }
 
 function getSuggestedFormat(type: string): string {
@@ -456,14 +511,15 @@ export default function CaptureJobsPage(): JSX.Element {
                   <th className="px-4 py-3">Riesgo</th>
                   <th className="px-4 py-3">Proxima accion</th>
                   <th className="px-4 py-3">Assets</th>
+                  <th className="px-4 py-3">3D</th>
                   <th className="px-4 py-3">Publico</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/10">
                 {loading ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center font-bold text-slate-400">Cargando CaptureJobs...</td></tr>
+                  <tr><td colSpan={8} className="px-4 py-8 text-center font-bold text-slate-400">Cargando CaptureJobs...</td></tr>
                 ) : jobs.length === 0 ? (
-                  <tr><td colSpan={7} className="px-4 py-8 text-center font-bold text-slate-400">No hay CaptureJobs todavia.</td></tr>
+                  <tr><td colSpan={8} className="px-4 py-8 text-center font-bold text-slate-400">No hay CaptureJobs todavia.</td></tr>
                 ) : jobs.map((job) => (
                   <tr key={job.id} className={`cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 ${selectedJob?.id === job.id ? 'bg-violet-50/70 dark:bg-violet-950/20' : ''}`} onClick={() => { void loadJob(job.id); }}>
                     <td className="px-4 py-3">
@@ -476,6 +532,21 @@ export default function CaptureJobsPage(): JSX.Element {
                     <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-black ring-1 ${badgeClass(job.riskLevel)}`}>{job.riskLevel}</span></td>
                     <td className="max-w-[240px] px-4 py-3 text-xs font-semibold text-slate-500 dark:text-white/50">{job.nextAction || '-'}</td>
                     <td className="px-4 py-3 text-xs font-black text-slate-600 dark:text-white/60">{job._count?.inputAssets ?? job.inputAssets?.length ?? 0} in · {job._count?.outputAssets ?? job.outputAssets?.length ?? 0} out</td>
+                    <td className="px-4 py-3">
+                      {(() => {
+                        const primary3d = getPrimaryPremium3dOutput(job);
+                        if (!primary3d) return <span className="text-xs font-bold text-slate-400">-</span>;
+                        const threeDReady = primary3d.status === 'published' && primary3d.viewerReady && primary3d.mobileReady && Boolean(getOutputUrl(primary3d));
+                        return (
+                          <div className="space-y-1">
+                            <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] ring-1 ${threeDReady ? badgeClass('published') : badgeClass('qa_review')}`}>
+                              {threeDReady ? '3D listo' : '3D pendiente'}
+                            </span>
+                            <p className="text-[10px] font-bold text-slate-400">{getProviderLabel(primary3d)}</p>
+                          </div>
+                        );
+                      })()}
+                    </td>
                     <td className="px-4 py-3">{job.publicUrl ? <a href={job.publicUrl} onClick={(e) => e.stopPropagation()} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-black text-ip-accent"><ExternalLink className="h-3 w-3" /> URL</a> : <span className="text-xs font-bold text-slate-400">-</span>}</td>
                   </tr>
                 ))}
@@ -592,6 +663,68 @@ export default function CaptureJobsPage(): JSX.Element {
 
           {selectedJob ? (
             <div className="mt-6 space-y-5 border-t border-slate-100 pt-5 dark:border-white/10">
+              {(() => {
+                const primary3d = getPrimaryPremium3dOutput(selectedJob);
+                const warnings = get3dWarnings(primary3d);
+                return (
+                  <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-900/50 dark:bg-violet-950/20">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">Pipeline manual 3D</p>
+                        <h3 className="mt-1 text-base font-black text-slate-950 dark:text-white">
+                          {primary3d ? 'Output 3D principal automático' : 'Sin output 3D principal'}
+                        </h3>
+                      </div>
+                      {primary3d ? (
+                        <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] ring-1 ${primary3d.status === 'published' && primary3d.viewerReady && primary3d.mobileReady ? badgeClass('published') : badgeClass('qa_review')}`}>
+                          {primary3d.status === 'published' && primary3d.viewerReady && primary3d.mobileReady ? '3D listo' : 'QA pendiente'}
+                        </span>
+                      ) : null}
+                    </div>
+
+                    {primary3d ? (
+                      <>
+                        <div className="mt-3 grid gap-2 text-xs font-bold text-slate-600 dark:text-white/60 sm:grid-cols-2">
+                          <p>Provider: <span className="font-black text-slate-900 dark:text-white">{getProviderLabel(primary3d)}</span></p>
+                          <p>Tipo: <span className="font-black text-slate-900 dark:text-white">{statusLabel(primary3d.type)}</span></p>
+                          <p>Fallback externo: <span className="font-black text-slate-900 dark:text-white">{getOutputUrl(primary3d) ? 'OK' : 'Pendiente'}</span></p>
+                          <p>Iframe: <span className="font-black text-slate-900 dark:text-white">{canEmbedOutput(primary3d) ? 'Embebible' : 'Usar fallback externo'}</span></p>
+                        </div>
+                        <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
+                          Este será el output 3D principal según prioridad automática. No se modifica ni archiva ningún otro output.
+                        </p>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                          {[
+                            ['URL válida', Boolean(getOutputUrl(primary3d))],
+                            ['Provider definido', Boolean(getProviderLabel(primary3d))],
+                            ['Desktop probado', primary3d.viewerReady],
+                            ['Móvil probado', primary3d.mobileReady],
+                            ['Iframe o fallback confirmado', canEmbedOutput(primary3d) || Boolean(getOutputUrl(primary3d))],
+                            ['Status published', primary3d.status === 'published'],
+                          ].map(([label, ok]) => (
+                            <div key={String(label)} className="flex items-center justify-between rounded-lg bg-white px-3 py-2 text-xs font-bold dark:bg-slate-950">
+                              <span className="text-slate-500 dark:text-white/50">{label}</span>
+                              <span className={ok ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}>{ok ? 'OK' : 'Pendiente'}</span>
+                            </div>
+                          ))}
+                        </div>
+                        {warnings.length > 0 ? (
+                          <div className="mt-3 space-y-1">
+                            {warnings.map((warning) => (
+                              <p key={warning} className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">{warning}</p>
+                            ))}
+                          </div>
+                        ) : null}
+                      </>
+                    ) : (
+                      <p className="mt-3 text-xs font-bold text-slate-500 dark:text-white/50">
+                        Registra un output `supersplat`, `gaussian_splat`, `splat_viewer`, `spark_viewer` o `external_3d_viewer` para activar la entrega 3D manual.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+
               <div>
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">Input assets</h3>
@@ -627,15 +760,31 @@ export default function CaptureJobsPage(): JSX.Element {
                     <input value={outputForm.publishedUrl} onChange={(e) => updateOutputForm('publishedUrl', e.target.value)} placeholder="URL publicada o embebible" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900 sm:col-span-2" />
                   </div>
                   {isPremium3dOutput(outputForm.type) ? (
-                    <p className="rounded-lg bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700 dark:bg-violet-950/25 dark:text-violet-300">
-                      Output premium 3D manual: registra una URL externa segura de Supersplat, Spark o viewer propio. No subas .ply, .spz, .splat, .sog, html ni zip.
-                    </p>
+                    <div className="space-y-2 rounded-lg bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700 dark:bg-violet-950/25 dark:text-violet-300">
+                      <p>Output premium 3D manual: registra una URL externa segura de SuperSplat, Spark, Luma o viewer propio. No subas .ply, .spz, .splat, .sog, html ni zip.</p>
+                      <p>Provider derivado: <span className="font-black">{getProviderLabel(outputForm.type, outputForm.publishedUrl || outputForm.url)}</span></p>
+                      <p>Si se publica, este output podrá actuar como principal según prioridad automática.</p>
+                    </div>
                   ) : null}
                   <div className="flex flex-wrap gap-3 text-xs font-bold text-slate-500 dark:text-white/50">
                     <label className="inline-flex items-center gap-2"><input type="checkbox" checked={outputForm.viewerReady} onChange={(e) => updateOutputForm('viewerReady', e.target.checked)} /> Desktop OK</label>
                     <label className="inline-flex items-center gap-2"><input type="checkbox" checked={outputForm.mobileReady} onChange={(e) => updateOutputForm('mobileReady', e.target.checked)} /> Mobile OK</label>
                     <label className="inline-flex items-center gap-2"><input type="checkbox" checked={outputForm.analyticsEnabled} onChange={(e) => updateOutputForm('analyticsEnabled', e.target.checked)} /> Analytics</label>
                   </div>
+                  <textarea
+                    value={outputForm.notes}
+                    onChange={(e) => updateOutputForm('notes', e.target.value)}
+                    rows={2}
+                    placeholder={isPremium3dOutput(outputForm.type) ? 'Observaciones QA internas: iframe, fallback, rendimiento, dispositivo móvil probado...' : 'Notas internas del output'}
+                    className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900"
+                  />
+                  {isPremium3dOutput(outputForm.type) && outputForm.status === 'published' ? (
+                    <div className="space-y-1">
+                      {!outputForm.viewerReady ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">Publicado sin validar desktop.</p> : null}
+                      {!outputForm.mobileReady ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">Publicado sin validar móvil.</p> : null}
+                      {!(outputForm.publishedUrl || outputForm.url).trim() ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">Falta URL del viewer o fallback externo.</p> : null}
+                    </div>
+                  ) : null}
                   <button type="submit" disabled={saving || !outputForm.url.trim()} className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white disabled:opacity-50 dark:bg-white dark:text-slate-950">Registrar output</button>
                 </form>
                 <div className="mt-3 space-y-2">
@@ -645,6 +794,44 @@ export default function CaptureJobsPage(): JSX.Element {
                         <div className="min-w-0">
                           <p className="font-black text-slate-800 dark:text-white">{statusLabel(asset.type)}</p>
                           <p className="text-xs font-bold text-slate-400">{asset.status} · {asset.format || 'url'} · {asset.viewerReady ? 'Desktop OK' : 'Desktop pendiente'} · {asset.mobileReady ? 'Mobile OK' : 'Mobile pendiente'}</p>
+                          {isPremium3dOutput(asset.type) ? (
+                            <div className="mt-2 space-y-2">
+                              <div className="flex flex-wrap gap-1.5">
+                                <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-violet-700 ring-1 ring-violet-200 dark:bg-slate-950 dark:text-violet-300 dark:ring-violet-900/50">
+                                  {getProviderLabel(asset)}
+                                </span>
+                                {getPrimaryPremium3dOutput(selectedJob)?.id === asset.id ? (
+                                  <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50">
+                                    Principal automático
+                                  </span>
+                                ) : null}
+                                <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-600 ring-1 ring-slate-200 dark:bg-slate-950 dark:text-white/60 dark:ring-white/10">
+                                  {canEmbedOutput(asset) ? 'Iframe viable' : 'Fallback externo'}
+                                </span>
+                              </div>
+                              <div className="grid gap-1 sm:grid-cols-2">
+                                {[
+                                  ['URL', Boolean(getOutputUrl(asset))],
+                                  ['Desktop', asset.viewerReady],
+                                  ['Móvil', asset.mobileReady],
+                                  ['Fallback', Boolean(getOutputUrl(asset))],
+                                ].map(([label, ok]) => (
+                                  <p key={String(label)} className="flex items-center justify-between rounded-lg bg-white px-2 py-1 text-[10px] font-bold dark:bg-slate-950">
+                                    <span className="text-slate-500 dark:text-white/50">{label}</span>
+                                    <span className={ok ? 'text-emerald-600 dark:text-emerald-300' : 'text-amber-600 dark:text-amber-300'}>{ok ? 'OK' : 'Pendiente'}</span>
+                                  </p>
+                                ))}
+                              </div>
+                              {get3dWarnings(asset).map((warning) => (
+                                <p key={warning} className="rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">{warning}</p>
+                              ))}
+                              {asset.notes ? (
+                                <p className="rounded-lg bg-white px-2 py-1 text-[10px] font-semibold leading-relaxed text-slate-500 dark:bg-slate-950 dark:text-white/50">
+                                  QA interno: {asset.notes}
+                                </p>
+                              ) : null}
+                            </div>
+                          ) : null}
                         </div>
                         <div className="flex shrink-0 gap-1">
                           <a href={getOutputUrl(asset)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-white dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">

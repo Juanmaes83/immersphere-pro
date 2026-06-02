@@ -178,6 +178,110 @@ Se reutilizan campos existentes:
 
 No hay nueva migracion para QA. Es deliberadamente simple y auditable.
 
+## Pipeline manual Gaussian/Splat
+
+Paso 11 convierte el soporte 3D premium manual en un flujo operativo repetible para produccion real sin anadir migraciones ni abrir uploads 3D inseguros.
+
+### Objetivo
+
+Registrar, validar, publicar y controlar outputs Gaussian/Splat generados externamente dentro de `CaptureJob`, manteniendo la vista publica limpia y sin exponer datos internos.
+
+### Provider 3D
+
+No se anade campo `provider` en Prisma. El provider se deriva de `type` y de la URL:
+
+- `supersplat` o `superspl.at` => SuperSplat.
+- `spark_viewer` o URL con referencia a Spark => Spark.
+- URL con `luma.ai` o `lumalabs.ai` => Luma.
+- `external_3d_viewer` => viewer propio o externo.
+- otros casos => otro provider.
+
+La UI interna de `/capture-jobs` muestra el provider derivado al registrar y revisar outputs 3D.
+
+### Output 3D principal
+
+No existe `isPrimary` persistente en esta fase. El output 3D principal se decide automaticamente y sin efectos destructivos:
+
+1. Solo se consideran outputs premium 3D.
+2. Se priorizan outputs con `status = published`.
+3. Orden de prioridad por `type`:
+   - `gaussian_splat`
+   - `splat_viewer`
+   - `supersplat`
+   - `spark_viewer`
+   - `external_3d_viewer`
+4. Si hay varios con la misma prioridad, gana el mas reciente.
+
+La UI interna muestra el aviso "Principal automatico" para que el equipo sepa que output actuara como experiencia 3D principal. La vista publica `/capture/:id` recibe los outputs publicados ya ordenados con esa prioridad.
+
+### Desktop OK
+
+`viewerReady` sigue siendo el check operativo de Desktop OK. Debe marcarse solo cuando el viewer cargue, sea navegable y tenga un fallback externo usable.
+
+### Mobile OK
+
+`mobileReady` sigue siendo el check operativo de Mobile OK. Debe marcarse solo tras prueba real en movil o emulacion aceptada por el equipo. Si un output esta `published` sin `mobileReady`, `/capture-jobs` muestra aviso interno.
+
+### Iframe y fallback
+
+`publishedUrl || url` actua como URL publica y fallback externo. El sistema intenta iframe solo para hosts conocidos como embebibles. Si el host no es embebible, el flujo correcto es abrir la experiencia en una pestana externa.
+
+Checklist interno:
+
+- URL valida.
+- Provider definido.
+- Desktop probado.
+- Movil probado.
+- Iframe viable o fallback externo confirmado.
+- `status = published`.
+
+### Rendimiento aceptable
+
+No se anade campo `performanceReady`. El rendimiento aceptable se revisa manualmente y se documenta en `CaptureOutputAsset.notes`, que funciona como observacion QA interna. Estas notas no se serializan en la API publica.
+
+Criterio practico:
+
+- Carga inicial razonable para el tipo de escena.
+- Interaccion estable en desktop.
+- Mobile no queda en pantalla rota.
+- Si iframe falla o el rendimiento embebido es pobre, fallback externo confirmado.
+
+### Seguridad publica
+
+`/capture/:id` no expone:
+
+- `tenantId`
+- `userId`
+- `leadId`
+- `notes`
+- `estimatedCost`
+- `estimatedHours`
+- `commercialValue`
+- `inputAssets`
+- observaciones QA internas de outputs
+
+### Que NO se implementa
+
+- Generacion automatica Gaussian/Splat.
+- Uploads `.ply`, `.spz`, `.splat`, `.sog`, `html` o `zip`.
+- Procesamiento GPU.
+- Workers.
+- Colas.
+- 360Gaussian automatico.
+- OCR o IA externa.
+- Analitica nueva.
+- Dashboard grande.
+
+### Riesgos
+
+- Al no existir `isPrimary`, la seleccion principal es automatica y no editable manualmente.
+- `iframeOk`, `fallbackOk` y `performanceOk` no son flags persistentes; se derivan o se registran en notas internas.
+- Viewers externos pueden cambiar cabeceras, permisos o disponibilidad sin control de Immersphere.
+
+### Siguiente paso recomendado
+
+Si el pipeline manual se usa en produccion con varios providers reales, evaluar una migracion minima para `provider`, `isPrimary`, `fallbackUrl`, `iframeReady`, `fallbackReady`, `performanceReady` y `qaNotes`.
+
 ## No implementado en esta fase
 
 - Workers.

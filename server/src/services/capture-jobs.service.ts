@@ -31,6 +31,13 @@ const PREMIUM_3D_OUTPUT_TYPES = [
   'spark_viewer',
   'external_3d_viewer'
 ] as const;
+const PREMIUM_3D_PRIORITY = [
+  'gaussian_splat',
+  'splat_viewer',
+  'supersplat',
+  'spark_viewer',
+  'external_3d_viewer'
+] as const;
 const EMBEDDABLE_3D_HOSTS = [
   'superspl.at',
   'sparkjs.dev',
@@ -177,6 +184,21 @@ function canEmbedPremium3dUrl(rawUrl: string): boolean {
   }
 }
 
+function getPremium3dPriority(type: string): number {
+  const index = PREMIUM_3D_PRIORITY.indexOf(type as (typeof PREMIUM_3D_PRIORITY)[number]);
+  return index === -1 ? 99 : index;
+}
+
+function sortPremium3dOutputs<T extends { type: string; createdAt?: Date | string }>(assets: T[]): T[] {
+  return [...assets].sort((a, b) => {
+    const priorityDiff = getPremium3dPriority(a.type) - getPremium3dPriority(b.type);
+    if (priorityDiff !== 0) return priorityDiff;
+    const aTime = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+    const bTime = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+    return bTime - aTime;
+  });
+}
+
 function validatePremium3dOutputUrl(input: Partial<CaptureOutputAssetInput>): void {
   if (!isPremium3dOutputType(input.type)) return;
   parseExternalViewerUrl(input.publishedUrl || input.url || '', 'url');
@@ -272,6 +294,10 @@ export async function listCaptureJobs(tenantId: string, filters: CaptureJobFilte
     include: {
       property: { select: { id: true, title: true } },
       lead: { select: { id: true, email: true, status: true } },
+      outputAssets: {
+        where: { type: { in: [...PREMIUM_3D_OUTPUT_TYPES] } },
+        orderBy: { createdAt: 'desc' }
+      },
       _count: { select: { inputAssets: true, outputAssets: true } }
     },
     orderBy: [{ updatedAt: 'desc' }],
@@ -458,6 +484,9 @@ export async function getPublicCaptureJob(captureJobId: string) {
     throw new AppError(404, 'CaptureJob publico no encontrado.');
   }
 
+  const publicOutputAssets = sortPremium3dOutputs(job.outputAssets.filter((asset: any) => isPremium3dOutputType(asset.type)))
+    .concat(job.outputAssets.filter((asset: any) => !isPremium3dOutputType(asset.type)));
+
   return {
     id: job.id,
     title: job.title,
@@ -467,7 +496,7 @@ export async function getPublicCaptureJob(captureJobId: string) {
     status: job.status,
     publicUrl: job.publicUrl,
     qrUrl: job.qrUrl,
-    outputAssets: job.outputAssets.map((asset: any) => ({
+    outputAssets: publicOutputAssets.map((asset: any) => ({
       id: asset.id,
       type: asset.type,
       format: asset.format,
