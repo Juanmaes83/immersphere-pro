@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { Upload, QrCode, ExternalLink, Archive, RefreshCw } from 'lucide-react';
+import { Upload, QrCode, ExternalLink, Archive, RefreshCw, Copy } from 'lucide-react';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { usePropertyStore } from '@/store/propertyStore';
 import type { CaptureJob, CaptureOutputAsset } from '@/types/api';
@@ -27,6 +27,20 @@ const STATUSES = [
 
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'];
 const RISK_LEVELS = ['low', 'medium', 'high', 'blocked'];
+const OUTPUT_TYPES = [
+  'viewer',
+  'landing',
+  'video',
+  'image',
+  'pdf',
+  'link',
+  'gaussian_splat',
+  'splat_viewer',
+  'supersplat',
+  'spark_viewer',
+  'external_3d_viewer'
+];
+const PREMIUM_3D_OUTPUT_TYPES = ['gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
 
 interface CaptureJobForm {
   leadId: string;
@@ -95,6 +109,22 @@ const emptyOutputForm: OutputForm = {
   analyticsEnabled: false,
   notes: ''
 };
+
+function isPremium3dOutput(type: string): boolean {
+  return PREMIUM_3D_OUTPUT_TYPES.includes(type);
+}
+
+function getOutputUrl(asset: CaptureOutputAsset): string {
+  return asset.publishedUrl || asset.url;
+}
+
+function getSuggestedFormat(type: string): string {
+  if (type === 'gaussian_splat') return 'gaussian';
+  if (type === 'supersplat' || type === 'splat_viewer') return 'splat';
+  if (type === 'spark_viewer') return 'external_url';
+  if (type === 'external_3d_viewer') return 'iframe';
+  return 'url';
+}
 
 function toJobForm(job: CaptureJob): CaptureJobForm {
   return {
@@ -236,6 +266,24 @@ export default function CaptureJobsPage(): JSX.Element {
 
   function updateOutputForm<K extends keyof OutputForm>(key: K, value: OutputForm[K]): void {
     setOutputForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateOutputType(type: string): void {
+    setOutputForm((current) => ({
+      ...current,
+      type,
+      format: current.format && current.format !== 'url' ? current.format : getSuggestedFormat(type)
+    }));
+  }
+
+  async function copyViewerUrl(url: string): Promise<void> {
+    if (!url) return;
+    try {
+      await navigator.clipboard.writeText(url);
+      setMessage('URL viewer copiada.');
+    } catch {
+      setError('No se pudo copiar la URL.');
+    }
   }
 
   async function saveJob(event: FormEvent): Promise<void> {
@@ -566,27 +614,48 @@ export default function CaptureJobsPage(): JSX.Element {
                 <h3 className="mb-3 text-sm font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">Output assets</h3>
                 <form onSubmit={(event) => { void addOutputAsset(event); }} className="space-y-3 rounded-xl bg-slate-50 p-3 dark:bg-white/5">
                   <div className="grid gap-2 sm:grid-cols-2">
-                    <input value={outputForm.type} onChange={(e) => updateOutputForm('type', e.target.value)} placeholder="Tipo" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                    <select value={outputForm.type} onChange={(e) => updateOutputType(e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
+                      {OUTPUT_TYPES.map((type) => <option key={type} value={type}>{statusLabel(type)}</option>)}
+                    </select>
                     <select value={outputForm.status} onChange={(e) => updateOutputForm('status', e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
                       {['planned', 'in_progress', 'ready', 'in_review', 'approved', 'published', 'archived'].map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
                     </select>
-                    <input value={outputForm.format} onChange={(e) => updateOutputForm('format', e.target.value)} placeholder="Formato" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                    <input value={outputForm.url} onChange={(e) => updateOutputForm('url', e.target.value)} placeholder="URL interna/externa" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                    <input value={outputForm.publishedUrl} onChange={(e) => updateOutputForm('publishedUrl', e.target.value)} placeholder="URL publicada" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900 sm:col-span-2" />
+                    <select value={outputForm.format} onChange={(e) => updateOutputForm('format', e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
+                      {['url', 'external_url', 'iframe', 'splat', 'gaussian', 'video', 'pdf', 'image'].map((format) => <option key={format} value={format}>{statusLabel(format)}</option>)}
+                    </select>
+                    <input value={outputForm.url} onChange={(e) => updateOutputForm('url', e.target.value)} placeholder={isPremium3dOutput(outputForm.type) ? 'URL viewer 3D externa' : 'URL interna/externa'} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                    <input value={outputForm.publishedUrl} onChange={(e) => updateOutputForm('publishedUrl', e.target.value)} placeholder="URL publicada o embebible" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900 sm:col-span-2" />
                   </div>
+                  {isPremium3dOutput(outputForm.type) ? (
+                    <p className="rounded-lg bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700 dark:bg-violet-950/25 dark:text-violet-300">
+                      Output premium 3D manual: registra una URL externa segura de Supersplat, Spark o viewer propio. No subas .ply, .spz, .splat, .sog, html ni zip.
+                    </p>
+                  ) : null}
                   <div className="flex flex-wrap gap-3 text-xs font-bold text-slate-500 dark:text-white/50">
-                    <label className="inline-flex items-center gap-2"><input type="checkbox" checked={outputForm.viewerReady} onChange={(e) => updateOutputForm('viewerReady', e.target.checked)} /> Viewer listo</label>
-                    <label className="inline-flex items-center gap-2"><input type="checkbox" checked={outputForm.mobileReady} onChange={(e) => updateOutputForm('mobileReady', e.target.checked)} /> Movil listo</label>
+                    <label className="inline-flex items-center gap-2"><input type="checkbox" checked={outputForm.viewerReady} onChange={(e) => updateOutputForm('viewerReady', e.target.checked)} /> Desktop OK</label>
+                    <label className="inline-flex items-center gap-2"><input type="checkbox" checked={outputForm.mobileReady} onChange={(e) => updateOutputForm('mobileReady', e.target.checked)} /> Mobile OK</label>
                     <label className="inline-flex items-center gap-2"><input type="checkbox" checked={outputForm.analyticsEnabled} onChange={(e) => updateOutputForm('analyticsEnabled', e.target.checked)} /> Analytics</label>
                   </div>
                   <button type="submit" disabled={saving || !outputForm.url.trim()} className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white disabled:opacity-50 dark:bg-white dark:text-slate-950">Registrar output</button>
                 </form>
                 <div className="mt-3 space-y-2">
                   {(selectedJob.outputAssets ?? []).length === 0 ? <p className="text-sm font-semibold text-slate-400">Sin entregables registrados.</p> : selectedJob.outputAssets?.map((asset) => (
-                    <a key={asset.id} href={asset.publishedUrl || asset.url} target="_blank" rel="noreferrer" className="block rounded-xl border border-slate-100 px-3 py-2 text-sm hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5">
-                      <span className="font-black text-slate-800 dark:text-white">{asset.type}</span>
-                      <span className="ml-2 text-xs font-bold text-slate-400">{asset.status} · {asset.format || 'url'}</span>
-                    </a>
+                    <div key={asset.id} className={`rounded-xl border px-3 py-2 text-sm ${isPremium3dOutput(asset.type) ? 'border-violet-200 bg-violet-50/70 dark:border-violet-900/50 dark:bg-violet-950/20' : 'border-slate-100 dark:border-white/10'}`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="min-w-0">
+                          <p className="font-black text-slate-800 dark:text-white">{statusLabel(asset.type)}</p>
+                          <p className="text-xs font-bold text-slate-400">{asset.status} · {asset.format || 'url'} · {asset.viewerReady ? 'Desktop OK' : 'Desktop pendiente'} · {asset.mobileReady ? 'Mobile OK' : 'Mobile pendiente'}</p>
+                        </div>
+                        <div className="flex shrink-0 gap-1">
+                          <a href={getOutputUrl(asset)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-white dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
+                            <ExternalLink className="h-3 w-3" /> Abrir viewer
+                          </a>
+                          <button type="button" onClick={() => { void copyViewerUrl(getOutputUrl(asset)); }} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-white dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
+                            <Copy className="h-3 w-3" /> Copiar URL
+                          </button>
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>

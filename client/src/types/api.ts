@@ -154,5 +154,7 @@ export interface PublicCaptureJob {
     url: string;
     viewerReady: boolean;
     mobileReady: boolean;
+    isPremium3d?: boolean;
+    embeddable?: boolean;
   }>;
 }

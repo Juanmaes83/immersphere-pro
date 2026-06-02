@@ -24,6 +24,22 @@ const INPUT_ASSET_STATUSES = ['pending', 'received', 'approved', 'rejected', 'ne
 const OUTPUT_ASSET_STATUSES = ['planned', 'in_progress', 'ready', 'in_review', 'approved', 'published', 'archived'] as const;
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 const RISK_LEVELS = ['low', 'medium', 'high', 'blocked'] as const;
+const PREMIUM_3D_OUTPUT_TYPES = [
+  'gaussian_splat',
+  'splat_viewer',
+  'supersplat',
+  'spark_viewer',
+  'external_3d_viewer'
+] as const;
+const EMBEDDABLE_3D_HOSTS = [
+  'superspl.at',
+  'sparkjs.dev',
+  'playcanvas.com',
+  'luma.ai',
+  'lumalabs.ai',
+  'immersphere.io',
+  'immersphere-pro.vercel.app'
+] as const;
 
 type Db = typeof prisma & {
   captureJob: any;
@@ -100,6 +116,71 @@ function assertValue(value: string | undefined, allowed: readonly string[], labe
 
 function cleanString(value: string | undefined | null, fallback = ''): string {
   return typeof value === 'string' ? value.trim() : fallback;
+}
+
+function isPremium3dOutputType(type: string | undefined | null): boolean {
+  return PREMIUM_3D_OUTPUT_TYPES.includes(cleanString(type) as (typeof PREMIUM_3D_OUTPUT_TYPES)[number]);
+}
+
+function parseExternalViewerUrl(rawUrl: string, label: string): URL {
+  const value = cleanString(rawUrl);
+  if (!value) throw new AppError(400, `${label} requerido para outputs 3D premium.`);
+
+  let parsed: URL;
+  try {
+    parsed = new URL(value);
+  } catch {
+    throw new AppError(400, `${label} debe ser una URL valida.`);
+  }
+
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    throw new AppError(400, `${label} debe usar http o https.`);
+  }
+
+  const host = parsed.hostname.toLowerCase();
+  if (
+    host === 'localhost' ||
+    host === '0.0.0.0' ||
+    host === '::1' ||
+    host.endsWith('.local')
+  ) {
+    throw new AppError(400, `${label} no puede apuntar a hosts locales o privados.`);
+  }
+
+  const ipv4 = host.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/);
+  if (ipv4) {
+    const [, aRaw, bRaw] = ipv4;
+    const a = Number(aRaw);
+    const b = Number(bRaw);
+    if (
+      a === 10 ||
+      a === 127 ||
+      (a === 172 && b >= 16 && b <= 31) ||
+      (a === 192 && b === 168) ||
+      (a === 169 && b === 254) ||
+      (a === 100 && b >= 64 && b <= 127)
+    ) {
+      throw new AppError(400, `${label} no puede apuntar a redes privadas.`);
+    }
+  }
+
+  return parsed;
+}
+
+function canEmbedPremium3dUrl(rawUrl: string): boolean {
+  try {
+    const parsed = parseExternalViewerUrl(rawUrl, 'url');
+    const host = parsed.hostname.toLowerCase();
+    return EMBEDDABLE_3D_HOSTS.some((allowed) => host === allowed || host.endsWith(`.${allowed}`));
+  } catch {
+    return false;
+  }
+}
+
+function validatePremium3dOutputUrl(input: Partial<CaptureOutputAssetInput>): void {
+  if (!isPremium3dOutputType(input.type)) return;
+  parseExternalViewerUrl(input.publishedUrl || input.url || '', 'url');
+  if (input.publishedUrl) parseExternalViewerUrl(input.publishedUrl, 'publishedUrl');
 }
 
 function parseDate(value: string | null | undefined): Date | null | undefined {
@@ -309,6 +390,7 @@ export async function markCaptureInputAssetReplaced(captureJobId: string, assetI
 export async function createCaptureOutputAsset(captureJobId: string, tenantId: string, input: CaptureOutputAssetInput) {
   await getJobForTenant(captureJobId, tenantId);
   assertValue(input.status, OUTPUT_ASSET_STATUSES, 'Estado OutputAsset');
+  validatePremium3dOutputUrl(input);
   if (!cleanString(input.type)) throw new AppError(400, 'type requerido.');
   if (!cleanString(input.url)) throw new AppError(400, 'url requerida.');
   return getDb().captureOutputAsset.create({
@@ -334,6 +416,11 @@ export async function updateCaptureOutputAsset(captureJobId: string, assetId: st
   assertValue(input.status, OUTPUT_ASSET_STATUSES, 'Estado OutputAsset');
   const existing = await getDb().captureOutputAsset.findFirst({ where: { id: assetId, captureJobId } });
   if (!existing) throw new AppError(404, 'Output asset no encontrado.');
+  validatePremium3dOutputUrl({
+    type: input.type ?? existing.type,
+    url: input.url ?? existing.url,
+    publishedUrl: input.publishedUrl ?? existing.publishedUrl
+  });
   return getDb().captureOutputAsset.update({
     where: { id: assetId },
     data: {
@@ -386,7 +473,9 @@ export async function getPublicCaptureJob(captureJobId: string) {
       format: asset.format,
       url: asset.publishedUrl || asset.url,
       viewerReady: asset.viewerReady,
-      mobileReady: asset.mobileReady
+      mobileReady: asset.mobileReady,
+      isPremium3d: isPremium3dOutputType(asset.type),
+      embeddable: isPremium3dOutputType(asset.type) && canEmbedPremium3dUrl(asset.publishedUrl || asset.url)
     }))
   };
 }
