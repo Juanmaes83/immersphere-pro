@@ -406,6 +406,20 @@ Documentos:
 - `docs/research/immersphere-spatial-ai-roadmap.md`
 - `docs/research/immersphere-copy-adapt-build-matrix.md`
 
+### Research / 360Gaussian Lab
+
+Auditoria local de `C:\Users\temp123\Downloads\360Gaussian-1.4.4`, clasificada como laboratorio/referencia para pipelines 360 -> Gaussian Splatting. Veredicto corto: interesa para Immersphere Pro como herramienta de lab y fuente de arquitectura de pipeline, pero no como codigo integrable ni producto embebido por su licencia freeware restrictiva.
+
+Prioridad: media-alta para pruebas controladas de laboratorio; no implementacion inmediata en produccion.
+
+Documentos:
+- `docs/research/360gaussian/360gaussian-master-audit.md`
+- `docs/research/360gaussian/folder-by-folder-analysis.md`
+- `docs/research/360gaussian/copy-adapt-build-matrix.md`
+- `docs/research/360gaussian/technical-risk-assessment.md`
+- `docs/research/360gaussian/immersphere-integration-opportunities.md`
+- `docs/research/360gaussian/lab-test-plan.md`
+
 ### LichtFeld Studio - Gaussian Splatting
 
 LichtFeld Studio queda registrado como tecnología candidata para el futuro pipeline 3D de Immersphere Pro SaaS.
