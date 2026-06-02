@@ -22,6 +22,18 @@ Plataforma SaaS multi-tenant para crear, publicar y vender tours virtuales inmer
 
 ---
 
+## Product Spec / CaptureJob & ProcessingJob
+
+Especificacion funcional para ordenar futuros procesos de captura, subida, procesamiento, QA, publicacion, analitica y conexion CRM dentro de Immersphere Pro. Estos documentos son producto y arquitectura funcional; no implementan backend, dependencias, migraciones ni componentes nuevos.
+
+- [Functional Spec](docs/product/capture-processing/capturejob-functional-spec.md)
+- [Functional Data Model](docs/product/capture-processing/capturejob-data-model.md)
+- [Status Flow](docs/product/capture-processing/capturejob-status-flow.md)
+- [CRM Integration](docs/product/capture-processing/capturejob-crm-integration.md)
+- [MVP Roadmap](docs/product/capture-processing/capturejob-mvp-roadmap.md)
+
+---
+
 ## ¿Qué es Immersphere Pro?
 
 Immersphere Pro permite a agencias inmobiliarias, constructoras, promotoras y estudios de interiorismo publicar tours virtuales 3D de sus espacios. El cliente final solo necesita un navegador — sin apps, sin plugins, sin registros.

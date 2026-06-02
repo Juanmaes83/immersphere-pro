@@ -1,0 +1,77 @@
+# CaptureJob / ProcessingJob - MVP Roadmap
+
+Este roadmap separa utilidad comercial, operacion interna y automatizacion tecnica. El objetivo es avanzar sin vender humo tecnico ni construir infraestructura antes de validar el flujo.
+
+## Fase 0 - Manual
+
+| Punto | Definicion |
+| --- | --- |
+| Objetivo | Ordenar el proceso con documentos, checklist y responsabilidad clara. |
+| Que se implementa | Checklist manual, registro de jobs en documento o tabla, asociacion manual a lead/propuesta, estado visible y proxima accion. |
+| Que no se implementa | No hay tabla real, uploads, workers, OCR, GPU, automatizacion ni componentes SaaS nuevos. |
+| Riesgo | Que el proceso dependa demasiado de disciplina manual. |
+| Prioridad | Alta. |
+| Esfuerzo estimado | 1-3 dias de definicion y prueba operativa. |
+| Criterio de exito | Se pueden gestionar 5-10 jobs reales sin perder estado, material ni siguiente accion. |
+
+## Fase 1 - CRM asistido
+
+| Punto | Definicion |
+| --- | --- |
+| Objetivo | Conectar oportunidad comercial y ejecucion visual dentro del CRM. |
+| Que se implementa | Campos `assetPipeline` y `pipelineStatus` en CRM, actividad manual, generacion de proxima accion y packs conectados a presupuesto. |
+| Que no se implementa | No hay procesamiento automatico, uploads SaaS ni tabla CaptureJob independiente. |
+| Riesgo | Meter demasiada operacion tecnica dentro del CRM. |
+| Prioridad | Alta si el CRM es el primer punto de venta. |
+| Esfuerzo estimado | 3-7 dias segun estado actual del CRM. |
+| Criterio de exito | Un comercial puede vender un pack, crear seguimiento y saber si el activo visual esta pendiente, en QA o publicado. |
+
+## Fase 2 - SaaS basico
+
+| Punto | Definicion |
+| --- | --- |
+| Objetivo | Crear CaptureJob como entidad real dentro de Immersphere Pro SaaS. |
+| Que se implementa | Tabla CaptureJob, uploads controlados, estados, input assets, output assets, QR, landing y URL publicada. |
+| Que no se implementa | No hay GPU automatico, Matrix-3D, 360Gaussian integrado ni OCR productivo. |
+| Riesgo | Construir demasiada plataforma antes de validar volumen. |
+| Prioridad | Media-alta cuando haya jobs recurrentes. |
+| Esfuerzo estimado | 2-4 semanas para una version util y prudente. |
+| Criterio de exito | Produccion puede crear, revisar, publicar y vincular jobs sin depender de documentos externos. |
+
+## Fase 3 - Lab
+
+| Punto | Definicion |
+| --- | --- |
+| Objetivo | Probar tecnologias avanzadas en entorno controlado, sin prometerlas como produccion estable. |
+| Que se implementa | PanoOCR PoC, 360Gaussian manual, LichtFeld/Matrix-3D demo, viewer QA avanzado y documentacion de riesgos. |
+| Que no se implementa | No hay automatizacion comercial ni promesa de procesamiento masivo. |
+| Riesgo | Confundir demos tecnicas con producto vendible. |
+| Prioridad | Media. Alta solo si hay caso de uso pagado o ventaja clara. |
+| Esfuerzo estimado | 2-6 semanas por linea de investigacion, segun alcance. |
+| Criterio de exito | Cada prueba produce decision: copiar, adaptar, construir, pausar o descartar. |
+
+## Fase 4 - Automatizacion controlada
+
+| Punto | Definicion |
+| --- | --- |
+| Objetivo | Automatizar partes repetibles una vez que el proceso manual y SaaS sean estables. |
+| Que se implementa | Workers, colas, analytics, webhooks, integracion CRM, validaciones y procesos asistidos. |
+| Que no se implementa | No se automatizan decisiones de calidad, legales o comerciales sin supervision. |
+| Riesgo | Coste tecnico alto, fallos silenciosos, deuda operativa y expectativas excesivas. |
+| Prioridad | Media-baja hasta tener volumen suficiente. |
+| Esfuerzo estimado | 1-3 meses por bloque, segun infraestructura existente. |
+| Criterio de exito | La automatizacion reduce tiempo real sin aumentar errores, soporte ni riesgo comercial. |
+
+## Que implementar primero
+
+La recomendacion es empezar por Fase 0 y Fase 1 ligera: checklist, estados, proxima accion y conexion con packs del CRM. Eso permite vender, ejecutar y aprender sin construir infraestructura pesada.
+
+## Que dejar en stand by
+
+- Procesamiento GPU automatico.
+- Captura movil propia.
+- OCR automatico en produccion.
+- Matrix-3D en produccion.
+- 360Gaussian embebido como flujo comercial.
+- Workers y colas hasta tener volumen real.
+- Automatizaciones que puedan prometer resultados no revisados.
