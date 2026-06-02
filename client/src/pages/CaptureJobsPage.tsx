@@ -120,6 +120,19 @@ function getOutputUrl(asset: CaptureOutputAsset): string {
   return asset.publishedUrl || asset.url;
 }
 
+function isPublicCaptureStatus(status: string): boolean {
+  return status === 'published' || status === 'connected_to_crm';
+}
+
+function getCaptureLandingPath(captureJobId: string): string {
+  return `/capture/${captureJobId}`;
+}
+
+function getCaptureLandingUrl(captureJobId: string): string {
+  if (typeof window === 'undefined') return getCaptureLandingPath(captureJobId);
+  return `${window.location.origin}${getCaptureLandingPath(captureJobId)}`;
+}
+
 function getProviderLabel(assetOrType: CaptureOutputAsset | string, rawUrl = ''): string {
   const type = typeof assetOrType === 'string' ? assetOrType : assetOrType.type;
   const url = typeof assetOrType === 'string' ? rawUrl : getOutputUrl(assetOrType);
@@ -331,14 +344,22 @@ export default function CaptureJobsPage(): JSX.Element {
     }));
   }
 
-  async function copyViewerUrl(url: string): Promise<void> {
+  async function copyToClipboard(url: string, successMessage: string): Promise<void> {
     if (!url) return;
     try {
       await navigator.clipboard.writeText(url);
-      setMessage('URL viewer copiada.');
+      setMessage(successMessage);
     } catch {
       setError('No se pudo copiar la URL.');
     }
+  }
+
+  async function copyLandingUrl(captureJobId: string): Promise<void> {
+    await copyToClipboard(getCaptureLandingUrl(captureJobId), 'Landing pública copiada.');
+  }
+
+  async function copyViewerUrl(url: string): Promise<void> {
+    await copyToClipboard(url, 'Viewer externo copiado.');
   }
 
   async function saveJob(event: FormEvent): Promise<void> {
@@ -552,7 +573,17 @@ export default function CaptureJobsPage(): JSX.Element {
                         );
                       })()}
                     </td>
-                    <td className="px-4 py-3">{job.publicUrl ? <a href={job.publicUrl} onClick={(e) => e.stopPropagation()} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 text-xs font-black text-ip-accent"><ExternalLink className="h-3 w-3" /> URL</a> : <span className="text-xs font-bold text-slate-400">-</span>}</td>
+                    <td className="px-4 py-3">
+                      {isPublicCaptureStatus(job.status) ? (
+                        <Link to={getCaptureLandingPath(job.id)} onClick={(e) => e.stopPropagation()} className="inline-flex items-center gap-1 text-xs font-black text-ip-accent">
+                          <ExternalLink className="h-3 w-3" /> Ver landing
+                        </Link>
+                      ) : (
+                        <span className="max-w-[140px] text-[10px] font-bold leading-4 text-amber-600 dark:text-amber-300">
+                          Publica el CaptureJob para activar la entrega pública.
+                        </span>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -645,8 +676,11 @@ export default function CaptureJobsPage(): JSX.Element {
                 <input value={form.nextAction} onChange={(e) => updateForm('nextAction', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-white/5" />
               </div>
               <div className="sm:col-span-2">
-                <FieldLabel>Public URL</FieldLabel>
+                <FieldLabel>Public URL manual / QR</FieldLabel>
                 <input value={form.publicUrl} onChange={(e) => updateForm('publicUrl', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-white/5" />
+                <p className="mt-1 text-[11px] font-bold text-slate-400 dark:text-white/35">
+                  La entrega principal se abre siempre en {selectedJob ? getCaptureLandingPath(selectedJob.id) : '/capture/{id}'}.
+                </p>
               </div>
               <div className="sm:col-span-2">
                 <FieldLabel>Notas internas</FieldLabel>
@@ -663,7 +697,22 @@ export default function CaptureJobsPage(): JSX.Element {
                   <QrCode className="h-4 w-4" /> Generar QR
                 </button>
               ) : null}
+              {selectedJob && isPublicCaptureStatus(selectedJob.status) ? (
+                <>
+                  <Link to={getCaptureLandingPath(selectedJob.id)} className="inline-flex items-center gap-2 rounded-full bg-ip-accent px-4 py-2 text-sm font-black text-white hover:bg-ip-accent-hover">
+                    Ver landing pública <ExternalLink className="h-4 w-4" />
+                  </Link>
+                  <button type="button" onClick={() => { void copyLandingUrl(selectedJob.id); }} className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
+                    <Copy className="h-4 w-4" /> Copiar landing pública
+                  </button>
+                </>
+              ) : null}
             </div>
+            {selectedJob && !isPublicCaptureStatus(selectedJob.status) ? (
+              <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                Publica el CaptureJob para activar la entrega pública.
+              </p>
+            ) : null}
           </form>
 
           {selectedJob ? (
@@ -840,13 +889,18 @@ export default function CaptureJobsPage(): JSX.Element {
                         </div>
                         <div className="flex shrink-0 gap-1">
                           <a href={getOutputUrl(asset)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-white dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
-                            <ExternalLink className="h-3 w-3" /> Abrir viewer
+                            <ExternalLink className="h-3 w-3" /> Abrir viewer externo
                           </a>
                           <button type="button" onClick={() => { void copyViewerUrl(getOutputUrl(asset)); }} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-white dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
-                            <Copy className="h-3 w-3" /> Copiar URL
+                            <Copy className="h-3 w-3" /> Copiar viewer externo
                           </button>
                         </div>
                       </div>
+                      {isPremium3dOutput(asset.type) ? (
+                        <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
+                          Uso interno / fallback técnico
+                        </p>
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -859,11 +913,6 @@ export default function CaptureJobsPage(): JSX.Element {
                 </div>
               ) : null}
 
-              {selectedJob.status === 'published' ? (
-                <Link to={`/capture/${selectedJob.id}`} className="inline-flex items-center gap-2 text-sm font-black text-ip-accent">
-                  Ver landing publica interna <ExternalLink className="h-4 w-4" />
-                </Link>
-              ) : null}
             </div>
           ) : null}
         </aside>
