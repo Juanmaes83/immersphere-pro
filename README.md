@@ -385,6 +385,27 @@ GET /health/services
 
 ## Research / Future 3D Pipeline
 
+### Spatial AI & 360 Competitive Intelligence
+
+Auditoria estrategica para convertir investigacion de Spatial AI, captura 360, OCR panoramico, generacion 3D y competencia en decisiones de producto, CRM, SaaS, landing y roadmap.
+
+Fuentes principales:
+- Travvir: benchmark de Spatial AI, captura smartphone, SDK propietario, iframe, enterprise y partnership potencial.
+- Travvir GitHub: repos publicos a evaluar con cautela; `panoocr` destaca como candidato MIT.
+- PanoOCR: posible modulo OCR/metadata para panoramas 360, hotspots sugeridos, accesibilidad y contexto para Vera.
+- Matrix-3D: linea I+D Generative 3D Lab para demos conceptuales y showrooms generativos.
+- 360 Virtual Tour Creator Softwares: mapa competitivo inicial para Matterport, Kuula, CloudPano, 3DVista, Krpano y otros.
+
+Documentos:
+- `docs/research/spatial-ai-master-audit.md`
+- `docs/research/travvir-spatial-ai-benchmark.md`
+- `docs/research/travvir-github-repos-analysis.md`
+- `docs/research/panoocr-360-ocr-analysis.md`
+- `docs/research/matrix-3d-generative-worlds-analysis.md`
+- `docs/research/360-virtual-tour-competitor-map.md`
+- `docs/research/immersphere-spatial-ai-roadmap.md`
+- `docs/research/immersphere-copy-adapt-build-matrix.md`
+
 ### LichtFeld Studio - Gaussian Splatting
 
 LichtFeld Studio queda registrado como tecnología candidata para el futuro pipeline 3D de Immersphere Pro SaaS.
