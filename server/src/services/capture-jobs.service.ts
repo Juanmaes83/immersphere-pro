@@ -282,10 +282,28 @@ export async function listCaptureJobs(tenantId: string, filters: CaptureJobFilte
   if (filters.priority) where.priority = filters.priority;
   if (filters.riskLevel) where.riskLevel = filters.riskLevel;
   if (filters.q) {
+    const q = filters.q.trim();
     where.OR = [
-      { title: { contains: filters.q, mode: 'insensitive' } },
-      { clientName: { contains: filters.q, mode: 'insensitive' } },
-      { nextAction: { contains: filters.q, mode: 'insensitive' } }
+      { id: { contains: q, mode: 'insensitive' } },
+      { title: { contains: q, mode: 'insensitive' } },
+      { clientName: { contains: q, mode: 'insensitive' } },
+      { projectType: { contains: q, mode: 'insensitive' } },
+      { vertical: { contains: q, mode: 'insensitive' } },
+      { publicUrl: { contains: q, mode: 'insensitive' } },
+      { qrUrl: { contains: q, mode: 'insensitive' } },
+      { nextAction: { contains: q, mode: 'insensitive' } },
+      {
+        outputAssets: {
+          some: {
+            OR: [
+              { id: { contains: q, mode: 'insensitive' } },
+              { type: { contains: q, mode: 'insensitive' } },
+              { url: { contains: q, mode: 'insensitive' } },
+              { publishedUrl: { contains: q, mode: 'insensitive' } }
+            ]
+          }
+        }
+      }
     ];
   }
 

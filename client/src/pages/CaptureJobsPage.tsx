@@ -477,7 +477,12 @@ export default function CaptureJobsPage(): JSX.Element {
 
       <section className="mt-6 rounded-ip-card bg-white p-4 ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border">
         <div className="grid gap-3 md:grid-cols-5">
-          <input value={filters.q} onChange={(e) => setFilters((current) => ({ ...current, q: e.target.value }))} placeholder="Buscar" className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-white/5" />
+          <div>
+            <input value={filters.q} onChange={(e) => setFilters((current) => ({ ...current, q: e.target.value }))} placeholder="Buscar" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-white/5" />
+            <p className="mt-1 text-[11px] font-bold leading-4 text-slate-400 dark:text-white/35">
+              Puedes buscar por cliente, proyecto, ID, URL pública, QR u output 3D.
+            </p>
+          </div>
           <select value={filters.status} onChange={(e) => setFilters((current) => ({ ...current, status: e.target.value }))} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-white/5">
             <option value="">Todos los estados</option>
             {STATUSES.map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
