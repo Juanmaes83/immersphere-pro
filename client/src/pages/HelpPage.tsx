@@ -926,6 +926,97 @@ export default function HelpPage(): JSX.Element {
             </div>
           </div>
 
+          {/* Demos tecnicas validadas */}
+          <section className="mt-12 rounded-[1.8rem] bg-slate-50 p-6 ring-1 ring-slate-200 dark:bg-slate-900 dark:ring-slate-700 md:p-8">
+            <p className="text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
+              Validación técnica
+            </p>
+            <h3 className="mt-2 text-2xl font-black text-slate-950 dark:text-white">
+              Demos técnicas validadas
+            </h3>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-500 dark:text-slate-400">
+              Pruebas reales de integración que demuestran capacidades activas de Immersphere Pro: entrega pública,
+              outputs 3D, QA Desktop/Mobile y publicación segura dentro del flujo CaptureJob.
+            </p>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-slate-500 dark:text-slate-400">
+              Estas demos no son promesas futuras. Son pruebas técnicas ya validadas en producción o entorno disponible.
+              Sirven para comprobar qué capacidades están operativas hoy y qué partes siguen en evolución.
+            </p>
+            <p className="mt-4 rounded-2xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-6 text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-300">
+              Nota: la escena 3D usada en la demo Gaussian/Splat pertenece a SuperSplat y se utiliza como referencia técnica
+              de integración, no como trabajo producido por Immersphere Pro.
+            </p>
+
+            <div className="mt-6 grid gap-5 lg:grid-cols-3">
+              {[
+                {
+                  title: 'Gaussian/Splat externo integrado',
+                  status: 'Validado Desktop/Mobile',
+                  desc: 'Experiencia 3D externa integrada como output premium dentro de CaptureJob. Valida que Immersphere Pro puede publicar viewers Gaussian/Splat generados externamente, por ejemplo SuperSplat, Spark o viewers propios, dentro de una entrega publica controlada, con estado de publicacion, QA Desktop/Mobile y visualizacion embebida o enlace externo seguro.',
+                  cta: 'Ver demo',
+                  href: 'https://immersphere-pro.vercel.app/capture/b9cd0452-1978-4fb6-85bb-ecf1120c9f16',
+                  external: true,
+                  badges: ['3D Premium', 'Desktop OK', 'Mobile OK', 'SuperSplat'],
+                },
+                {
+                  title: 'CaptureJob público',
+                  status: 'Operativo',
+                  desc: 'Entrega pública generada desde el flujo CaptureJob. Permite publicar un trabajo visual/inmersivo con outputs asociados, estado de publicación y URL pública segura sin exponer datos internos del cliente, tenant, costes, notas o assets privados.',
+                  cta: 'Ver entrega',
+                  href: 'https://immersphere-pro.vercel.app/capture/b9cd0452-1978-4fb6-85bb-ecf1120c9f16',
+                  external: true,
+                  badges: ['CaptureJob', 'Publicado', 'Datos privados protegidos'],
+                },
+                {
+                  title: 'Flujo de producción 3D manual',
+                  status: 'Próximo',
+                  desc: 'Proceso interno para convertir una experiencia 3D externa en una entrega profesional repetible: selección de provider, registro de viewer, QA Desktop/Mobile, fallback externo, publicación y validación final. Esta fase prepara el camino hacia un pipeline 3D más sólido sin abrir todavía uploads 3D inseguros ni procesamiento automático.',
+                  cta: 'Ver proceso',
+                  href: '#flujo-produccion-3d',
+                  external: false,
+                  badges: ['Pipeline manual', 'QA 3D', 'Próximo'],
+                },
+              ].map((demo) => (
+                <article key={demo.title} className="flex flex-col rounded-[1.4rem] bg-white p-5 ring-1 ring-slate-200 dark:bg-slate-950 dark:ring-slate-700">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-700 dark:bg-emerald-900/40 dark:text-emerald-300">
+                      {demo.status}
+                    </span>
+                  </div>
+                  <h4 className="mt-4 text-lg font-black text-slate-950 dark:text-white">{demo.title}</h4>
+                  <p className="mt-3 text-xs leading-6 text-slate-500 dark:text-slate-400">{demo.desc}</p>
+                  <div className="mt-4 flex flex-wrap gap-2">
+                    {demo.badges.map((badge) => (
+                      <span key={badge} className="rounded-full bg-slate-100 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                        {badge}
+                      </span>
+                    ))}
+                  </div>
+                  <div className="mt-auto pt-5">
+                    <a
+                      href={demo.href}
+                      target={demo.external ? '_blank' : undefined}
+                      rel={demo.external ? 'noopener noreferrer' : undefined}
+                      className="inline-flex rounded-full px-4 py-2.5 text-xs font-black text-white transition hover:opacity-90"
+                      style={bgStyle}
+                    >
+                      {demo.cta}
+                    </a>
+                  </div>
+                </article>
+              ))}
+            </div>
+
+            <div id="flujo-produccion-3d" className="mt-6 rounded-[1.4rem] border border-slate-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-950">
+              <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Resumen del proceso</p>
+              <p className="mt-2 text-sm leading-7 text-slate-500 dark:text-slate-400">
+                El flujo manual actual cubre seleccion del provider 3D, registro de la URL segura, QA en desktop y movil,
+                comprobacion de iframe, fallback externo y publicacion final en CaptureJob. No implica generacion automatica
+                ni subida abierta de archivos 3D en esta fase.
+              </p>
+            </div>
+          </section>
+
           {/* Herramientas */}
           <h3 className="mt-12 text-xl font-black text-slate-950 dark:text-white">1. Crea tu Gaussian Splat</h3>
           <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">Tres herramientas probadas, de más fácil a más avanzada:</p>
