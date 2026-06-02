@@ -31,7 +31,9 @@ type Db = typeof prisma & {
   captureOutputAsset: any;
 };
 
-const db = prisma as Db;
+function getDb(): Db {
+  return prisma as Db;
+}
 
 export interface CaptureJobFilters {
   q?: string;
@@ -158,7 +160,7 @@ async function assertLeadAccess(leadId: string | null | undefined, tenantId: str
 }
 
 async function getJobForTenant(captureJobId: string, tenantId: string) {
-  const job = await db.captureJob.findFirst({
+  const job = await getDb().captureJob.findFirst({
     where: { id: captureJobId, tenantId },
     include: {
       property: { select: { id: true, title: true } },
@@ -184,7 +186,7 @@ export async function listCaptureJobs(tenantId: string, filters: CaptureJobFilte
     ];
   }
 
-  return db.captureJob.findMany({
+  return getDb().captureJob.findMany({
     where,
     include: {
       property: { select: { id: true, title: true } },
@@ -203,7 +205,7 @@ export async function getCaptureJob(captureJobId: string, tenantId: string) {
 export async function createCaptureJob(tenantId: string, userId: string, input: CaptureJobInput) {
   await assertPropertyAccess(input.propertyId, tenantId);
   await assertLeadAccess(input.leadId, tenantId);
-  return db.captureJob.create({
+  return getDb().captureJob.create({
     data: {
       ...buildJobData(input, true),
       tenantId,
@@ -225,7 +227,7 @@ export async function updateCaptureJob(captureJobId: string, tenantId: string, i
   if ('propertyId' in input) await assertPropertyAccess(input.propertyId, tenantId);
   if ('leadId' in input) await assertLeadAccess(input.leadId, tenantId);
 
-  return db.captureJob.update({
+  return getDb().captureJob.update({
     where: { id: captureJobId },
     data: {
       ...buildJobData(input, false),
@@ -243,7 +245,7 @@ export async function updateCaptureJob(captureJobId: string, tenantId: string, i
 
 export async function archiveCaptureJob(captureJobId: string, tenantId: string) {
   await getJobForTenant(captureJobId, tenantId);
-  return db.captureJob.update({ where: { id: captureJobId }, data: { status: 'archived' } });
+  return getDb().captureJob.update({ where: { id: captureJobId }, data: { status: 'archived' } });
 }
 
 export async function generateCaptureJobQr(captureJobId: string, tenantId: string) {
@@ -251,7 +253,7 @@ export async function generateCaptureJobQr(captureJobId: string, tenantId: strin
   const target = cleanString(job.publicUrl);
   if (!target) throw new AppError(400, 'Define publicUrl antes de generar QR.');
   const qrUrl = await QRCode.toDataURL(target, { margin: 1, width: 640 });
-  return db.captureJob.update({ where: { id: captureJobId }, data: { qrUrl } });
+  return getDb().captureJob.update({ where: { id: captureJobId }, data: { qrUrl } });
 }
 
 export async function createCaptureInputAsset(captureJobId: string, tenantId: string, input: CaptureInputAssetInput) {
@@ -259,7 +261,7 @@ export async function createCaptureInputAsset(captureJobId: string, tenantId: st
   assertValue(input.status, INPUT_ASSET_STATUSES, 'Estado InputAsset');
   if (!cleanString(input.type)) throw new AppError(400, 'type requerido.');
   if (!cleanString(input.url)) throw new AppError(400, 'url requerida.');
-  return db.captureInputAsset.create({
+  return getDb().captureInputAsset.create({
     data: {
       captureJobId,
       type: cleanString(input.type),
@@ -280,9 +282,9 @@ export async function createCaptureInputAsset(captureJobId: string, tenantId: st
 export async function updateCaptureInputAsset(captureJobId: string, assetId: string, tenantId: string, input: Partial<CaptureInputAssetInput>) {
   await getJobForTenant(captureJobId, tenantId);
   assertValue(input.status, INPUT_ASSET_STATUSES, 'Estado InputAsset');
-  const existing = await db.captureInputAsset.findFirst({ where: { id: assetId, captureJobId } });
+  const existing = await getDb().captureInputAsset.findFirst({ where: { id: assetId, captureJobId } });
   if (!existing) throw new AppError(404, 'Input asset no encontrado.');
-  return db.captureInputAsset.update({
+  return getDb().captureInputAsset.update({
     where: { id: assetId },
     data: {
       ...(input.type !== undefined ? { type: cleanString(input.type) } : {}),
@@ -309,7 +311,7 @@ export async function createCaptureOutputAsset(captureJobId: string, tenantId: s
   assertValue(input.status, OUTPUT_ASSET_STATUSES, 'Estado OutputAsset');
   if (!cleanString(input.type)) throw new AppError(400, 'type requerido.');
   if (!cleanString(input.url)) throw new AppError(400, 'url requerida.');
-  return db.captureOutputAsset.create({
+  return getDb().captureOutputAsset.create({
     data: {
       captureJobId,
       type: cleanString(input.type),
@@ -330,9 +332,9 @@ export async function createCaptureOutputAsset(captureJobId: string, tenantId: s
 export async function updateCaptureOutputAsset(captureJobId: string, assetId: string, tenantId: string, input: Partial<CaptureOutputAssetInput>) {
   await getJobForTenant(captureJobId, tenantId);
   assertValue(input.status, OUTPUT_ASSET_STATUSES, 'Estado OutputAsset');
-  const existing = await db.captureOutputAsset.findFirst({ where: { id: assetId, captureJobId } });
+  const existing = await getDb().captureOutputAsset.findFirst({ where: { id: assetId, captureJobId } });
   if (!existing) throw new AppError(404, 'Output asset no encontrado.');
-  return db.captureOutputAsset.update({
+  return getDb().captureOutputAsset.update({
     where: { id: assetId },
     data: {
       ...(input.type !== undefined ? { type: cleanString(input.type) } : {}),
@@ -355,7 +357,7 @@ export async function archiveCaptureOutputAsset(captureJobId: string, assetId: s
 }
 
 export async function getPublicCaptureJob(captureJobId: string) {
-  const job = await db.captureJob.findUnique({
+  const job = await getDb().captureJob.findUnique({
     where: { id: captureJobId },
     include: {
       outputAssets: {
