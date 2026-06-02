@@ -24,6 +24,8 @@ import PropertiesPage from '@/pages/PropertiesPage';
 import PropertyCreateWizardPage from '@/pages/PropertyCreateWizardPage';
 import HelpPage from '@/pages/HelpPage';
 import PricingPage from '@/pages/PricingPage';
+import CaptureJobsPage from '@/pages/CaptureJobsPage';
+import CapturePublicPage from '@/pages/CapturePublicPage';
 
 function useDarkMode(): [boolean, () => void] {
   const [dark, setDark] = useState<boolean>(() => {
@@ -118,6 +120,15 @@ function MobileBottomNav(): JSX.Element | null {
       <path d="M16 3.13a4 4 0 0 1 0 7.75" />
     </svg>
   );
+  const IcoCapture = (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
+      <path d="M4 7V5a2 2 0 0 1 2-2h2" />
+      <path d="M16 3h2a2 2 0 0 1 2 2v2" />
+      <path d="M20 17v2a2 2 0 0 1-2 2h-2" />
+      <path d="M8 21H6a2 2 0 0 1-2-2v-2" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
   const IcoHelp = (
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5">
       <circle cx="12" cy="12" r="10" />
@@ -141,9 +152,9 @@ function MobileBottomNav(): JSX.Element | null {
       <div className="mx-auto flex h-14 max-w-lg items-stretch">
         <MobileNavItem to="/dashboard" label="Dashboard" icon={IcoDashboard} />
         <MobileNavItem to="/properties" label="Propiedades" icon={IcoHome} />
+        <MobileNavItem to="/capture-jobs" label="Capture" icon={IcoCapture} />
         <MobileNavItem to="/leads" label="Leads" icon={IcoUsers} badge={unreadCount} />
         <MobileNavItem to="/ayuda" label="Ayuda" icon={IcoHelp} />
-        <MobileNavItem to="/settings" label="Ajustes" icon={IcoSettings} />
       </div>
     </nav>
   );
@@ -197,6 +208,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
               <>
                 <BrandNavLink to="/dashboard">Dashboard</BrandNavLink>
                 <BrandNavLink to="/properties">Propiedades</BrandNavLink>
+                <BrandNavLink to="/capture-jobs">Capture</BrandNavLink>
                 <div className="relative">
                   <BrandNavLink to="/leads">Leads</BrandNavLink>
                   {unreadCount > 0 ? (
@@ -336,6 +348,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/compare" element={<ComparePage />} />
         <Route path="/property/:id" element={<PropertyRoutePage />} />
         <Route path="/property/:id/:slug" element={<PropertyRoutePage />} />
+        <Route path="/capture/:id" element={<CapturePublicPage />} />
         <Route path="/embed/:id" element={<EmbedRoutePage />} />
         <Route path="/agency/:slug" element={<AgencyPage />} />
         <Route path="/billing/success" element={<BillingSuccessPage />} />
@@ -343,6 +356,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/dashboard" element={<ProtectedRoute><DashboardPage /></ProtectedRoute>} />
         <Route path="/properties" element={<ProtectedRoute><PropertiesPage /></ProtectedRoute>} />
         <Route path="/properties/new" element={<ProtectedRoute><PropertyCreateWizardPage /></ProtectedRoute>} />
+        <Route path="/capture-jobs" element={<ProtectedRoute><CaptureJobsPage /></ProtectedRoute>} />
         <Route path="/leads" element={<ProtectedRoute><LeadsPage /></ProtectedRoute>} />
         <Route path="/settings" element={<ProtectedRoute><SettingsPage /></ProtectedRoute>} />
         <Route path="*" element={<Navigate to="/" replace />} />

@@ -25,6 +25,7 @@ model Tenant {
   createdAt     DateTime       @default(now())
   users         User[]
   properties    Property[]
+  captureJobs   CaptureJob[]
   subscription  Subscription?
   refreshTokens RefreshToken[]
 
@@ -44,6 +45,7 @@ model User {
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
   refreshTokens RefreshToken[]
+  captureJobs   CaptureJob[]
 
   @@index([tenantId])
   @@index([email])
@@ -73,6 +75,7 @@ model Property {
   views         Int      @default(0)
   spaces        Space[]
   leads         Lead[]
+  captureJobs   CaptureJob[]
   viewerEvents  ViewerEvent[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -156,9 +159,98 @@ model Lead {
   nextActionAt   DateTime?
   nextActionText String    @default("")
   updatedAt      DateTime  @default(now()) @updatedAt
+  captureJobs    CaptureJob[]
 
   @@index([propertyId])
   @@index([email])
+  @@index([status])
+}
+
+model CaptureJob {
+  id              String   @id @default(uuid())
+  tenantId        String
+  tenant          Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  leadId          String?
+  lead            Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  propertyId      String?
+  property        Property? @relation(fields: [propertyId], references: [id], onDelete: SetNull)
+  title           String
+  clientName      String
+  projectType     String   @default("property")
+  vertical        String   @default("real_estate")
+  status          String   @default("draft")
+  priority        String   @default("medium")
+  source          String   @default("manual")
+  assignedTo      String   @default("")
+  dueDate         DateTime?
+  estimatedCost   Int?
+  estimatedHours  Int?
+  commercialValue Int?
+  riskLevel       String   @default("low")
+  nextAction      String   @default("")
+  notes           String   @default("")
+  publicUrl       String   @default("")
+  qrUrl           String   @default("")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  inputAssets     CaptureInputAsset[]
+  outputAssets    CaptureOutputAsset[]
+
+  @@index([tenantId])
+  @@index([userId])
+  @@index([leadId])
+  @@index([propertyId])
+  @@index([status])
+  @@index([priority])
+  @@index([riskLevel])
+  @@index([dueDate])
+}
+
+model CaptureInputAsset {
+  id            String     @id @default(uuid())
+  captureJobId  String
+  captureJob    CaptureJob @relation(fields: [captureJobId], references: [id], onDelete: Cascade)
+  type          String
+  filename      String     @default("")
+  url           String
+  publicId      String     @default("")
+  source        String     @default("manual")
+  format        String     @default("")
+  size          Int        @default(0)
+  status        String     @default("received")
+  rightsStatus  String     @default("unknown")
+  qualityScore  Int?
+  notes         String     @default("")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([captureJobId])
+  @@index([type])
+  @@index([status])
+}
+
+model CaptureOutputAsset {
+  id               String     @id @default(uuid())
+  captureJobId     String
+  captureJob       CaptureJob @relation(fields: [captureJobId], references: [id], onDelete: Cascade)
+  type             String
+  format           String     @default("")
+  url              String
+  publicId         String     @default("")
+  status           String     @default("planned")
+  viewerReady      Boolean    @default(false)
+  mobileReady      Boolean    @default(false)
+  publishedUrl     String     @default("")
+  qrUrl            String     @default("")
+  analyticsEnabled Boolean    @default(false)
+  notes            String     @default("")
+  createdAt        DateTime   @default(now())
+  updatedAt        DateTime   @updatedAt
+
+  @@index([captureJobId])
+  @@index([type])
   @@index([status])
 }
 

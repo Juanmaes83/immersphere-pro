@@ -66,3 +66,93 @@ export interface DashLead {
   nextActionAt: string | null;
   createdAt: string;
 }
+
+export interface CaptureInputAsset {
+  id: string;
+  captureJobId: string;
+  type: string;
+  filename: string;
+  url: string;
+  publicId: string;
+  source: string;
+  format: string;
+  size: number;
+  status: string;
+  rightsStatus: string;
+  qualityScore: number | null;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CaptureOutputAsset {
+  id: string;
+  captureJobId: string;
+  type: string;
+  format: string;
+  url: string;
+  publicId: string;
+  status: string;
+  viewerReady: boolean;
+  mobileReady: boolean;
+  publishedUrl: string;
+  qrUrl: string;
+  analyticsEnabled: boolean;
+  notes: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CaptureJob {
+  id: string;
+  tenantId: string;
+  userId: string;
+  leadId: string | null;
+  propertyId: string | null;
+  title: string;
+  clientName: string;
+  projectType: string;
+  vertical: string;
+  status: string;
+  priority: string;
+  source: string;
+  assignedTo: string;
+  dueDate: string | null;
+  estimatedCost: number | null;
+  estimatedHours: number | null;
+  commercialValue: number | null;
+  riskLevel: string;
+  nextAction: string;
+  notes: string;
+  publicUrl: string;
+  qrUrl: string;
+  createdAt: string;
+  updatedAt: string;
+  property?: { id: string; title: string } | null;
+  lead?: { id: string; email: string; phone?: string; status: string } | null;
+  inputAssets?: CaptureInputAsset[];
+  outputAssets?: CaptureOutputAsset[];
+  _count?: {
+    inputAssets: number;
+    outputAssets: number;
+  };
+}
+
+export interface PublicCaptureJob {
+  id: string;
+  title: string;
+  clientName: string;
+  projectType: string;
+  vertical: string;
+  status: string;
+  publicUrl: string;
+  qrUrl: string;
+  outputAssets: Array<{
+    id: string;
+    type: string;
+    format: string;
+    url: string;
+    viewerReady: boolean;
+    mobileReady: boolean;
+  }>;
+}

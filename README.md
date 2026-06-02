@@ -31,6 +31,7 @@ Especificacion funcional para ordenar futuros procesos de captura, subida, proce
 - [Status Flow](docs/product/capture-processing/capturejob-status-flow.md)
 - [CRM Integration](docs/product/capture-processing/capturejob-crm-integration.md)
 - [MVP Roadmap](docs/product/capture-processing/capturejob-mvp-roadmap.md)
+- [Implementation Notes - Fase 2](docs/product/capture-processing/capturejob-implementation-notes.md)
 
 ---
 
