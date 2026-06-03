@@ -54,6 +54,26 @@ type Db = typeof prisma & {
   captureOutputAsset: any;
 };
 
+const COMMERCIAL_BRIEF_TONES = ['professional', 'premium', 'direct', 'inspirational', 'technical'] as const;
+const COMMERCIAL_BRIEF_CTA_GOALS = ['contact', 'book_visit', 'request_info', 'download', 'call'] as const;
+
+export interface CaptureCommercialBriefInput {
+  propertyType?: string;
+  location?: string;
+  surface?: string;
+  rooms?: string;
+  bathrooms?: string;
+  priceRange?: string;
+  targetAudience?: string;
+  salesObjective?: string;
+  keyBenefits?: string[];
+  differentiators?: string[];
+  tone?: string;
+  ctaGoal?: string;
+  brandNotes?: string;
+  constraints?: string;
+}
+
 function getDb(): Db {
   return prisma as Db;
 }
@@ -80,6 +100,7 @@ export interface CaptureJobInput {
   estimatedCost?: number | null;
   estimatedHours?: number | null;
   commercialValue?: number | null;
+  commercialBrief?: CaptureCommercialBriefInput | null;
   riskLevel?: string;
   nextAction?: string;
   notes?: string;
@@ -123,6 +144,51 @@ function assertValue(value: string | undefined, allowed: readonly string[], labe
 
 function cleanString(value: string | undefined | null, fallback = ''): string {
   return typeof value === 'string' ? value.trim() : fallback;
+}
+
+function cleanStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item) => cleanString(typeof item === 'string' ? item : String(item ?? '')))
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+export function normalizeCommercialBrief(input: CaptureCommercialBriefInput | null | undefined): CaptureCommercialBriefInput | null {
+  if (!input || typeof input !== 'object') return null;
+  const tone = cleanString(input.tone);
+  const ctaGoal = cleanString(input.ctaGoal);
+  return {
+    propertyType: cleanString(input.propertyType),
+    location: cleanString(input.location),
+    surface: cleanString(input.surface),
+    rooms: cleanString(input.rooms),
+    bathrooms: cleanString(input.bathrooms),
+    priceRange: cleanString(input.priceRange),
+    targetAudience: cleanString(input.targetAudience),
+    salesObjective: cleanString(input.salesObjective),
+    keyBenefits: cleanStringArray(input.keyBenefits),
+    differentiators: cleanStringArray(input.differentiators),
+    tone: COMMERCIAL_BRIEF_TONES.includes(tone as (typeof COMMERCIAL_BRIEF_TONES)[number]) ? tone : 'professional',
+    ctaGoal: COMMERCIAL_BRIEF_CTA_GOALS.includes(ctaGoal as (typeof COMMERCIAL_BRIEF_CTA_GOALS)[number]) ? ctaGoal : 'contact',
+    brandNotes: cleanString(input.brandNotes),
+    constraints: cleanString(input.constraints)
+  };
+}
+
+export function getCommercialBriefCompleteness(input: CaptureCommercialBriefInput | null | undefined): number {
+  const brief = normalizeCommercialBrief(input);
+  if (!brief) return 0;
+  let score = 0;
+  if (brief.propertyType) score += 10;
+  if (brief.location) score += 10;
+  if (brief.targetAudience) score += 15;
+  if (brief.salesObjective) score += 15;
+  if ((brief.keyBenefits ?? []).length >= 2) score += 15;
+  if ((brief.differentiators ?? []).length >= 1) score += 15;
+  if (brief.ctaGoal) score += 10;
+  if (brief.tone) score += 10;
+  return Math.min(100, score);
 }
 
 function isPremium3dOutputType(type: string | undefined | null): boolean {
@@ -233,6 +299,12 @@ function buildJobData(input: Partial<CaptureJobInput>, isCreate: boolean): Recor
   if ('estimatedCost' in input) data.estimatedCost = input.estimatedCost ?? null;
   if ('estimatedHours' in input) data.estimatedHours = input.estimatedHours ?? null;
   if ('commercialValue' in input) data.commercialValue = input.commercialValue ?? null;
+  if ('commercialBrief' in input) {
+    const commercialBrief = normalizeCommercialBrief(input.commercialBrief);
+    data.commercialBrief = commercialBrief;
+    data.commercialBriefCompleteness = getCommercialBriefCompleteness(commercialBrief);
+    data.commercialBriefUpdatedAt = commercialBrief ? new Date() : null;
+  }
   if (input.riskLevel !== undefined) data.riskLevel = input.riskLevel;
   if (input.nextAction !== undefined) data.nextAction = cleanString(input.nextAction);
   if (input.notes !== undefined) data.notes = cleanString(input.notes);

@@ -190,6 +190,9 @@ model CaptureJob {
   estimatedCost   Int?
   estimatedHours  Int?
   commercialValue Int?
+  commercialBrief Json?
+  commercialBriefUpdatedAt DateTime?
+  commercialBriefCompleteness Int?
   riskLevel       String   @default("low")
   nextAction      String   @default("")
   notes           String   @default("")

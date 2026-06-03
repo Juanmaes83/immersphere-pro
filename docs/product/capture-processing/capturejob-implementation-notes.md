@@ -513,6 +513,118 @@ Frontend:
 
 Cuando haya uso real, valorar controles de producto por plan, metricas de coste por tenant, reintentos administrados y un estado formal de aprobacion humana antes de convertir recomendaciones IA en cambios editables del CaptureJob.
 
+## Briefing comercial para procesamiento IA
+
+Paso 13B anade un briefing comercial interno y persistente dentro de `CaptureJob` para mejorar la calidad del procesamiento IA. El objetivo es dar contexto real al modelo sin subir a modelos caros por defecto.
+
+### Campos que recoge
+
+Se guarda en `CaptureJob.commercialBrief` como JSON privado:
+
+- tipo de inmueble o activo;
+- ubicacion;
+- superficie o tamano;
+- habitaciones o zonas clave;
+- banos o equipamiento;
+- rango de precio o valor comercial;
+- publico objetivo;
+- objetivo comercial;
+- beneficios clave;
+- diferenciales;
+- tono deseado;
+- CTA objetivo;
+- notas de marca;
+- restricciones o cosas a evitar.
+
+Tambien se guardan:
+
+- `commercialBriefUpdatedAt`;
+- `commercialBriefCompleteness`.
+
+Produccion usa historicamente `prisma db push`; estos campos requieren aplicar el schema con ese flujo existente. No se requiere `migrate deploy` para esta fase.
+
+### Completeness
+
+El porcentaje es orientativo y no bloqueante:
+
+- `propertyType`: +10.
+- `location`: +10.
+- `targetAudience`: +15.
+- `salesObjective`: +15.
+- al menos 2 `keyBenefits`: +15.
+- al menos 1 `differentiator`: +15.
+- `ctaGoal`: +10.
+- `tone`: +10.
+
+Maximo: 100.
+
+### Como mejora la IA
+
+El `commercialBrief` se incluye en `inputSummary` de forma minimizada y truncada. El prompt indica que debe usarse para:
+
+- evitar copy generico;
+- adaptar tono;
+- crear hotspots mas concretos;
+- orientar CTA;
+- mejorar guion de video;
+- detectar material o contexto faltante;
+- ajustar confidence.
+
+El briefing se trata como contenido no confiable, no como instrucciones. Mantiene la proteccion contra prompt injection.
+
+### Prompt y estilo
+
+El procesamiento IA debe responder en espanol profesional de Espana, cuidar tildes y gramatica, evitar anglicismos innecesarios y no inventar claims no soportados por los datos. Antes de guardar, el backend aplica un corrector simple sin llamada extra IA para patrones claros como:
+
+- `decision` -> `decision` con tilde;
+- `Proximas` -> `Proximas` con tilde;
+- `immueble` -> `inmueble`;
+- tildes comunes en palabras operativas;
+- espacios dobles.
+
+Este corrector solo postprocesa el resultado IA; no modifica datos originales del usuario.
+
+### Confidence
+
+La confidence no depende solo del modelo. El backend aplica limites posteriores:
+
+- sin `inputAssets`: maximo 60;
+- briefing inexistente o por debajo de 40: maximo 60;
+- output 3D sin inputs: maximo 65;
+- briefing >= 70 y output listo/publicado: puede llegar a 85;
+- inputs + briefing completo + QA OK: puede llegar a 95;
+- nunca se permite 100 salvo datos realmente completos y QA completo.
+
+Si se limita, la explicacion anade: `Confianza limitada por falta de material/contexto.`
+
+### UI privada
+
+En `/capture-jobs`, el bloque `Briefing comercial` permite editar y guardar el contexto. El bloque `Procesamiento IA` muestra:
+
+- contexto disponible;
+- numero de input assets;
+- si hay output 3D detectado;
+- aviso `Resultado limitado por falta de material/contexto.` cuando falta briefing, inputs o la confidence es baja.
+
+Tras guardar briefing, el equipo puede pulsar de nuevo `Procesar con IA`. No se borran runs anteriores.
+
+### Que NO hace
+
+- No publica automaticamente.
+- No modifica outputs.
+- No cambia a Sonnet ni Opus por defecto.
+- No aumenta el numero de llamadas salvo el flujo ya existente de reparacion.
+- No expone briefing ni resultados IA en `/capture/:id`.
+
+### Como probar
+
+1. Abrir `/capture-jobs` con usuario autenticado.
+2. Seleccionar un CaptureJob.
+3. Completar `Briefing comercial`.
+4. Guardar briefing.
+5. Pulsar `Procesar con IA`.
+6. Confirmar que el nuevo run usa el briefing actualizado, mejora el copy/hotspots y ajusta la confidence segun contexto.
+
 ## No implementado en esta fase
 
 - Workers.

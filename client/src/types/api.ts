@@ -103,6 +103,23 @@ export interface CaptureOutputAsset {
   updatedAt: string;
 }
 
+export interface CaptureCommercialBrief {
+  propertyType: string;
+  location: string;
+  surface: string;
+  rooms: string;
+  bathrooms: string;
+  priceRange: string;
+  targetAudience: string;
+  salesObjective: string;
+  keyBenefits: string[];
+  differentiators: string[];
+  tone: 'professional' | 'premium' | 'direct' | 'inspirational' | 'technical';
+  ctaGoal: 'contact' | 'book_visit' | 'request_info' | 'download' | 'call';
+  brandNotes: string;
+  constraints: string;
+}
+
 export interface CaptureJob {
   id: string;
   tenantId: string;
@@ -121,6 +138,9 @@ export interface CaptureJob {
   estimatedCost: number | null;
   estimatedHours: number | null;
   commercialValue: number | null;
+  commercialBrief: CaptureCommercialBrief | null;
+  commercialBriefUpdatedAt: string | null;
+  commercialBriefCompleteness: number | null;
   riskLevel: string;
   nextAction: string;
   notes: string;

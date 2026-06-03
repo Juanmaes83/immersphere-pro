@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { Upload, QrCode, ExternalLink, Archive, RefreshCw, Copy, BrainCircuit } from 'lucide-react';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { usePropertyStore } from '@/store/propertyStore';
-import type { CaptureAiProcessingResult, CaptureAiProcessingRun, CaptureJob, CaptureOutputAsset } from '@/types/api';
+import type { CaptureAiProcessingResult, CaptureAiProcessingRun, CaptureCommercialBrief, CaptureJob, CaptureOutputAsset } from '@/types/api';
 
 const STATUSES = [
   'draft',
@@ -81,6 +81,8 @@ interface OutputForm {
   notes: string;
 }
 
+type CommercialBriefForm = CaptureCommercialBrief;
+
 const emptyJobForm: CaptureJobForm = {
   leadId: '',
   propertyId: '',
@@ -113,6 +115,23 @@ const emptyOutputForm: OutputForm = {
   publishedUrl: '',
   analyticsEnabled: false,
   notes: ''
+};
+
+const emptyCommercialBriefForm: CommercialBriefForm = {
+  propertyType: '',
+  location: '',
+  surface: '',
+  rooms: '',
+  bathrooms: '',
+  priceRange: '',
+  targetAudience: '',
+  salesObjective: '',
+  keyBenefits: [],
+  differentiators: [],
+  tone: 'professional',
+  ctaGoal: 'contact',
+  brandNotes: '',
+  constraints: ''
 };
 
 function isPremium3dOutput(type: string): boolean {
@@ -334,6 +353,39 @@ function stringifyAiSection(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+function listToText(value: string[]): string {
+  return value.join('\n');
+}
+
+function textToList(value: string): string[] {
+  return value
+    .split(/\r?\n|,/)
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function toCommercialBriefForm(job: CaptureJob | null): CommercialBriefForm {
+  return {
+    ...emptyCommercialBriefForm,
+    ...(job?.commercialBrief ?? {}),
+    keyBenefits: job?.commercialBrief?.keyBenefits ?? [],
+    differentiators: job?.commercialBrief?.differentiators ?? []
+  };
+}
+
+function getCommercialBriefCompleteness(brief: CommercialBriefForm): number {
+  let score = 0;
+  if (brief.propertyType.trim()) score += 10;
+  if (brief.location.trim()) score += 10;
+  if (brief.targetAudience.trim()) score += 15;
+  if (brief.salesObjective.trim()) score += 15;
+  if (brief.keyBenefits.length >= 2) score += 15;
+  if (brief.differentiators.length >= 1) score += 15;
+  if (brief.ctaGoal) score += 10;
+  if (brief.tone) score += 10;
+  return Math.min(100, score);
+}
+
 function isStaleRunningRun(run: CaptureAiProcessingRun | null): boolean {
   if (!run || run.status !== 'running') return false;
   return Date.now() - new Date(run.createdAt).getTime() > 15 * 60 * 1000;
@@ -449,6 +501,7 @@ export default function CaptureJobsPage(): JSX.Element {
   const [selectedJob, setSelectedJob] = useState<CaptureJob | null>(null);
   const [form, setForm] = useState<CaptureJobForm>(emptyJobForm);
   const [outputForm, setOutputForm] = useState<OutputForm>(emptyOutputForm);
+  const [commercialBriefForm, setCommercialBriefForm] = useState<CommercialBriefForm>(emptyCommercialBriefForm);
   const [filters, setFilters] = useState({ status: '', priority: '', riskLevel: '', q: '' });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -478,6 +531,8 @@ export default function CaptureJobsPage(): JSX.Element {
   const latestAiRun = aiRuns[0] ?? null;
   const hasRunningAiRun = aiRuns.some((run) => run.status === 'running');
   const hasStaleRunningAiRun = isStaleRunningRun(latestAiRun);
+  const commercialBriefCompleteness = selectedJob?.commercialBriefCompleteness ?? getCommercialBriefCompleteness(commercialBriefForm);
+  const contextLimited = (selectedJob?.inputAssets?.length ?? 0) === 0 || commercialBriefCompleteness < 40 || (latestAiRun?.result?.confidence.score ?? 100) <= 60;
 
   useEffect(() => {
     if (!selectedJob || !hasRunningAiRun) return undefined;
@@ -511,6 +566,7 @@ export default function CaptureJobsPage(): JSX.Element {
       const data = await unwrapApiResponse<CaptureJob>(api.get(`/capture-jobs/${id}`));
       setSelectedJob(data);
       setForm(toJobForm(data));
+      setCommercialBriefForm(toCommercialBriefForm(data));
       setGuideTypeOverride('');
       await loadAiRuns(id);
     } catch (err) {
@@ -531,6 +587,7 @@ export default function CaptureJobsPage(): JSX.Element {
     setSelectedJob(null);
     setForm(emptyJobForm);
     setOutputForm(emptyOutputForm);
+    setCommercialBriefForm(emptyCommercialBriefForm);
     setGuideTypeOverride('');
     setAiRuns([]);
     setAiRunsOpen(false);
@@ -544,6 +601,10 @@ export default function CaptureJobsPage(): JSX.Element {
 
   function updateOutputForm<K extends keyof OutputForm>(key: K, value: OutputForm[K]): void {
     setOutputForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateCommercialBrief<K extends keyof CommercialBriefForm>(key: K, value: CommercialBriefForm[K]): void {
+    setCommercialBriefForm((current) => ({ ...current, [key]: value }));
   }
 
   function updateOutputType(type: string): void {
@@ -595,6 +656,26 @@ export default function CaptureJobsPage(): JSX.Element {
       await loadAiRuns(selectedJob.id);
     } finally {
       setAiProcessing(false);
+    }
+  }
+
+  async function saveCommercialBrief(): Promise<void> {
+    if (!selectedJob) return;
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const data = await unwrapApiResponse<CaptureJob>(api.put(`/capture-jobs/${selectedJob.id}`, {
+        commercialBrief: commercialBriefForm
+      }));
+      setSelectedJob(data);
+      setCommercialBriefForm(toCommercialBriefForm(data));
+      setMessage('Briefing comercial guardado.');
+      await loadJobs();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -1094,6 +1175,65 @@ export default function CaptureJobsPage(): JSX.Element {
                 );
               })()}
 
+              <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-white/5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">Briefing comercial</p>
+                    <h3 className="mt-1 text-base font-black text-slate-950 dark:text-white">Contexto para mejorar la IA</h3>
+                    <p className="mt-1 text-xs font-bold leading-5 text-slate-500 dark:text-white/50">
+                      Cuanto mas completo sea el briefing, mejor seran los hotspots, copy y guion generados.
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-left sm:text-right">
+                    <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] ring-1 ${commercialBriefCompleteness >= 70 ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50' : commercialBriefCompleteness >= 40 ? 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-800/50' : 'bg-red-50 text-red-700 ring-red-200 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-800/50'}`}>
+                      Contexto {commercialBriefCompleteness}%
+                    </span>
+                    {commercialBriefCompleteness < 40 ? (
+                      <p className="mt-2 text-xs font-bold text-amber-700 dark:text-amber-300">Resultado limitado por falta de material/contexto.</p>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                  <input value={commercialBriefForm.propertyType} onChange={(e) => updateCommercialBrief('propertyType', e.target.value)} placeholder="Tipo de inmueble / activo" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.location} onChange={(e) => updateCommercialBrief('location', e.target.value)} placeholder="Ubicacion" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.surface} onChange={(e) => updateCommercialBrief('surface', e.target.value)} placeholder="Superficie / tamano" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.rooms} onChange={(e) => updateCommercialBrief('rooms', e.target.value)} placeholder="Habitaciones / zonas clave" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.bathrooms} onChange={(e) => updateCommercialBrief('bathrooms', e.target.value)} placeholder="Banos / equipamiento" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.priceRange} onChange={(e) => updateCommercialBrief('priceRange', e.target.value)} placeholder="Rango de precio / valor comercial" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.targetAudience} onChange={(e) => updateCommercialBrief('targetAudience', e.target.value)} placeholder="Publico objetivo" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.salesObjective} onChange={(e) => updateCommercialBrief('salesObjective', e.target.value)} placeholder="Objetivo comercial" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <textarea value={listToText(commercialBriefForm.keyBenefits)} onChange={(e) => updateCommercialBrief('keyBenefits', textToList(e.target.value))} rows={3} placeholder="Beneficios clave, uno por linea" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <textarea value={listToText(commercialBriefForm.differentiators)} onChange={(e) => updateCommercialBrief('differentiators', textToList(e.target.value))} rows={3} placeholder="Diferenciales, uno por linea" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <select value={commercialBriefForm.tone} onChange={(e) => updateCommercialBrief('tone', e.target.value as CommercialBriefForm['tone'])} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
+                    <option value="professional">Profesional</option>
+                    <option value="premium">Premium</option>
+                    <option value="direct">Directo</option>
+                    <option value="inspirational">Inspiracional</option>
+                    <option value="technical">Tecnico</option>
+                  </select>
+                  <select value={commercialBriefForm.ctaGoal} onChange={(e) => updateCommercialBrief('ctaGoal', e.target.value as CommercialBriefForm['ctaGoal'])} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
+                    <option value="contact">Contacto</option>
+                    <option value="book_visit">Reservar visita</option>
+                    <option value="request_info">Solicitar informacion</option>
+                    <option value="download">Descarga</option>
+                    <option value="call">Llamada</option>
+                  </select>
+                  <textarea value={commercialBriefForm.brandNotes} onChange={(e) => updateCommercialBrief('brandNotes', e.target.value)} rows={3} placeholder="Notas de marca" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <textarea value={commercialBriefForm.constraints} onChange={(e) => updateCommercialBrief('constraints', e.target.value)} rows={3} placeholder="Restricciones / cosas a evitar" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                </div>
+
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button type="button" onClick={() => { void saveCommercialBrief(); }} disabled={saving} className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950">
+                    Guardar briefing
+                  </button>
+                  <button type="button" onClick={() => setCommercialBriefForm(emptyCommercialBriefForm)} disabled={saving} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5">
+                    Limpiar campos
+                  </button>
+                  <p className="text-xs font-bold text-slate-400">Usar briefing en IA: se aplica automaticamente al reprocesar.</p>
+                </div>
+              </div>
+
               {(() => {
                 const latestRun = latestAiRun;
                 const result: CaptureAiProcessingResult | null = latestRun?.result ?? null;
@@ -1125,6 +1265,23 @@ export default function CaptureJobsPage(): JSX.Element {
                         </button>
                       </div>
                     </div>
+
+                    <div className="mt-4 grid gap-2 sm:grid-cols-3">
+                      <p className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
+                        Contexto disponible: <span className="font-black text-slate-800 dark:text-white">{commercialBriefCompleteness}%</span>
+                      </p>
+                      <p className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
+                        InputAssets: <span className="font-black text-slate-800 dark:text-white">{selectedJob.inputAssets?.length ?? 0}</span>
+                      </p>
+                      <p className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
+                        Output 3D detectado: <span className="font-black text-slate-800 dark:text-white">{getPrimaryPremium3dOutput(selectedJob) ? 'si' : 'no'}</span>
+                      </p>
+                    </div>
+                    {contextLimited ? (
+                      <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                        Resultado limitado por falta de material/contexto.
+                      </p>
+                    ) : null}
 
                     {!latestRun ? (
                       <p className="mt-4 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
