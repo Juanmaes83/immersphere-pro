@@ -26,6 +26,7 @@ model Tenant {
   users         User[]
   properties    Property[]
   captureJobs   CaptureJob[]
+  captureAiProcessingRuns CaptureAiProcessingRun[]
   subscription  Subscription?
   refreshTokens RefreshToken[]
 
@@ -46,6 +47,7 @@ model User {
   updatedAt     DateTime       @updatedAt
   refreshTokens RefreshToken[]
   captureJobs   CaptureJob[]
+  captureAiProcessingRuns CaptureAiProcessingRun[]
 
   @@index([tenantId])
   @@index([email])
@@ -197,6 +199,7 @@ model CaptureJob {
   updatedAt       DateTime @updatedAt
   inputAssets     CaptureInputAsset[]
   outputAssets    CaptureOutputAsset[]
+  aiProcessingRuns CaptureAiProcessingRun[]
 
   @@index([tenantId])
   @@index([userId])
@@ -206,6 +209,32 @@ model CaptureJob {
   @@index([priority])
   @@index([riskLevel])
   @@index([dueDate])
+}
+
+model CaptureAiProcessingRun {
+  id            String     @id @default(uuid())
+  captureJobId  String
+  captureJob    CaptureJob @relation(fields: [captureJobId], references: [id], onDelete: Cascade)
+  tenantId      String
+  tenant        Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  userId        String?
+  user          User?      @relation(fields: [userId], references: [id], onDelete: SetNull)
+  status        String
+  promptVersion String
+  inputSummary  Json
+  result        Json?
+  error         String?
+  model         String?
+  tokensInput   Int?
+  tokensOutput  Int?
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@index([captureJobId])
+  @@index([tenantId])
+  @@index([userId])
+  @@index([status])
+  @@index([createdAt])
 }
 
 model CaptureInputAsset {

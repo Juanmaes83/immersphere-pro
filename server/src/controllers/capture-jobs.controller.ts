@@ -5,6 +5,11 @@ import { AppError } from '../middleware/errorHandler.js';
 import { storeUploadFile } from '../services/cloudinary.service.js';
 import { checkTenantStorageQuota } from '../services/quota.service.js';
 import {
+  getCaptureAiProcessingRun,
+  listCaptureAiProcessingRuns,
+  processCaptureJobWithAi
+} from '../services/capture-ai-processing.service.js';
+import {
   archiveCaptureJob,
   archiveCaptureOutputAsset,
   createCaptureInputAsset,
@@ -263,6 +268,36 @@ export async function deleteCaptureOutputAssetController(request: Request, respo
 export async function getPublicCaptureJobController(request: Request, response: Response, next: NextFunction): Promise<void> {
   try {
     const data = await getPublicCaptureJob(request.params.captureJobId);
+    response.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function processCaptureJobAiController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const { tenantId, userId } = requireTenantUser(request);
+    const data = await processCaptureJobWithAi(request.params.captureJobId, tenantId, userId);
+    response.status(201).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listCaptureJobAiRunsController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const { tenantId } = requireTenantUser(request);
+    const data = await listCaptureAiProcessingRuns(request.params.captureJobId, tenantId);
+    response.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getCaptureJobAiRunController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const { tenantId } = requireTenantUser(request);
+    const data = await getCaptureAiProcessingRun(request.params.captureJobId, request.params.runId, tenantId);
     response.status(200).json({ success: true, data });
   } catch (error) {
     next(error);

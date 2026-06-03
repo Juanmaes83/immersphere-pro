@@ -138,6 +138,96 @@ export interface CaptureJob {
   };
 }
 
+export interface CaptureAiProcessingResult {
+  experienceStructure: {
+    recommendedTitle: string;
+    intro: string;
+    sections: Array<{
+      title: string;
+      objective: string;
+      recommendedMedia: string;
+      notes: string;
+    }>;
+    recommendedFlow: string[];
+  };
+  suggestedHotspots: Array<{
+    label: string;
+    description: string;
+    roomOrZone: string;
+    hotspotType: 'info' | 'cta' | 'navigation' | 'feature' | 'warning';
+    priority: 'low' | 'medium' | 'high';
+    businessObjective: string;
+    cta: string;
+    mediaSuggestion: string;
+    assetDependency: string;
+    whyItMatters: string;
+  }>;
+  commercialCopy: {
+    shortDescription: string;
+    longDescription: string;
+    propertyHighlights: string[];
+    salesAngle: string;
+    targetAudience: string;
+    ctaSuggestions: string[];
+  };
+  videoScript: {
+    hook: string;
+    sceneList: Array<{
+      scene: string;
+      visual: string;
+      voiceover: string;
+      duration: string;
+    }>;
+    voiceover: string;
+    closingCTA: string;
+    formatRecommendations: {
+      horizontal: string;
+      vertical: string;
+    };
+  };
+  missingMaterial: Array<{
+    item: string;
+    severity: 'low' | 'medium' | 'high';
+    reason: string;
+    recommendation: string;
+  }>;
+  qaRecommendations: {
+    desktop: string[];
+    mobile: string[];
+    performance: string[];
+    viewer: string[];
+    fallback: string[];
+    publicationReadiness: 'not_ready' | 'needs_review' | 'ready';
+  };
+  nextActions: Array<{
+    action: string;
+    ownerSuggestion: string;
+    priority: 'low' | 'medium' | 'high';
+    reason: string;
+  }>;
+  confidence: {
+    score: number;
+    explanation: string;
+  };
+}
+
+export interface CaptureAiProcessingRun {
+  id: string;
+  captureJobId: string;
+  tenantId: string;
+  userId: string | null;
+  status: 'running' | 'completed' | 'failed';
+  promptVersion: string;
+  inputSummary: unknown;
+  result: CaptureAiProcessingResult | null;
+  error: string | null;
+  model: string | null;
+  tokensInput: number | null;
+  tokensOutput: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface PublicCaptureJob {
   id: string;
   title: string;

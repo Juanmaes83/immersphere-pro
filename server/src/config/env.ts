@@ -25,7 +25,11 @@ const envSchema = z.object({
   LEAD_NOTIFICATION_WEBHOOK_URL: z.string().default(""),
   RESEND_API_KEY: z.string().default(""),
   RESEND_FROM_EMAIL: z.string().default("noreply@immersphere.io"),
-  ANTHROPIC_API_KEY: z.string().default("")
+  ANTHROPIC_API_KEY: z.string().default(""),
+  ANTHROPIC_MODEL: z.string().default(""),
+  CAPTURE_AI_MODEL_TIER: z.enum(["cheap", "balanced", "premium"]).default("cheap"),
+  AI_PROCESSING_MAX_ASSETS: z.coerce.number().int().positive().default(10),
+  AI_PROCESSING_MAX_RUNS: z.coerce.number().int().positive().default(10)
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

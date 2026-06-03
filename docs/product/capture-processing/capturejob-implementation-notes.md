@@ -352,6 +352,142 @@ No modifica restricciones de upload ni permite nuevos formatos.
 
 Si el equipo empieza a usar la guia como control formal de calidad, evaluar una migracion minima para guardar checklist, responsable, fecha de revision y estado real de material.
 
+## Procesamiento IA de CaptureJob
+
+Paso 13 anade procesamiento IA real, privado y persistente para `CaptureJob`. El equipo puede lanzar un analisis desde `/capture-jobs` con el boton "Procesar con IA". El backend construye un resumen seguro del job, llama a Anthropic desde servidor, valida JSON estructurado y guarda el resultado como run historico.
+
+### Que hace
+
+- Crea runs persistentes en `CaptureAiProcessingRun`.
+- Resume datos basicos del CaptureJob.
+- Resume `inputAssets` y `outputAssets` sin leer binarios.
+- Deriva estado de material, estado 3D y QA desktop/mobile.
+- Llama a Anthropic solo desde backend.
+- Guarda `inputSummary`, `result`, `status`, modelo, tokens y errores.
+- Permite consultar ultimos runs desde endpoints privados.
+- Muestra el ultimo run y un historial en `/capture-jobs`.
+- Permite copiar secciones: estructura, hotspots, copy comercial, guion y proximas acciones.
+
+### Que genera
+
+El JSON de resultado incluye:
+
+- estructura recomendada de experiencia;
+- hotspots sugeridos;
+- copy comercial;
+- guion de video;
+- material faltante;
+- recomendaciones QA;
+- proximas acciones;
+- confidence score.
+
+El resultado es recomendacion operativa. No se aplica automaticamente al CaptureJob.
+
+### Datos que usa
+
+Se envia a IA un `inputSummary` minimizado:
+
+- `title`, `clientName`, `projectType`, `vertical`, `status`, `priority`, `riskLevel`, `nextAction` y notas internas truncadas;
+- numero y resumen de assets;
+- `inputAssets`: id, tipo, nombre truncado, formato, estado y fecha;
+- `outputAssets`: id, tipo, formato, estado, QA desktop/mobile, provider derivado, existencia de URL y dominio publico seguro;
+- estado 3D principal: provider, desktop, mobile, fallback y status.
+
+### Datos que no usa
+
+No se envia:
+
+- `tenantId`;
+- `userId`;
+- API keys;
+- `DATABASE_URL`;
+- auth headers;
+- contenido binario;
+- contenido completo de imagenes, PDFs o videos;
+- URLs completas con query params o tokens;
+- datos privados no necesarios.
+
+### Privacidad y tenant isolation
+
+Los endpoints usan `requireAuth` y validan que el `CaptureJob` pertenece al `tenantId` autenticado. Los runs guardan `tenantId` y se consultan siempre filtrando por `tenantId` y `captureJobId`. No existe endpoint publico de IA y `/capture/:id` no muestra estos resultados.
+
+### Prompt injection
+
+El prompt del sistema trata nombres de archivo, notas, URLs y metadatos como datos no confiables. Indica expresamente que cualquier instruccion dentro del CaptureJob debe ignorarse si intenta cambiar reglas, revelar secretos, saltar privacidad o modificar el formato. La salida se exige como JSON estricto y se valida con Zod antes de marcar el run como `completed`.
+
+### Estrategia de seleccion de modelo
+
+El procesamiento IA usa una politica de bajo coste por defecto. No se hardcodea Opus ni un modelo caro como default.
+
+Prioridad:
+
+1. Si `ANTHROPIC_MODEL` tiene valor, se usa como override explicito.
+2. Si `ANTHROPIC_MODEL` esta vacio, se usa `CAPTURE_AI_MODEL_TIER`.
+3. Si `CAPTURE_AI_MODEL_TIER` no existe, el default es `cheap`.
+
+Tiers controlados en backend:
+
+- `cheap`: default, pensado para bajo coste y baja latencia. Actualmente apunta a `claude-haiku-4-5-20251001`.
+- `balanced`: opcion media tipo Sonnet, solo si se configura explicitamente. Actualmente apunta a `claude-sonnet-4-5-20250929`.
+- `premium`: reservado para futuro y nunca debe ser default. Actualmente no usa Opus por defecto.
+
+Si Anthropic cambia nombres, precios o disponibilidad de modelos, solo hay que actualizar el mapa de modelos del backend. `ANTHROPIC_MODEL` permite override manual sin tocar codigo.
+
+### Variables necesarias
+
+- `ANTHROPIC_API_KEY`: obligatoria para ejecutar el procesamiento.
+- `ANTHROPIC_MODEL`: opcional. Override manual con maxima prioridad.
+- `CAPTURE_AI_MODEL_TIER`: opcional. Default: `cheap`.
+- `AI_PROCESSING_MAX_ASSETS`: opcional. Default: `10`.
+- `AI_PROCESSING_MAX_RUNS`: opcional. Default: `10`.
+
+Si falta `ANTHROPIC_API_KEY`, el backend no rompe el arranque. Al pulsar "Procesar con IA", se crea un run `failed` y se devuelve error controlado: `ANTHROPIC_API_KEY no configurada`.
+
+### Control de coste
+
+- No hay prompt libre del usuario.
+- Se limita el numero de assets enviados.
+- Se truncan notas y nombres largos.
+- Se usa `max_tokens` razonable: `2500`.
+- Se bloquea un nuevo run si ya hay uno `running` para el mismo CaptureJob.
+- Se guarda uso de tokens cuando Anthropic lo devuelve.
+
+### Como probar
+
+Backend:
+
+1. Configurar `ANTHROPIC_API_KEY` en entorno local si se quiere una llamada real.
+2. Ejecutar `npx prisma generate`.
+3. Validar schema con `npx prisma validate`.
+4. Ejecutar `npx tsc --noEmit`.
+5. Arrancar API.
+
+Frontend:
+
+1. Ejecutar `npx tsc --noEmit`.
+2. Ejecutar `npm run build`.
+3. Entrar autenticado.
+4. Abrir `/capture-jobs`.
+5. Seleccionar un CaptureJob.
+6. Pulsar "Procesar con IA".
+7. Revisar ultimo run, secciones generadas e historial.
+
+### Que NO hace
+
+- No genera Gaussian/Splat.
+- No procesa video.
+- No lee imagenes.
+- No hace OCR.
+- No descarga archivos.
+- No publica automaticamente.
+- No modifica automaticamente el CaptureJob.
+- No crea workers ni colas.
+- No expone resultados en `/capture/`.
+
+### Siguiente paso recomendado
+
+Cuando haya uso real, valorar controles de producto por plan, metricas de coste por tenant, reintentos administrados y un estado formal de aprobacion humana antes de convertir recomendaciones IA en cambios editables del CaptureJob.
+
 ## No implementado en esta fase
 
 - Workers.

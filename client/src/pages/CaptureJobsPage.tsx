@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { Upload, QrCode, ExternalLink, Archive, RefreshCw, Copy } from 'lucide-react';
+import { Upload, QrCode, ExternalLink, Archive, RefreshCw, Copy, BrainCircuit } from 'lucide-react';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { usePropertyStore } from '@/store/propertyStore';
-import type { CaptureJob, CaptureOutputAsset } from '@/types/api';
+import type { CaptureAiProcessingResult, CaptureAiProcessingRun, CaptureJob, CaptureOutputAsset } from '@/types/api';
 
 const STATUSES = [
   'draft',
@@ -323,6 +323,17 @@ function summarizeInputAssets(job: CaptureJob): string[] {
   return [...counts.entries()].map(([label, count]) => `${count} ${label}`);
 }
 
+function formatRunDate(value: string): string {
+  return new Intl.DateTimeFormat('es-ES', {
+    dateStyle: 'short',
+    timeStyle: 'short'
+  }).format(new Date(value));
+}
+
+function stringifyAiSection(value: unknown): string {
+  return JSON.stringify(value, null, 2);
+}
+
 function getSuggestedFormat(type: string): string {
   if (type === 'gaussian_splat') return 'gaussian';
   if (type === 'supersplat' || type === 'splat_viewer') return 'splat';
@@ -413,6 +424,9 @@ export default function CaptureJobsPage(): JSX.Element {
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [guideTypeOverride, setGuideTypeOverride] = useState<CaptureGuideType | ''>('');
+  const [aiRuns, setAiRuns] = useState<CaptureAiProcessingRun[]>([]);
+  const [aiProcessing, setAiProcessing] = useState(false);
+  const [aiRunsOpen, setAiRunsOpen] = useState(false);
 
   useEffect(() => {
     void fetchProperties({ limit: 100 });
@@ -454,6 +468,16 @@ export default function CaptureJobsPage(): JSX.Element {
       setSelectedJob(data);
       setForm(toJobForm(data));
       setGuideTypeOverride('');
+      await loadAiRuns(id);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    }
+  }
+
+  async function loadAiRuns(captureJobId: string): Promise<void> {
+    try {
+      const data = await unwrapApiResponse<CaptureAiProcessingRun[]>(api.get(`/capture-jobs/${captureJobId}/ai/runs`));
+      setAiRuns(Array.isArray(data) ? data : []);
     } catch (err) {
       setError(getApiErrorMessage(err));
     }
@@ -464,6 +488,8 @@ export default function CaptureJobsPage(): JSX.Element {
     setForm(emptyJobForm);
     setOutputForm(emptyOutputForm);
     setGuideTypeOverride('');
+    setAiRuns([]);
+    setAiRunsOpen(false);
     setMessage(null);
     setError(null);
   }
@@ -500,6 +526,28 @@ export default function CaptureJobsPage(): JSX.Element {
 
   async function copyViewerUrl(url: string): Promise<void> {
     await copyToClipboard(url, 'Viewer externo copiado.');
+  }
+
+  async function copyAiSection(label: string, value: unknown): Promise<void> {
+    await copyToClipboard(stringifyAiSection(value), `${label} copiado.`);
+  }
+
+  async function processWithAi(): Promise<void> {
+    if (!selectedJob) return;
+    setAiProcessing(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const run = await unwrapApiResponse<CaptureAiProcessingRun>(api.post(`/capture-jobs/${selectedJob.id}/ai/process`));
+      setAiRuns((current) => [run, ...current.filter((item) => item.id !== run.id)]);
+      setMessage(run.status === 'completed' ? 'Procesamiento IA completado.' : 'Procesamiento IA registrado.');
+      await loadAiRuns(selectedJob.id);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+      await loadAiRuns(selectedJob.id);
+    } finally {
+      setAiProcessing(false);
+    }
   }
 
   async function saveJob(event: FormEvent): Promise<void> {
@@ -994,6 +1042,173 @@ export default function CaptureJobsPage(): JSX.Element {
                         ))}
                       </div>
                     ) : null}
+                  </div>
+                );
+              })()}
+
+              {(() => {
+                const latestRun = aiRuns[0] ?? null;
+                const result: CaptureAiProcessingResult | null = latestRun?.result ?? null;
+                return (
+                  <div className="rounded-xl border border-sky-200 bg-sky-50/80 p-4 dark:border-sky-900/50 dark:bg-sky-950/20">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.14em] text-sky-600 dark:text-sky-300">Procesamiento IA</p>
+                        <h3 className="mt-1 text-base font-black text-slate-950 dark:text-white">Propuesta asistida para CaptureJob</h3>
+                        <p className="mt-1 text-xs font-bold leading-5 text-slate-500 dark:text-white/50">
+                          Analiza datos existentes, assets resumidos, captura guiada y QA. No modifica el job ni publica entregables.
+                        </p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => { void processWithAi(); }}
+                        disabled={aiProcessing || aiRuns.some((run) => run.status === 'running')}
+                        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-sky-600 px-4 py-2 text-xs font-black text-white hover:bg-sky-500 disabled:opacity-50"
+                      >
+                        <BrainCircuit className="h-4 w-4" /> {aiProcessing ? 'Procesando...' : 'Procesar con IA'}
+                      </button>
+                    </div>
+
+                    {!latestRun ? (
+                      <p className="mt-4 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
+                        Aun no hay procesamientos IA para este CaptureJob. Ejecuta el analisis cuando el material base y las notas internas esten razonablemente completos.
+                      </p>
+                    ) : (
+                      <div className="mt-4 space-y-3">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ring-1 ${latestRun.status === 'completed' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50' : latestRun.status === 'failed' ? 'bg-red-50 text-red-700 ring-red-200 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-800/50' : 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-800/50'}`}>
+                            {latestRun.status}
+                          </span>
+                          <span className="text-xs font-bold text-slate-500 dark:text-white/50">{formatRunDate(latestRun.createdAt)}</span>
+                          {latestRun.model ? <span className="text-xs font-bold text-slate-400">{latestRun.model}</span> : null}
+                          {result ? <span className="text-xs font-black text-sky-700 dark:text-sky-300">Confidence {result.confidence.score}/100</span> : null}
+                        </div>
+
+                        {latestRun.error ? (
+                          <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300">{latestRun.error}</p>
+                        ) : null}
+
+                        {result ? (
+                          <div className="grid gap-3">
+                            <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
+                              <div className="flex items-start justify-between gap-3">
+                                <div>
+                                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Estructura recomendada</p>
+                                  <h4 className="mt-1 text-sm font-black text-slate-900 dark:text-white">{result.experienceStructure.recommendedTitle}</h4>
+                                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{result.experienceStructure.intro}</p>
+                                </div>
+                                <button type="button" onClick={() => { void copyAiSection('Estructura', result.experienceStructure); }} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
+                                  <Copy className="h-3 w-3" /> Copiar
+                                </button>
+                              </div>
+                              <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                                {result.experienceStructure.sections.slice(0, 4).map((section) => (
+                                  <p key={`${section.title}-${section.objective}`} className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-white/5 dark:text-white/50">
+                                    <span className="font-black text-slate-700 dark:text-white/70">{section.title}</span> · {section.objective}
+                                  </p>
+                                ))}
+                              </div>
+                            </div>
+
+                            <div className="grid gap-3 lg:grid-cols-2">
+                              <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Hotspots sugeridos</p>
+                                  <button type="button" onClick={() => { void copyAiSection('Hotspots', result.suggestedHotspots); }} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
+                                    <Copy className="h-3 w-3" /> Copiar
+                                  </button>
+                                </div>
+                                <div className="mt-2 space-y-2">
+                                  {result.suggestedHotspots.slice(0, 4).map((hotspot) => (
+                                    <p key={`${hotspot.label}-${hotspot.roomOrZone}`} className="text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
+                                      <span className="font-black text-slate-800 dark:text-white">{hotspot.label}</span> · {hotspot.roomOrZone} · {hotspot.priority}
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+
+                              <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Copy comercial</p>
+                                  <button type="button" onClick={() => { void copyAiSection('Copy comercial', result.commercialCopy); }} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
+                                    <Copy className="h-3 w-3" /> Copiar
+                                  </button>
+                                </div>
+                                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{result.commercialCopy.shortDescription}</p>
+                                <p className="mt-2 text-xs font-bold text-sky-700 dark:text-sky-300">{result.commercialCopy.salesAngle}</p>
+                              </div>
+
+                              <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Guion de video</p>
+                                  <button type="button" onClick={() => { void copyAiSection('Guion', result.videoScript); }} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
+                                    <Copy className="h-3 w-3" /> Copiar
+                                  </button>
+                                </div>
+                                <p className="mt-2 text-xs font-black text-slate-800 dark:text-white">{result.videoScript.hook}</p>
+                                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{result.videoScript.closingCTA}</p>
+                              </div>
+
+                              <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
+                                <div className="flex items-center justify-between gap-2">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Proximas acciones</p>
+                                  <button type="button" onClick={() => { void copyAiSection('Proximas acciones', result.nextActions); }} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
+                                    <Copy className="h-3 w-3" /> Copiar
+                                  </button>
+                                </div>
+                                <div className="mt-2 space-y-2">
+                                  {result.nextActions.slice(0, 4).map((action) => (
+                                    <p key={`${action.action}-${action.ownerSuggestion}`} className="text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
+                                      <span className="font-black text-slate-800 dark:text-white">{action.priority}</span> · {action.action}
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="grid gap-3 lg:grid-cols-2">
+                              <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
+                                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Material faltante</p>
+                                <div className="mt-2 space-y-2">
+                                  {result.missingMaterial.length === 0 ? <p className="text-xs font-bold text-slate-400">Sin faltantes destacados.</p> : result.missingMaterial.slice(0, 4).map((item) => (
+                                    <p key={`${item.item}-${item.reason}`} className="rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                                      {item.severity} · {item.item}: {item.recommendation}
+                                    </p>
+                                  ))}
+                                </div>
+                              </div>
+                              <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
+                                <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">QA recomendado</p>
+                                <p className="mt-2 text-xs font-black text-slate-800 dark:text-white">Readiness: {statusLabel(result.qaRecommendations.publicationReadiness)}</p>
+                                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
+                                  Desktop: {result.qaRecommendations.desktop.slice(0, 2).join(' · ') || 'sin recomendaciones'}
+                                </p>
+                                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
+                                  Mobile: {result.qaRecommendations.mobile.slice(0, 2).join(' · ') || 'sin recomendaciones'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        ) : null}
+
+                        {aiRuns.length > 1 ? (
+                          <div>
+                            <button type="button" onClick={() => setAiRunsOpen((current) => !current)} className="text-xs font-black text-sky-700 hover:text-sky-500 dark:text-sky-300">
+                              {aiRunsOpen ? 'Ocultar historial' : `Ver historial (${aiRuns.length - 1})`}
+                            </button>
+                            {aiRunsOpen ? (
+                              <div className="mt-2 space-y-1">
+                                {aiRuns.slice(1).map((run) => (
+                                  <p key={run.id} className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
+                                    {formatRunDate(run.createdAt)} · {run.status} · {run.model || 'modelo no registrado'} {run.result ? `· confidence ${run.result.confidence.score}/100` : ''}
+                                  </p>
+                                ))}
+                              </div>
+                            ) : null}
+                          </div>
+                        ) : null}
+                      </div>
+                    )}
                   </div>
                 );
               })()}
