@@ -783,10 +783,10 @@ export default function CaptureJobsPage(): JSX.Element {
 
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-ip-accent">Operacion visual</p>
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-ip-accent">Operación visual</p>
           <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950 dark:text-white">Capture Jobs</h1>
           <p className="mt-2 max-w-2xl text-sm font-semibold text-slate-500 dark:text-white/45">
-            Gestiona material recibido, QA, outputs, URL publica y conexion basica con propiedades o leads.
+            Gestiona material recibido, QA, outputs, URL pública y conexión básica con propiedades o leads.
           </p>
         </div>
         <div className="flex gap-2">
@@ -852,10 +852,10 @@ export default function CaptureJobsPage(): JSX.Element {
                   <th className="px-4 py-3">Estado</th>
                   <th className="px-4 py-3">Prioridad</th>
                   <th className="px-4 py-3">Riesgo</th>
-                  <th className="px-4 py-3">Proxima accion</th>
+                  <th className="px-4 py-3">Próxima acción</th>
                   <th className="px-4 py-3">Assets</th>
                   <th className="px-4 py-3">3D</th>
-                  <th className="px-4 py-3">Publico</th>
+                  <th className="px-4 py-3">Público</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/10">
@@ -924,7 +924,7 @@ export default function CaptureJobsPage(): JSX.Element {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <FieldLabel>Titulo</FieldLabel>
+                <FieldLabel>Título</FieldLabel>
                 <input required value={form.title} onChange={(e) => updateForm('title', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-white/5" />
               </div>
               <div>
@@ -989,7 +989,7 @@ export default function CaptureJobsPage(): JSX.Element {
                 <input value={form.assignedTo} onChange={(e) => updateForm('assignedTo', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-white/5" />
               </div>
               <div className="sm:col-span-2">
-                <FieldLabel>Proxima accion</FieldLabel>
+                <FieldLabel>Próxima acción</FieldLabel>
                 <input value={form.nextAction} onChange={(e) => updateForm('nextAction', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-white/5" />
               </div>
               <div className="sm:col-span-2">
@@ -1181,7 +1181,7 @@ export default function CaptureJobsPage(): JSX.Element {
                     <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">Briefing comercial</p>
                     <h3 className="mt-1 text-base font-black text-slate-950 dark:text-white">Contexto para mejorar la IA</h3>
                     <p className="mt-1 text-xs font-bold leading-5 text-slate-500 dark:text-white/50">
-                      Cuanto mas completo sea el briefing, mejor seran los hotspots, copy y guion generados.
+                      Cuanto más completo sea el briefing, mejor serán los hotspots, copy y guion generados.
                     </p>
                   </div>
                   <div className="shrink-0 text-left sm:text-right">
@@ -1196,26 +1196,26 @@ export default function CaptureJobsPage(): JSX.Element {
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <input value={commercialBriefForm.propertyType} onChange={(e) => updateCommercialBrief('propertyType', e.target.value)} placeholder="Tipo de inmueble / activo" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                  <input value={commercialBriefForm.location} onChange={(e) => updateCommercialBrief('location', e.target.value)} placeholder="Ubicacion" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                  <input value={commercialBriefForm.surface} onChange={(e) => updateCommercialBrief('surface', e.target.value)} placeholder="Superficie / tamano" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.location} onChange={(e) => updateCommercialBrief('location', e.target.value)} placeholder="Ubicación" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.surface} onChange={(e) => updateCommercialBrief('surface', e.target.value)} placeholder="Superficie / tamaño" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
                   <input value={commercialBriefForm.rooms} onChange={(e) => updateCommercialBrief('rooms', e.target.value)} placeholder="Habitaciones / zonas clave" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                  <input value={commercialBriefForm.bathrooms} onChange={(e) => updateCommercialBrief('bathrooms', e.target.value)} placeholder="Banos / equipamiento" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.bathrooms} onChange={(e) => updateCommercialBrief('bathrooms', e.target.value)} placeholder="Baños / equipamiento" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
                   <input value={commercialBriefForm.priceRange} onChange={(e) => updateCommercialBrief('priceRange', e.target.value)} placeholder="Rango de precio / valor comercial" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                  <input value={commercialBriefForm.targetAudience} onChange={(e) => updateCommercialBrief('targetAudience', e.target.value)} placeholder="Publico objetivo" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.targetAudience} onChange={(e) => updateCommercialBrief('targetAudience', e.target.value)} placeholder="Público objetivo" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
                   <input value={commercialBriefForm.salesObjective} onChange={(e) => updateCommercialBrief('salesObjective', e.target.value)} placeholder="Objetivo comercial" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                  <textarea value={listToText(commercialBriefForm.keyBenefits)} onChange={(e) => updateCommercialBrief('keyBenefits', textToList(e.target.value))} rows={3} placeholder="Beneficios clave, uno por linea" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                  <textarea value={listToText(commercialBriefForm.differentiators)} onChange={(e) => updateCommercialBrief('differentiators', textToList(e.target.value))} rows={3} placeholder="Diferenciales, uno por linea" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <textarea value={listToText(commercialBriefForm.keyBenefits)} onChange={(e) => updateCommercialBrief('keyBenefits', textToList(e.target.value))} rows={3} placeholder="Beneficios clave, uno por línea" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <textarea value={listToText(commercialBriefForm.differentiators)} onChange={(e) => updateCommercialBrief('differentiators', textToList(e.target.value))} rows={3} placeholder="Diferenciales, uno por línea" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
                   <select value={commercialBriefForm.tone} onChange={(e) => updateCommercialBrief('tone', e.target.value as CommercialBriefForm['tone'])} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
                     <option value="professional">Profesional</option>
                     <option value="premium">Premium</option>
                     <option value="direct">Directo</option>
                     <option value="inspirational">Inspiracional</option>
-                    <option value="technical">Tecnico</option>
+                    <option value="technical">Técnico</option>
                   </select>
                   <select value={commercialBriefForm.ctaGoal} onChange={(e) => updateCommercialBrief('ctaGoal', e.target.value as CommercialBriefForm['ctaGoal'])} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
                     <option value="contact">Contacto</option>
                     <option value="book_visit">Reservar visita</option>
-                    <option value="request_info">Solicitar informacion</option>
+                    <option value="request_info">Solicitar información</option>
                     <option value="download">Descarga</option>
                     <option value="call">Llamada</option>
                   </select>
@@ -1230,7 +1230,7 @@ export default function CaptureJobsPage(): JSX.Element {
                   <button type="button" onClick={() => setCommercialBriefForm(emptyCommercialBriefForm)} disabled={saving} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5">
                     Limpiar campos
                   </button>
-                  <p className="text-xs font-bold text-slate-400">Usar briefing en IA: se aplica automaticamente al reprocesar.</p>
+                  <p className="text-xs font-bold text-slate-400">Usar briefing en IA: se aplica automáticamente al reprocesar.</p>
                 </div>
               </div>
 
@@ -1364,7 +1364,7 @@ export default function CaptureJobsPage(): JSX.Element {
 
                               <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
                                 <div className="flex items-center justify-between gap-2">
-                                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Guion de video</p>
+                                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Guion de vídeo</p>
                                   <button type="button" onClick={() => { void copyAiSection('Guion', result.videoScript); }} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
                                     <Copy className="h-3 w-3" /> Copiar
                                   </button>
@@ -1375,8 +1375,8 @@ export default function CaptureJobsPage(): JSX.Element {
 
                               <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
                                 <div className="flex items-center justify-between gap-2">
-                                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Proximas acciones</p>
-                                  <button type="button" onClick={() => { void copyAiSection('Proximas acciones', result.nextActions); }} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Próximas acciones</p>
+                                  <button type="button" onClick={() => { void copyAiSection('Próximas acciones', result.nextActions); }} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
                                     <Copy className="h-3 w-3" /> Copiar
                                   </button>
                                 </div>

@@ -56,7 +56,7 @@ Este documento define un modelo funcional. No es un contrato final de base de da
 | `status` | Estado: previsto, en_progreso, listo, en_revision, aprobado, publicado o archivado. |
 | `viewerReady` | Indica si el activo esta listo para visor. |
 | `mobileReady` | Indica si ha pasado revision movil. |
-| `publishedUrl` | URL publica si ya esta publicado. |
+| `publishedUrl` | URL pública si ya está publicado. |
 | `qrUrl` | URL del QR generado o asset asociado. |
 | `analyticsEnabled` | Indica si el activo tiene seguimiento de visitas, clics o eventos. |
 | `notes` | Notas de entrega, limitaciones o mejoras pendientes. |

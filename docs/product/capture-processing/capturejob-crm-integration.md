@@ -36,7 +36,7 @@ El CRM debe vender y hacer seguimiento. CaptureJob debe ordenar la operacion vis
 - Valor potencial.
 - Canal preferido de comunicacion.
 - Notas comerciales relevantes.
-- Proxima accion acordada con el cliente.
+- Próxima acción acordada con el cliente.
 
 ## Informacion que debe volver del CaptureJob al CRM
 

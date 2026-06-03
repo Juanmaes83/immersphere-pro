@@ -64,7 +64,7 @@ Este roadmap separa utilidad comercial, operacion interna y automatizacion tecni
 
 ## Que implementar primero
 
-La recomendacion es empezar por Fase 0 y Fase 1 ligera: checklist, estados, proxima accion y conexion con packs del CRM. Eso permite vender, ejecutar y aprender sin construir infraestructura pesada.
+La recomendación es empezar por Fase 0 y Fase 1 ligera: checklist, estados, próxima acción y conexión con packs del CRM. Eso permite vender, ejecutar y aprender sin construir infraestructura pesada.
 
 ## Que dejar en stand by
 

@@ -135,7 +135,7 @@ No se crea tabla nueva ni migracion nueva porque `CaptureOutputAsset.type` ya es
 1. Abrir `/capture-jobs`.
 2. Seleccionar o crear un CaptureJob.
 3. En `Output assets`, elegir uno de los tipos premium 3D.
-4. Pegar la URL publica del viewer externo en `url` o `publishedUrl`.
+4. Pegar la URL pública del viewer externo en `url` o `publishedUrl`.
 5. Elegir `format` sugerido:
    - `splat`
    - `gaussian`
@@ -224,7 +224,7 @@ La UI interna muestra el aviso "Principal automatico" para que el equipo sepa qu
 
 ### Iframe y fallback
 
-`publishedUrl || url` actua como URL publica y fallback externo. El sistema intenta iframe solo para hosts conocidos como embebibles. Si el host no es embebible, el flujo correcto es abrir la experiencia en una pestana externa.
+`publishedUrl || url` actúa como URL pública y fallback externo. El sistema intenta iframe solo para hosts conocidos como embebibles. Si el host no es embebible, el flujo correcto es abrir la experiencia en una pestaña externa.
 
 Checklist interno:
 
@@ -523,7 +523,7 @@ Se guarda en `CaptureJob.commercialBrief` como JSON privado:
 
 - tipo de inmueble o activo;
 - ubicacion;
-- superficie o tamano;
+- superficie o tamaño;
 - habitaciones o zonas clave;
 - banos o equipamiento;
 - rango de precio o valor comercial;
