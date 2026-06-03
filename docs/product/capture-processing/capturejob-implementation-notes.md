@@ -723,8 +723,10 @@ La landing pública `/capture/:id` optimiza el viewer para móvil sin modificar 
 
 - En móvil vertical, muestra una recomendación no intrusiva: girar el móvil para explorar con mayor amplitud.
 - En móvil vertical, ofrece botón `Modo inmersivo`.
-- En móvil horizontal, reduce márgenes y aumenta la altura del viewer hasta ocupar la mayor parte del viewport.
-- En modo inmersivo, el viewer se renderiza en un contenedor `fixed inset-0`, fondo oscuro, botón `Salir` visible y scroll de body bloqueado mientras está activo.
+- La detección móvil no depende solo de `width <= 768`: usa dispositivo táctil (`pointer: coarse` o `maxTouchPoints`) y lado corto `<= 768`, por lo que un móvil horizontal sigue siendo mobile-like aunque su ancho supere 768px.
+- Usa `visualViewport` cuando existe para recalcular `width/height` en `resize`, `orientationchange` y resize del visual viewport.
+- En móvil horizontal, reduce márgenes, compacta elementos secundarios y aumenta la altura del viewer a `92dvh`.
+- En modo inmersivo, el viewer se renderiza en un contenedor `fixed inset-0`, `100dvh`, fondo oscuro, botón `Salir` visible y scroll de body bloqueado mientras está activo.
 - El overlay de hotspots sigue funcionando en modo normal e inmersivo.
 - `mobileX` y `mobileY` se usan para ajustar la posición de hotspots en pantallas móviles cuando existen.
 

@@ -66,7 +66,14 @@ export default function CapturePublicPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeHotspotId, setActiveHotspotId] = useState<string | null>(null);
-  const [viewport, setViewport] = useState({ isMobile: false, isLandscape: false });
+  const [viewport, setViewport] = useState({
+    width: 0,
+    height: 0,
+    isMobileLike: false,
+    isLandscape: false,
+    isMobileLandscape: false,
+    isMobilePortrait: false
+  });
   const [isImmersiveMode, setIsImmersiveMode] = useState(false);
 
   useEffect(() => {
@@ -94,16 +101,30 @@ export default function CapturePublicPage(): JSX.Element {
   useEffect(() => {
     if (typeof window === 'undefined') return undefined;
     const sync = () => {
-      const width = window.innerWidth;
-      const height = window.innerHeight;
-      setViewport({ isMobile: width <= 768, isLandscape: width > height });
+      const width = window.visualViewport?.width ?? window.innerWidth;
+      const height = window.visualViewport?.height ?? window.innerHeight;
+      const isTouchDevice = window.matchMedia('(pointer: coarse)').matches || navigator.maxTouchPoints > 0;
+      const isSmallScreen = Math.min(width, height) <= 768;
+      const isMobileLike = isTouchDevice && isSmallScreen;
+      const isLandscape = width > height;
+      setViewport({
+        width,
+        height,
+        isMobileLike,
+        isLandscape,
+        isMobileLandscape: isMobileLike && isLandscape,
+        isMobilePortrait: isMobileLike && !isLandscape
+      });
     };
     sync();
+    const visualViewport = window.visualViewport;
     window.addEventListener('resize', sync);
     window.addEventListener('orientationchange', sync);
+    visualViewport?.addEventListener('resize', sync);
     return () => {
       window.removeEventListener('resize', sync);
       window.removeEventListener('orientationchange', sync);
+      visualViewport?.removeEventListener('resize', sync);
     };
   }, []);
 
@@ -158,26 +179,28 @@ export default function CapturePublicPage(): JSX.Element {
   const heroDescription = applied?.shortDescription || applied?.longDescription || job.clientName;
   const primaryCta = applied?.ctaPrimary || 'Solicitar información';
   const activeHotspot = job.hotspots.find((hotspot) => hotspot.id === activeHotspotId) ?? null;
-  const isMobileViewport = viewport.isMobile;
+  const isMobileViewport = viewport.isMobileLike;
   const isLandscape = viewport.isLandscape;
+  const isMobileLandscape = viewport.isMobileLandscape;
+  const isMobilePortrait = viewport.isMobilePortrait;
   const canEmbedPrimary = Boolean(
     premiumOutput &&
     premiumOutput.embeddable &&
     primaryUrl &&
     isSafeHttpUrl(primaryUrl)
   );
-  const normalViewerClass = isMobileViewport && isLandscape
-    ? 'h-[82vh] min-h-[340px]'
+  const normalViewerClass = isMobileLandscape
+    ? 'h-[92dvh] min-h-[360px] w-full'
     : isMobileViewport
-      ? 'h-[60vh] min-h-[420px]'
+      ? 'h-[60dvh] min-h-[420px] w-full'
       : 'aspect-[16/10] min-h-[320px]';
 
   const renderHotspotOverlay = (immersive = false) => job.hotspots.length > 0 ? (
     <div className="pointer-events-none absolute inset-0">
       {job.hotspots.map((hotspot, index) => {
         const position = getHotspotPosition(hotspot, index);
-        const left = isMobileViewport ? position.mobileX : position.x;
-        const top = isMobileViewport ? position.mobileY : position.y;
+        const left = viewport.isMobileLike ? position.mobileX : position.x;
+        const top = viewport.isMobileLike ? position.mobileY : position.y;
         const isActive = activeHotspotId === hotspot.id;
         return (
           <button
@@ -193,7 +216,7 @@ export default function CapturePublicPage(): JSX.Element {
         );
       })}
       {activeHotspot ? (
-        <div className={`pointer-events-auto absolute rounded-xl bg-white p-4 text-slate-950 shadow-2xl ring-1 ring-slate-200 ${immersive || isMobileViewport ? 'inset-x-3 bottom-3 max-h-[42vh] overflow-auto' : 'right-4 top-4 w-80'}`}>
+        <div className={`pointer-events-auto absolute rounded-xl bg-white p-4 text-slate-950 shadow-2xl ring-1 ring-slate-200 ${immersive || isMobileLandscape ? 'inset-x-3 bottom-3 max-h-[34dvh] overflow-auto' : isMobileViewport ? 'inset-x-3 bottom-3 max-h-[42dvh] overflow-auto' : 'right-4 top-4 w-80'}`}>
           <div className="flex items-start justify-between gap-3">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ip-accent">{activeHotspot.roomOrZone || statusLabel(activeHotspot.hotspotType)}</p>
@@ -219,7 +242,7 @@ export default function CapturePublicPage(): JSX.Element {
   ) : null;
 
   const renderEmbeddedViewer = (immersive = false) => (
-    <div className={`relative bg-black ${immersive ? 'h-[calc(100vh-76px)] min-h-0 w-screen' : normalViewerClass}`}>
+    <div className={`relative bg-black ${immersive ? 'h-[calc(100dvh-64px)] min-h-0 w-screen' : normalViewerClass}`}>
       <iframe
         src={toEmbedUrl(primaryUrl, premiumOutput?.type ?? '')}
         title="Experiencia 3D inmersiva"
@@ -233,13 +256,19 @@ export default function CapturePublicPage(): JSX.Element {
 
   return (
     <>
-    <main className={`mx-auto max-w-5xl px-5 ${isMobileViewport && isLandscape ? 'py-4' : 'py-12'}`}>
+    <main className={`mx-auto ${isMobileLandscape ? 'max-w-none px-2 py-2' : 'max-w-5xl px-5 py-12'}`}>
       <Helmet>
         <title>{job.title} · Immersphere Pro</title>
         <meta name="robots" content="noindex" />
       </Helmet>
 
-      <section className="border-b border-slate-200 pb-8 dark:border-white/10">
+      {import.meta.env.DEV ? (
+        <output className="sr-only">
+          capture viewport debug: mobileLike={String(viewport.isMobileLike)}, landscape={String(viewport.isLandscape)}, mobileLandscape={String(viewport.isMobileLandscape)}, width={Math.round(viewport.width)}, height={Math.round(viewport.height)}
+        </output>
+      ) : null}
+
+      <section className={`border-b border-slate-200 dark:border-white/10 ${isMobileLandscape ? 'sr-only' : 'pb-8'}`}>
         <p className="text-xs font-black uppercase tracking-[0.22em] text-ip-accent">Entrega visual publicada</p>
         <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight text-slate-950 dark:text-white">{heroTitle}</h1>
         <p className="mt-3 max-w-3xl text-lg font-semibold leading-8 text-slate-500 dark:text-white/45">{heroDescription}</p>
@@ -258,29 +287,30 @@ export default function CapturePublicPage(): JSX.Element {
         ) : null}
       </section>
 
-      <section className="mt-8 grid gap-4">
+      <section className={`${isMobileLandscape ? 'mt-0 grid gap-2' : 'mt-8 grid gap-4'}`}>
         {premiumOutput ? (
-          <div className="overflow-hidden rounded-ip-card bg-slate-950 text-white ring-1 ring-slate-800 dark:bg-black dark:ring-white/10">
-            <div className="flex flex-col gap-4 border-b border-white/10 px-5 py-4 md:flex-row md:items-center md:justify-between">
+          <div className={`overflow-hidden bg-slate-950 text-white ring-1 ring-slate-800 dark:bg-black dark:ring-white/10 ${isMobileLandscape ? 'rounded-xl' : 'rounded-ip-card'}`}>
+            <div className={`flex gap-4 border-b border-white/10 md:flex-row md:items-center md:justify-between ${isMobileLandscape ? 'items-center justify-between px-3 py-2' : 'flex-col px-5 py-4'}`}>
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-300">Experiencia 3D inmersiva</p>
-                <h2 className="mt-1 text-2xl font-black">{statusLabel(premiumOutput.type)}</h2>
-                <div className="mt-3 flex flex-wrap gap-2">
+                <h2 className={`${isMobileLandscape ? 'text-base' : 'mt-1 text-2xl'} font-black`}>{statusLabel(premiumOutput.type)}</h2>
+                <div className={`${isMobileLandscape ? 'hidden' : 'mt-3 flex'} flex-wrap gap-2`}>
                   <span className="rounded-full bg-violet-500/20 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-violet-100 ring-1 ring-violet-300/30">3D / Gaussian / Splat</span>
                   {premiumOutput.viewerReady ? <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-emerald-100 ring-1 ring-emerald-300/30">Desktop OK</span> : null}
                   {premiumOutput.mobileReady ? <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-emerald-100 ring-1 ring-emerald-300/30">Mobile OK</span> : null}
                 </div>
               </div>
-              <a href={primaryUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-violet-100">
+              {isMobileLandscape ? <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100 ring-1 ring-emerald-300/30">Modo horizontal activo</span> : null}
+              <a href={primaryUrl} target="_blank" rel="noreferrer" className={`${isMobileLandscape ? 'hidden' : 'inline-flex'} items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-violet-100`}>
                 {primaryCta} <ExternalLink className="h-4 w-4" />
               </a>
               <button type="button" onClick={() => setIsImmersiveMode(true)} className="inline-flex items-center justify-center rounded-full border border-white/20 px-5 py-3 text-sm font-black text-white transition hover:bg-white/10">
                 Modo inmersivo
               </button>
             </div>
-            {isMobileViewport && !isLandscape ? (
+            {isMobilePortrait ? (
               <div className="border-b border-white/10 bg-violet-500/15 px-5 py-4">
-                <p className="text-sm font-black text-white">Gira el móvil para explorar la experiencia 3D con mayor amplitud.</p>
+                <p className="text-sm font-black text-white">Gira el móvil para ver la experiencia en formato inmersivo.</p>
                 <p className="mt-1 text-xs font-semibold text-white/60">En horizontal verás mejor estancias, proporciones, splats, panorámicas y vídeos inmersivos.</p>
                 <button type="button" onClick={() => setIsImmersiveMode(true)} className="mt-3 rounded-full bg-white px-4 py-2 text-xs font-black text-slate-950">
                   Modo inmersivo
@@ -351,11 +381,11 @@ export default function CapturePublicPage(): JSX.Element {
       </section>
     </main>
     {isImmersiveMode && canEmbedPrimary ? (
-      <div className="fixed inset-0 z-[80] bg-black text-white">
-        <div className="flex h-[76px] items-center justify-between gap-3 border-b border-white/10 px-4">
+      <div className="fixed inset-0 z-[80] h-[100dvh] bg-black text-white">
+        <div className="flex h-16 items-center justify-between gap-3 border-b border-white/10 px-4">
           <div className="min-w-0">
             <p className="truncate text-sm font-black">{heroTitle}</p>
-            {isMobileViewport && !isLandscape ? <p className="mt-1 text-xs font-semibold text-white/55">Para mejor experiencia, gira el móvil.</p> : null}
+            {isMobilePortrait ? <p className="mt-1 text-xs font-semibold text-white/55">Para mejor experiencia, gira el móvil.</p> : null}
           </div>
           <div className="flex shrink-0 items-center gap-2">
             <a href={primaryUrl} target="_blank" rel="noreferrer" className="hidden rounded-full border border-white/15 px-3 py-2 text-xs font-black text-white/80 hover:bg-white/10 sm:inline-flex">

@@ -43,7 +43,7 @@ Se añade aplicación humana de sugerencias IA y hotspots públicos:
 - aprobar/publicar/ocultar/archivar hotspots manualmente;
 - mostrar en `/capture/:id` solo contenido aplicado seguro y hotspots `published + isPublic`.
 - mostrar hotspots publicados como overlay 2D interno sobre el viewer externo.
-- optimizar `/capture/:id` en móvil con aviso de orientación horizontal y modo inmersivo.
+- optimizar `/capture/:id` en móvil con aviso de orientación horizontal, detección mobile-like robusta y modo inmersivo `100dvh`.
 
 Queda fuera del MVP actual:
 
