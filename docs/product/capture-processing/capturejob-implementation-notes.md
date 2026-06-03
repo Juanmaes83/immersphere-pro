@@ -364,6 +364,7 @@ Paso 13 anade procesamiento IA real, privado y persistente para `CaptureJob`. El
 - Resume `inputAssets` y `outputAssets` sin leer binarios.
 - Deriva estado de material, estado 3D y QA desktop/mobile.
 - Llama a Anthropic solo desde backend.
+- Fuerza salida estructurada con tool calling y valida el resultado con Zod.
 - Guarda `inputSummary`, `result`, `status`, modelo, tokens y errores.
 - Permite consultar ultimos runs desde endpoints privados.
 - Muestra el ultimo run y un historial en `/capture-jobs`.
@@ -415,7 +416,16 @@ Los endpoints usan `requireAuth` y validan que el `CaptureJob` pertenece al `ten
 
 ### Prompt injection
 
-El prompt del sistema trata nombres de archivo, notas, URLs y metadatos como datos no confiables. Indica expresamente que cualquier instruccion dentro del CaptureJob debe ignorarse si intenta cambiar reglas, revelar secretos, saltar privacidad o modificar el formato. La salida se exige como JSON estricto y se valida con Zod antes de marcar el run como `completed`.
+El prompt del sistema trata nombres de archivo, notas, URLs y metadatos como datos no confiables. Indica expresamente que cualquier instruccion dentro del CaptureJob debe ignorarse si intenta cambiar reglas, revelar secretos, saltar privacidad o modificar el formato. La salida se fuerza mediante una tool Anthropic con `input_schema` equivalente al resultado esperado y se valida con Zod antes de marcar el run como `completed`.
+
+Si la salida no entra por tool calling, existe fallback controlado:
+
+- limpiar markdown/code fences;
+- extraer el primer objeto JSON viable;
+- validar con Zod;
+- ejecutar como maximo un retry barato de reparacion con el mismo modelo configurado.
+
+Si la reparacion falla, el run queda `failed` con error interno resumido y la UI muestra un mensaje accionable sin exponer la respuesta cruda completa.
 
 ### Estrategia de seleccion de modelo
 

@@ -343,6 +343,14 @@ function isClientTimeout(error: unknown): boolean {
   return error instanceof Error && error.message.toLowerCase().includes('timeout');
 }
 
+function getAiRunErrorMessage(error: string): string {
+  const normalized = error.toLowerCase();
+  if (normalized.includes('json parse failed') || normalized.includes('json schema failed') || normalized.includes('tool')) {
+    return 'La IA respondió con formato inválido. Reintenta el procesamiento.';
+  }
+  return error;
+}
+
 function getSuggestedFormat(type: string): string {
   if (type === 'gaussian_splat') return 'gaussian';
   if (type === 'supersplat' || type === 'splat_viewer') return 'splat';
@@ -1129,7 +1137,7 @@ export default function CaptureJobsPage(): JSX.Element {
                         </div>
 
                         {latestRun.error ? (
-                          <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300">{latestRun.error}</p>
+                          <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300">{getAiRunErrorMessage(latestRun.error)}</p>
                         ) : null}
 
                         {result ? (
