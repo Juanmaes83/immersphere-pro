@@ -178,9 +178,28 @@ function toRecord(value: unknown): Record<string, any> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, any> : {};
 }
 
+function clampPercent(value: unknown): number | null {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) return null;
+  return Math.max(0, Math.min(100, Math.round(parsed)));
+}
+
 function getSafePosition(value: unknown): unknown {
-  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
-  return value;
+  const position = toRecord(value);
+  if (Object.keys(position).length === 0) return null;
+  const x = clampPercent(position.x);
+  const y = clampPercent(position.y);
+  if (x === null || y === null) return null;
+  const mobileX = clampPercent(position.mobileX);
+  const mobileY = clampPercent(position.mobileY);
+  return {
+    mode: 'overlay_2d',
+    x,
+    y,
+    anchor: cleanString(position.anchor, 'center') || 'center',
+    ...(mobileX !== null ? { mobileX } : {}),
+    ...(mobileY !== null ? { mobileY } : {})
+  };
 }
 
 function normalizeHotspotStatus(value: string | undefined, fallback = 'draft'): string {

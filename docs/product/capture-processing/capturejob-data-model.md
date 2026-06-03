@@ -87,6 +87,23 @@ Modelo persistente para convertir sugerencias IA o entradas manuales en hotspots
 | `status` | draft, approved, published o archived. |
 | `isPublic` | Solo visible públicamente con `status=published`. |
 | `sortOrder` | Orden en landing/listado. |
+
+#### Position overlay 2D
+
+`position` admite coordenadas porcentuales para overlay interno sobre el viewer externo:
+
+```json
+{
+  "mode": "overlay_2d",
+  "x": 50,
+  "y": 50,
+  "anchor": "center",
+  "mobileX": 50,
+  "mobileY": 50
+}
+```
+
+No representa coordenadas 3D reales. `x/y` son relativos al contenedor visual del viewer y se limitan a 0-100.
 | `qrUrl` | URL del QR generado o asset asociado. |
 | `analyticsEnabled` | Indica si el activo tiene seguimiento de visitas, clics o eventos. |
 | `notes` | Notas de entrega, limitaciones o mejoras pendientes. |

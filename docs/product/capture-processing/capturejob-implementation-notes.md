@@ -689,6 +689,34 @@ Limitaciones actuales:
 - Los hotspots públicos se muestran como panel/listado comercial junto al viewer.
 - No hay publicación automática: publicar requiere cambiar estado a `published` e `isPublic=true`.
 
+## Overlay interno de hotspots sobre viewer externo
+
+La landing pública `/capture/:id` muestra hotspots publicados como una capa 2D propia de Immersphere sobre el iframe del viewer externo. No modifica SuperSplat, Spark, Luma ni la escena 3D. Los puntos viven en Immersphere y se renderizan encima del contenedor del viewer.
+
+`CaptureHotspot.position` usa JSON con coordenadas porcentuales relativas al contenedor:
+
+```json
+{
+  "mode": "overlay_2d",
+  "x": 50,
+  "y": 50,
+  "anchor": "center",
+  "mobileX": 50,
+  "mobileY": 50
+}
+```
+
+Reglas:
+
+- `x` e `y` se normalizan entre 0 y 100.
+- `mobileX` y `mobileY` son opcionales.
+- Si no hay posición, la landing distribuye puntos en posiciones automáticas seguras.
+- El overlay usa `pointer-events: none` salvo en los botones de hotspot, para no bloquear el iframe más de lo necesario.
+- Click o foco en un punto abre una tarjeta flotante con label, zona, descripción, CTA, prioridad y tipo.
+- Las tarjetas `Puntos destacados` se mantienen debajo como fallback móvil/accesible.
+
+Limitación: no son coordenadas 3D nativas dentro del splat. El siguiente paso sería integrar hotspots nativos con un viewer propio o una API compatible del proveedor.
+
 ## Riesgos pendientes
 
 - Ejecutar la migracion real requiere entorno de base de datos configurado.

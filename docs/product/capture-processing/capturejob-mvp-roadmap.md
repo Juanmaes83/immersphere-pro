@@ -42,10 +42,12 @@ Se añade aplicación humana de sugerencias IA y hotspots públicos:
 - crear hotspots borrador desde `suggestedHotspots`;
 - aprobar/publicar/ocultar/archivar hotspots manualmente;
 - mostrar en `/capture/:id` solo contenido aplicado seguro y hotspots `published + isPublic`.
+- mostrar hotspots publicados como overlay 2D interno sobre el viewer externo.
 
 Queda fuera del MVP actual:
 
 - posicionamiento dentro del iframe 3D;
+- coordenadas 3D nativas dentro de SuperSplat/Spark/Luma;
 - automatización de publicación;
 - workers, OCR, GPU o generación automática Gaussian/Splat.
 | Que no se implementa | No hay GPU automatico, Matrix-3D, 360Gaussian integrado ni OCR productivo. |

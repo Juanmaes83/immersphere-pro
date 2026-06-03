@@ -93,6 +93,10 @@ interface HotspotForm {
   mediaSuggestion: string;
   businessObjective: string;
   sortOrder: string;
+  x: string;
+  y: string;
+  mobileX: string;
+  mobileY: string;
 }
 
 const emptyJobForm: CaptureJobForm = {
@@ -155,7 +159,11 @@ const emptyHotspotForm: HotspotForm = {
   cta: '',
   mediaSuggestion: '',
   businessObjective: '',
-  sortOrder: '0'
+  sortOrder: '0',
+  x: '',
+  y: '',
+  mobileX: '',
+  mobileY: ''
 };
 
 function isPremium3dOutput(type: string): boolean {
@@ -436,6 +444,33 @@ function hasVideoScriptContent(result: CaptureAiProcessingResult): boolean {
     result.videoScript.formatRecommendations.vertical,
     result.videoScript.sceneList.flatMap((scene) => [scene.scene, scene.visual, scene.voiceover, scene.duration])
   ]);
+}
+
+function getPositionNumber(position: Record<string, unknown> | null, key: string): string {
+  const value = position?.[key];
+  return typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
+}
+
+function buildOverlayPosition(form: HotspotForm): Record<string, unknown> | null {
+  const parse = (value: string): number | null => {
+    if (!value.trim()) return null;
+    const parsed = Number(value);
+    if (!Number.isFinite(parsed)) return null;
+    return Math.max(0, Math.min(100, Math.round(parsed)));
+  };
+  const x = parse(form.x);
+  const y = parse(form.y);
+  if (x === null || y === null) return null;
+  const mobileX = parse(form.mobileX);
+  const mobileY = parse(form.mobileY);
+  return {
+    mode: 'overlay_2d',
+    x,
+    y,
+    anchor: 'center',
+    ...(mobileX !== null ? { mobileX } : {}),
+    ...(mobileY !== null ? { mobileY } : {})
+  };
 }
 
 function isStaleRunningRun(run: CaptureAiProcessingRun | null): boolean {
@@ -788,7 +823,11 @@ export default function CaptureJobsPage(): JSX.Element {
       cta: hotspot.cta,
       mediaSuggestion: hotspot.mediaSuggestion,
       businessObjective: hotspot.businessObjective,
-      sortOrder: String(hotspot.sortOrder)
+      sortOrder: String(hotspot.sortOrder),
+      x: getPositionNumber(hotspot.position, 'x'),
+      y: getPositionNumber(hotspot.position, 'y'),
+      mobileX: getPositionNumber(hotspot.position, 'mobileX'),
+      mobileY: getPositionNumber(hotspot.position, 'mobileY')
     });
   }
 
@@ -798,8 +837,16 @@ export default function CaptureJobsPage(): JSX.Element {
     setError(null);
     setMessage(null);
     const payload = {
-      ...hotspotForm,
-      sortOrder: Number(hotspotForm.sortOrder) || 0
+      label: hotspotForm.label,
+      description: hotspotForm.description,
+      roomOrZone: hotspotForm.roomOrZone,
+      hotspotType: hotspotForm.hotspotType,
+      priority: hotspotForm.priority,
+      cta: hotspotForm.cta,
+      mediaSuggestion: hotspotForm.mediaSuggestion,
+      businessObjective: hotspotForm.businessObjective,
+      sortOrder: Number(hotspotForm.sortOrder) || 0,
+      position: buildOverlayPosition(hotspotForm)
     };
     try {
       if (editingHotspotId) {
@@ -1734,6 +1781,23 @@ export default function CaptureJobsPage(): JSX.Element {
                   <input value={hotspotForm.sortOrder} onChange={(e) => updateHotspotForm('sortOrder', e.target.value)} placeholder="Orden" inputMode="numeric" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
                   <input value={hotspotForm.mediaSuggestion} onChange={(e) => updateHotspotForm('mediaSuggestion', e.target.value)} placeholder="Sugerencia media" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
                   <input value={hotspotForm.businessObjective} onChange={(e) => updateHotspotForm('businessObjective', e.target.value)} placeholder="Objetivo" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={hotspotForm.x} onChange={(e) => updateHotspotForm('x', e.target.value)} placeholder="X %" inputMode="numeric" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={hotspotForm.y} onChange={(e) => updateHotspotForm('y', e.target.value)} placeholder="Y %" inputMode="numeric" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={hotspotForm.mobileX} onChange={(e) => updateHotspotForm('mobileX', e.target.value)} placeholder="Mobile X % opcional" inputMode="numeric" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={hotspotForm.mobileY} onChange={(e) => updateHotspotForm('mobileY', e.target.value)} placeholder="Mobile Y % opcional" inputMode="numeric" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-1">
+                  {[
+                    ['Arriba izquierda', '20', '25'],
+                    ['Arriba derecha', '80', '25'],
+                    ['Centro', '50', '50'],
+                    ['Abajo izquierda', '25', '75'],
+                    ['Abajo derecha', '75', '75']
+                  ].map(([label, x, y]) => (
+                    <button key={label} type="button" onClick={() => setHotspotForm((current) => ({ ...current, x, y }))} className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5">
+                      {label}
+                    </button>
+                  ))}
                 </div>
                 <div className="mt-3 flex flex-wrap gap-2">
                   <button type="button" onClick={() => { void saveHotspot(); }} disabled={saving || !hotspotForm.label.trim() || !hotspotForm.description.trim()} className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950">
@@ -1757,7 +1821,10 @@ export default function CaptureJobsPage(): JSX.Element {
                             {hotspot.isPublic ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">público</span> : null}
                           </div>
                           <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{hotspot.roomOrZone ? `${hotspot.roomOrZone} · ` : ''}{hotspot.description}</p>
-                          <p className="mt-1 text-[10px] font-bold text-slate-400">{hotspot.hotspotType} · {hotspot.priority}{hotspot.cta ? ` · CTA: ${hotspot.cta}` : ''}</p>
+                          <p className="mt-1 text-[10px] font-bold text-slate-400">
+                            {hotspot.hotspotType} · {hotspot.priority}{hotspot.cta ? ` · CTA: ${hotspot.cta}` : ''}
+                            {typeof hotspot.position?.x === 'number' && typeof hotspot.position?.y === 'number' ? ` · overlay ${hotspot.position.x}%/${hotspot.position.y}%` : ' · overlay auto'}
+                          </p>
                         </div>
                         <div className="flex flex-wrap gap-1">
                           <button type="button" onClick={() => editHotspot(hotspot)} className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/60">Editar</button>
