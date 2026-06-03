@@ -427,6 +427,17 @@ Si la salida no entra por tool calling, existe fallback controlado:
 
 Si la reparacion falla, el run queda `failed` con error interno resumido y la UI muestra un mensaje accionable sin exponer la respuesta cruda completa.
 
+Los errores internos se guardan con codigos para diagnostico:
+
+- `TOOL_USE_MISSING`: Anthropic no devolvio el bloque `tool_use` esperado.
+- `TOOL_INPUT_SCHEMA_INVALID`: la entrada de tool no tenia la forma minima esperada.
+- `ZOD_VALIDATION_FAILED`: la estructura normalizada no paso validacion final.
+- `JSON_PARSE_FAILED`: fallback de texto no pudo parsearse como JSON.
+- `MODEL_NOT_AVAILABLE`: el modelo configurado no existe o no esta disponible.
+- `ANTHROPIC_API_ERROR`: error general del proveedor IA.
+
+La UI traduce estos codigos a mensajes simples para el equipo sin mostrar respuestas crudas completas.
+
 ### Estrategia de seleccion de modelo
 
 El procesamiento IA usa una politica de bajo coste por defecto. No se hardcodea Opus ni un modelo caro como default.

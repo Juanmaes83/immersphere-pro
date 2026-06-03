@@ -130,6 +130,22 @@ const resultSchema = z.object({
 });
 
 type CaptureAiResult = z.infer<typeof resultSchema>;
+type CaptureAiErrorCode =
+  | 'TOOL_USE_MISSING'
+  | 'TOOL_INPUT_SCHEMA_INVALID'
+  | 'ZOD_VALIDATION_FAILED'
+  | 'JSON_PARSE_FAILED'
+  | 'ANTHROPIC_API_ERROR'
+  | 'MODEL_NOT_AVAILABLE';
+
+class CaptureAiProcessingError extends Error {
+  constructor(
+    public readonly code: CaptureAiErrorCode,
+    message: string
+  ) {
+    super(`${code}: ${message}`);
+  }
+}
 
 const stringJsonSchema = { type: 'string' } as const;
 const stringArrayJsonSchema = { type: 'array', items: stringJsonSchema } as const;
@@ -506,19 +522,172 @@ function extractJsonCandidate(rawText: string): string {
   return withoutFences.slice(first, last + 1);
 }
 
+function toRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function toStringValue(value: unknown): string {
+  if (typeof value === 'string') return value;
+  if (value === null || typeof value === 'undefined') return '';
+  if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+  return '';
+}
+
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return [];
+  return value.map(toStringValue).filter((item) => item.trim().length > 0);
+}
+
+function normalizePriority(value: unknown): 'low' | 'medium' | 'high' {
+  const clean = toStringValue(value).trim().toLowerCase();
+  if (['high', 'alta', 'alto', 'urgent', 'urgente', 'critical', 'critica', 'crítica'].includes(clean)) return 'high';
+  if (['low', 'baja', 'bajo'].includes(clean)) return 'low';
+  return 'medium';
+}
+
+function normalizeHotspotType(value: unknown): 'info' | 'cta' | 'navigation' | 'feature' | 'warning' {
+  const clean = toStringValue(value).trim().toLowerCase();
+  if (['cta', 'call_to_action', 'call to action'].includes(clean)) return 'cta';
+  if (['navigation', 'navegacion', 'navegación', 'transition', 'transicion', 'transición'].includes(clean)) return 'navigation';
+  if (['feature', 'highlight', 'destacado', 'caracteristica', 'característica'].includes(clean)) return 'feature';
+  if (['warning', 'alert', 'aviso', 'riesgo'].includes(clean)) return 'warning';
+  return 'info';
+}
+
+function normalizePublicationReadiness(value: unknown): 'not_ready' | 'needs_review' | 'ready' {
+  const clean = toStringValue(value).trim().toLowerCase();
+  if (['ready', 'listo', 'lista', 'published', 'apto'].includes(clean)) return 'ready';
+  if (['not_ready', 'not ready', 'no listo', 'no lista', 'notready'].includes(clean)) return 'not_ready';
+  return 'needs_review';
+}
+
+function normalizeConfidenceScore(value: unknown): number {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  if (!Number.isFinite(parsed)) return 50;
+  return Math.max(0, Math.min(100, Math.round(parsed)));
+}
+
+function normalizeAiResult(value: unknown): CaptureAiResult {
+  const root = toRecord(value);
+  const hasKnownShape = [
+    'experienceStructure',
+    'suggestedHotspots',
+    'commercialCopy',
+    'videoScript',
+    'missingMaterial',
+    'qaRecommendations',
+    'nextActions',
+    'confidence'
+  ].some((key) => key in root);
+  if (!hasKnownShape) {
+    throw new CaptureAiProcessingError('TOOL_INPUT_SCHEMA_INVALID', `Tool input does not contain expected top-level keys. Raw excerpt: ${sanitizeRawExcerpt(JSON.stringify(root).slice(0, 1000))}`);
+  }
+
+  const experience = toRecord(root.experienceStructure);
+  const copy = toRecord(root.commercialCopy);
+  const video = toRecord(root.videoScript);
+  const formatRecommendations = toRecord(video.formatRecommendations);
+  const qa = toRecord(root.qaRecommendations);
+  const confidence = toRecord(root.confidence);
+
+  return {
+    experienceStructure: {
+      recommendedTitle: toStringValue(experience.recommendedTitle),
+      intro: toStringValue(experience.intro),
+      sections: Array.isArray(experience.sections) ? experience.sections.map((item) => {
+        const section = toRecord(item);
+        return {
+          title: toStringValue(section.title),
+          objective: toStringValue(section.objective),
+          recommendedMedia: toStringValue(section.recommendedMedia),
+          notes: toStringValue(section.notes)
+        };
+      }) : [],
+      recommendedFlow: toStringArray(experience.recommendedFlow)
+    },
+    suggestedHotspots: Array.isArray(root.suggestedHotspots) ? root.suggestedHotspots.map((item) => {
+      const hotspot = toRecord(item);
+      return {
+        label: toStringValue(hotspot.label),
+        description: toStringValue(hotspot.description),
+        roomOrZone: toStringValue(hotspot.roomOrZone),
+        hotspotType: normalizeHotspotType(hotspot.hotspotType),
+        priority: normalizePriority(hotspot.priority),
+        businessObjective: toStringValue(hotspot.businessObjective),
+        cta: toStringValue(hotspot.cta),
+        mediaSuggestion: toStringValue(hotspot.mediaSuggestion),
+        assetDependency: toStringValue(hotspot.assetDependency),
+        whyItMatters: toStringValue(hotspot.whyItMatters)
+      };
+    }) : [],
+    commercialCopy: {
+      shortDescription: toStringValue(copy.shortDescription),
+      longDescription: toStringValue(copy.longDescription),
+      propertyHighlights: toStringArray(copy.propertyHighlights),
+      salesAngle: toStringValue(copy.salesAngle),
+      targetAudience: toStringValue(copy.targetAudience),
+      ctaSuggestions: toStringArray(copy.ctaSuggestions)
+    },
+    videoScript: {
+      hook: toStringValue(video.hook),
+      sceneList: Array.isArray(video.sceneList) ? video.sceneList.map((item) => {
+        const scene = toRecord(item);
+        return {
+          scene: toStringValue(scene.scene),
+          visual: toStringValue(scene.visual),
+          voiceover: toStringValue(scene.voiceover),
+          duration: toStringValue(scene.duration)
+        };
+      }) : [],
+      voiceover: toStringValue(video.voiceover),
+      closingCTA: toStringValue(video.closingCTA),
+      formatRecommendations: {
+        horizontal: toStringValue(formatRecommendations.horizontal),
+        vertical: toStringValue(formatRecommendations.vertical)
+      }
+    },
+    missingMaterial: Array.isArray(root.missingMaterial) ? root.missingMaterial.map((item) => {
+      const material = toRecord(item);
+      return {
+        item: toStringValue(material.item),
+        severity: normalizePriority(material.severity),
+        reason: toStringValue(material.reason),
+        recommendation: toStringValue(material.recommendation)
+      };
+    }) : [],
+    qaRecommendations: {
+      desktop: toStringArray(qa.desktop),
+      mobile: toStringArray(qa.mobile),
+      performance: toStringArray(qa.performance),
+      viewer: toStringArray(qa.viewer),
+      fallback: toStringArray(qa.fallback),
+      publicationReadiness: normalizePublicationReadiness(qa.publicationReadiness)
+    },
+    nextActions: Array.isArray(root.nextActions) ? root.nextActions.map((item) => {
+      const action = toRecord(item);
+      return {
+        action: toStringValue(action.action),
+        ownerSuggestion: toStringValue(action.ownerSuggestion),
+        priority: normalizePriority(action.priority),
+        reason: toStringValue(action.reason)
+      };
+    }) : [],
+    confidence: {
+      score: normalizeConfidenceScore(confidence.score),
+      explanation: toStringValue(confidence.explanation)
+    }
+  };
+}
+
 function parseAiJson(rawText: string): CaptureAiResult {
   let parsed: unknown;
   const candidate = extractJsonCandidate(rawText);
   try {
     parsed = JSON.parse(candidate);
   } catch {
-    throw new AppError(502, `JSON parse failed. Raw excerpt: ${sanitizeRawExcerpt(rawText)}`);
+    throw new CaptureAiProcessingError('JSON_PARSE_FAILED', `Raw excerpt: ${sanitizeRawExcerpt(rawText)}`);
   }
-  const validated = resultSchema.safeParse(parsed);
-  if (!validated.success) {
-    throw new AppError(502, `JSON schema failed. ${getZodMessage(validated.error)}. Raw excerpt: ${sanitizeRawExcerpt(candidate)}`);
-  }
-  return validated.data;
+  return validateAiResult(parsed);
 }
 
 function extractToolResult(response: any): unknown | null {
@@ -536,10 +705,21 @@ function extractTextResult(response: any): string {
 
 function validateAiResult(value: unknown): CaptureAiResult {
   const validated = resultSchema.safeParse(value);
-  if (!validated.success) {
-    throw new AppError(502, `JSON schema failed. ${getZodMessage(validated.error)}. Raw excerpt: ${sanitizeRawExcerpt(JSON.stringify(value).slice(0, 1000))}`);
+  if (validated.success) return validated.data;
+
+  let normalized: CaptureAiResult;
+  try {
+    normalized = normalizeAiResult(value);
+  } catch (error) {
+    if (error instanceof CaptureAiProcessingError) throw error;
+    throw new CaptureAiProcessingError('TOOL_INPUT_SCHEMA_INVALID', `Could not normalize tool input. Raw excerpt: ${sanitizeRawExcerpt(JSON.stringify(value).slice(0, 1000))}`);
   }
-  return validated.data;
+
+  const normalizedValidation = resultSchema.safeParse(normalized);
+  if (!normalizedValidation.success) {
+    throw new CaptureAiProcessingError('ZOD_VALIDATION_FAILED', `${getZodMessage(normalizedValidation.error)}. Raw excerpt: ${sanitizeRawExcerpt(JSON.stringify(value).slice(0, 1000))}`);
+  }
+  return normalizedValidation.data;
 }
 
 async function repairAiJson(anthropic: Anthropic, model: string, rawText: string, reason: string): Promise<CaptureAiResult> {
@@ -586,6 +766,9 @@ async function completeCaptureAiProcessingRun(runId: string, inputSummary: unkno
 
     let result: CaptureAiResult;
     try {
+      if (!toolInput && !rawText.trim()) {
+        throw new CaptureAiProcessingError('TOOL_USE_MISSING', `No tool_use block returned. Stop reason: ${toStringValue((response as any).stop_reason)}`);
+      }
       result = toolInput ? validateAiResult(toolInput) : parseAiJson(rawText);
     } catch (parseError) {
       if (!rawText.trim()) throw parseError;
@@ -604,7 +787,16 @@ async function completeCaptureAiProcessingRun(runId: string, inputSummary: unkno
       }
     });
   } catch (error) {
-    const message = error instanceof AppError || error instanceof Error ? error.message : 'Error inesperado procesando IA.';
+    const rawMessage = error instanceof AppError || error instanceof Error ? error.message : 'Error inesperado procesando IA.';
+    const lowerMessage = rawMessage.toLowerCase();
+    let message = rawMessage;
+    if (error instanceof CaptureAiProcessingError) {
+      message = error.message;
+    } else if (lowerMessage.includes('model') && (lowerMessage.includes('not') || lowerMessage.includes('unavailable') || lowerMessage.includes('exist'))) {
+      message = `MODEL_NOT_AVAILABLE: ${rawMessage}`;
+    } else {
+      message = `ANTHROPIC_API_ERROR: ${rawMessage}`;
+    }
     await getDb().captureAiProcessingRun.update({
       where: { id: runId },
       data: { status: 'failed', error: truncateText(message, 1000) }

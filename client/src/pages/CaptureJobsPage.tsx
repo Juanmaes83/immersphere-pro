@@ -345,6 +345,21 @@ function isClientTimeout(error: unknown): boolean {
 
 function getAiRunErrorMessage(error: string): string {
   const normalized = error.toLowerCase();
+  if (normalized.includes('tool_use_missing')) {
+    return 'La IA no devolvió la herramienta esperada. Reintenta el procesamiento.';
+  }
+  if (normalized.includes('tool_input_schema_invalid') || normalized.includes('zod_validation_failed')) {
+    return 'La respuesta IA no pasó la validación de estructura. Reintenta el procesamiento.';
+  }
+  if (normalized.includes('json_parse_failed')) {
+    return 'La IA respondió con JSON inválido. Reintenta el procesamiento.';
+  }
+  if (normalized.includes('model_not_available')) {
+    return 'El modelo configurado no está disponible. Revisa la configuración IA.';
+  }
+  if (normalized.includes('anthropic_api_error')) {
+    return 'Error de proveedor IA. Reintenta más tarde.';
+  }
   if (normalized.includes('json parse failed') || normalized.includes('json schema failed') || normalized.includes('tool')) {
     return 'La IA respondió con formato inválido. Reintenta el procesamiento.';
   }
