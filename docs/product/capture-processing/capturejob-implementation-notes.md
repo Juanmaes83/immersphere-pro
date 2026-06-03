@@ -282,6 +282,76 @@ Criterio practico:
 
 Si el pipeline manual se usa en produccion con varios providers reales, evaluar una migracion minima para `provider`, `isPrimary`, `fallbackUrl`, `iframeReady`, `fallbackReady`, `performanceReady` y `qaNotes`.
 
+## Captura guiada basica
+
+Paso 12 anade una capa interna de captura guiada dentro de `/capture-jobs` para mejorar la calidad del material antes de producir tours, videos, fotografias, documentos o experiencias 3D.
+
+### Objetivo
+
+Ayudar al equipo a detectar material insuficiente, recorridos incompletos, videos mal planteados o inputs no aptos para 3D/Gaussian antes de publicar entregables. Es una ayuda operativa privada, no una validacion automatica ni un bloqueo.
+
+### Checklists incluidos
+
+La UI privada muestra un bloque "Captura guiada" con checklist segun tipo de entrega:
+
+- 3D / Gaussian / Splat.
+- Tour 360.
+- Video comercial.
+- Fotos inmobiliarias / showroom.
+- Plano / documento.
+- General.
+
+El tipo se infiere desde `projectType`, `vertical`, `nextAction`, `inputAssets` y `outputAssets`. El equipo puede cambiarlo en un selector local de UI; ese cambio no se persiste en base de datos.
+
+### Estado de material
+
+No se anade `materialStatus` en Prisma. El estado se deriva de campos existentes:
+
+- Sin `inputAssets`: `Material incompleto`.
+- Con `inputAssets` pero sin output listo/publicado: `Material pendiente de revisar`.
+- Con `inputAssets` y algun output `ready`, `approved` o `published`: `Material suficiente`.
+
+El estado es orientativo. No pretende certificar calidad real del material.
+
+### Avisos operativos
+
+La UI muestra avisos no bloqueantes:
+
+- No hay material de entrada registrado.
+- Hay material, pero aun no hay output generado.
+- El CaptureJob tiene output publicado, revisa QA antes de compartir.
+- Para 3D/Gaussian, valida movil antes de marcar entrega como lista.
+- Para tour 360, revisa navegacion y puntos de transicion.
+- Para video, define formato vertical/horizontal antes de producir.
+
+### Relacion con inputs y outputs 3D
+
+El bloque muestra:
+
+- numero de `inputAssets`;
+- resumen por tipo/formato de inputs;
+- si existe output 3D premium;
+- provider derivado;
+- Desktop OK / pendiente;
+- Mobile OK / pendiente;
+- fallback externo OK / pendiente.
+
+No modifica restricciones de upload ni permite nuevos formatos.
+
+### Que NO hace
+
+- No captura automaticamente.
+- No genera 3D.
+- No analiza imagenes.
+- No usa IA.
+- No bloquea publicacion.
+- No crea workers ni colas.
+- No expone esta informacion en `/capture/:id`.
+
+### Siguiente paso recomendado
+
+Si el equipo empieza a usar la guia como control formal de calidad, evaluar una migracion minima para guardar checklist, responsable, fecha de revision y estado real de material.
+
 ## No implementado en esta fase
 
 - Workers.

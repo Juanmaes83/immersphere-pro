@@ -43,6 +43,9 @@ const OUTPUT_TYPES = [
 const PREMIUM_3D_OUTPUT_TYPES = ['gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
 const PREMIUM_3D_PRIORITY = ['gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
 const EMBEDDABLE_3D_HOSTS = ['superspl.at', 'sparkjs.dev', 'playcanvas.com', 'luma.ai', 'lumalabs.ai', 'immersphere.io', 'immersphere-pro.vercel.app'];
+const CAPTURE_GUIDE_TYPES = ['3d', 'tour_360', 'video', 'photos', 'document', 'general'] as const;
+
+type CaptureGuideType = (typeof CAPTURE_GUIDE_TYPES)[number];
 
 interface CaptureJobForm {
   leadId: string;
@@ -186,6 +189,140 @@ function get3dWarnings(asset: CaptureOutputAsset | null): string[] {
   return warnings;
 }
 
+function getCaptureGuideLabel(type: CaptureGuideType): string {
+  const labels: Record<CaptureGuideType, string> = {
+    '3d': '3D / Gaussian / Splat',
+    tour_360: 'Tour 360',
+    video: 'Vídeo comercial',
+    photos: 'Fotos inmobiliarias / showroom',
+    document: 'Plano / documento',
+    general: 'General'
+  };
+  return labels[type];
+}
+
+function inferCaptureGuideType(job: CaptureJob): CaptureGuideType {
+  const haystack = [
+    job.projectType,
+    job.vertical,
+    job.nextAction,
+    ...(job.inputAssets ?? []).flatMap((asset) => [asset.type, asset.format, asset.filename]),
+    ...(job.outputAssets ?? []).flatMap((asset) => [asset.type, asset.format])
+  ].join(' ').toLowerCase();
+
+  if ((job.outputAssets ?? []).some((asset) => isPremium3dOutput(asset.type))) return '3d';
+  if (/(gaussian|splat|3d|viewer|supersplat|spark)/.test(haystack)) return '3d';
+  if (/(360|panorama|tour|virtual)/.test(haystack)) return 'tour_360';
+  if (/(video|mp4|mov|reel|comercial)/.test(haystack)) return 'video';
+  if (/(foto|photo|image|jpg|jpeg|png|webp|showroom)/.test(haystack)) return 'photos';
+  if (/(pdf|plano|document|documento|floor)/.test(haystack)) return 'document';
+  return 'general';
+}
+
+function getCaptureChecklist(type: CaptureGuideType): string[] {
+  const checklists: Record<CaptureGuideType, string[]> = {
+    '3d': [
+      'Recorrido completo del espacio.',
+      'Iluminación estable.',
+      'Sin movimientos bruscos.',
+      'Sin personas cruzando si no son necesarias.',
+      'Captura de todas las estancias principales.',
+      'Zonas de transición incluidas.',
+      'Exterior/fachada si aplica.',
+      'Prueba de rendimiento móvil pendiente/realizada.',
+      'Viewer externo previsto.'
+    ],
+    tour_360: [
+      'Panoramas por estancia.',
+      'Puntos de navegación definidos.',
+      'Entrada/salida o inicio claro.',
+      'Estancias nombradas.',
+      'Calidad de imagen suficiente.',
+      'Sin stitching roto evidente.',
+      'Orientación inicial revisada.'
+    ],
+    video: [
+      'Plano de apertura.',
+      'Recorrido principal.',
+      'Detalles diferenciales.',
+      'Plano final/CTA.',
+      'Formato horizontal si es web.',
+      'Formato vertical si es redes.',
+      'Duración objetivo definida.'
+    ],
+    photos: [
+      'Fachada/entrada.',
+      'Espacio principal.',
+      'Detalles diferenciales.',
+      'Iluminación homogénea.',
+      'Fotos horizontales.',
+      'Fotos verticales si redes.',
+      'Sin elementos no deseados.'
+    ],
+    document: [
+      'Archivo legible.',
+      'Formato PDF/imagen.',
+      'Escala o orientación clara.',
+      'Nombre de zonas si aplica.'
+    ],
+    general: [
+      'Material base recibido.',
+      'Objetivo de entrega definido.',
+      'Calidad mínima revisada.',
+      'Faltantes anotados en próxima acción.',
+      'Output previsto antes de publicar.'
+    ]
+  };
+  return checklists[type];
+}
+
+function getCaptureGuideText(type: CaptureGuideType): string {
+  const texts: Record<CaptureGuideType, string> = {
+    '3d': 'Captura recorridos continuos, con luz estable y cubriendo todas las zonas. Evita movimientos bruscos, cambios fuertes de exposición y espacios incompletos. Valida el resultado en desktop y móvil antes de publicar.',
+    tour_360: 'Captura un punto por estancia principal y añade puntos de transición. Revisa orientación inicial, continuidad y calidad de imagen.',
+    video: 'Graba apertura, recorrido, detalles y cierre. Define si el destino será web horizontal o redes vertical.',
+    photos: 'Prioriza luz, orden, amplitud y detalles diferenciales. Evita objetos personales o elementos que resten valor.',
+    document: 'Asegura que el archivo sea legible, tenga orientación clara y permita identificar zonas, escala o referencias importantes.',
+    general: 'Reúne material suficiente para entender el espacio, define el entregable esperado y deja anotado cualquier faltante antes de producir.'
+  };
+  return texts[type];
+}
+
+function getMaterialState(job: CaptureJob): { label: string; tone: 'danger' | 'warning' | 'success'; detail: string } {
+  const inputCount = job.inputAssets?.length ?? 0;
+  const hasOutputInProgress = (job.outputAssets ?? []).some((asset) => ['ready', 'approved', 'published'].includes(asset.status));
+  if (inputCount === 0) {
+    return { label: 'Material incompleto', tone: 'danger', detail: 'No hay material de entrada registrado.' };
+  }
+  if (!hasOutputInProgress) {
+    return { label: 'Material pendiente de revisar', tone: 'warning', detail: 'Hay material, pero aún no hay output generado.' };
+  }
+  return { label: 'Material suficiente', tone: 'success', detail: 'Hay material base y al menos un output listo o publicado.' };
+}
+
+function getCaptureGuideWarnings(job: CaptureJob, type: CaptureGuideType, primary3d: CaptureOutputAsset | null): string[] {
+  const warnings: string[] = [];
+  const inputCount = job.inputAssets?.length ?? 0;
+  const hasAnyOutput = (job.outputAssets ?? []).length > 0;
+  const hasPublishedOutput = (job.outputAssets ?? []).some((asset) => asset.status === 'published');
+  if (inputCount === 0) warnings.push('No hay material de entrada registrado.');
+  if (inputCount > 0 && !hasAnyOutput) warnings.push('Hay material, pero aún no hay output generado.');
+  if (hasPublishedOutput) warnings.push('El CaptureJob tiene output publicado, revisa QA antes de compartir.');
+  if (type === '3d' && primary3d && !primary3d.mobileReady) warnings.push('Para 3D/Gaussian, valida móvil antes de marcar entrega como lista.');
+  if (type === 'tour_360') warnings.push('Para tour 360, revisa navegación y puntos de transición.');
+  if (type === 'video') warnings.push('Para vídeo, define formato vertical/horizontal antes de producir.');
+  return warnings;
+}
+
+function summarizeInputAssets(job: CaptureJob): string[] {
+  const counts = new Map<string, number>();
+  (job.inputAssets ?? []).forEach((asset) => {
+    const key = statusLabel(asset.format || asset.type || 'asset');
+    counts.set(key, (counts.get(key) ?? 0) + 1);
+  });
+  return [...counts.entries()].map(([label, count]) => `${count} ${label}`);
+}
+
 function getSuggestedFormat(type: string): string {
   if (type === 'gaussian_splat') return 'gaussian';
   if (type === 'supersplat' || type === 'splat_viewer') return 'splat';
@@ -275,6 +412,7 @@ export default function CaptureJobsPage(): JSX.Element {
   const [uploading, setUploading] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [guideTypeOverride, setGuideTypeOverride] = useState<CaptureGuideType | ''>('');
 
   useEffect(() => {
     void fetchProperties({ limit: 100 });
@@ -315,6 +453,7 @@ export default function CaptureJobsPage(): JSX.Element {
       const data = await unwrapApiResponse<CaptureJob>(api.get(`/capture-jobs/${id}`));
       setSelectedJob(data);
       setForm(toJobForm(data));
+      setGuideTypeOverride('');
     } catch (err) {
       setError(getApiErrorMessage(err));
     }
@@ -324,6 +463,7 @@ export default function CaptureJobsPage(): JSX.Element {
     setSelectedJob(null);
     setForm(emptyJobForm);
     setOutputForm(emptyOutputForm);
+    setGuideTypeOverride('');
     setMessage(null);
     setError(null);
   }
@@ -775,6 +915,85 @@ export default function CaptureJobsPage(): JSX.Element {
                         Registra un output `supersplat`, `gaussian_splat`, `splat_viewer`, `spark_viewer` o `external_3d_viewer` para activar la entrega 3D manual.
                       </p>
                     )}
+                  </div>
+                );
+              })()}
+
+              {(() => {
+                const primary3d = getPrimaryPremium3dOutput(selectedJob);
+                const guideType = guideTypeOverride || inferCaptureGuideType(selectedJob);
+                const materialState = getMaterialState(selectedJob);
+                const guideWarnings = getCaptureGuideWarnings(selectedJob, guideType, primary3d);
+                const inputSummary = summarizeInputAssets(selectedJob);
+                const stateClass = materialState.tone === 'success'
+                  ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50'
+                  : materialState.tone === 'danger'
+                    ? 'bg-red-50 text-red-700 ring-red-200 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-800/50'
+                    : 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-800/50';
+                return (
+                  <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 dark:border-white/10 dark:bg-white/5">
+                    <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                      <div>
+                        <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">Captura guiada</p>
+                        <h3 className="mt-1 text-base font-black text-slate-950 dark:text-white">{getCaptureGuideLabel(guideType)}</h3>
+                        <p className="mt-1 text-xs font-bold text-slate-500 dark:text-white/50">{getCaptureGuideText(guideType)}</p>
+                      </div>
+                      <div className="shrink-0">
+                        <select
+                          value={guideType}
+                          onChange={(event) => setGuideTypeOverride(event.target.value as CaptureGuideType)}
+                          className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-black dark:border-white/10 dark:bg-slate-950"
+                        >
+                          {CAPTURE_GUIDE_TYPES.map((type) => (
+                            <option key={type} value={type}>{getCaptureGuideLabel(type)}</option>
+                          ))}
+                        </select>
+                        <p className="mt-1 text-[10px] font-bold text-slate-400">Selector local, no cambia el job.</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_170px]">
+                      <div className="grid gap-2 sm:grid-cols-2">
+                        {getCaptureChecklist(guideType).map((item) => (
+                          <div key={item} className="flex items-start gap-2 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-600 dark:bg-slate-950 dark:text-white/60">
+                            <span className="mt-0.5 text-slate-400">□</span>
+                            <span>{item}</span>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        <span className={`inline-flex rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.1em] ring-1 ${stateClass}`}>
+                          {materialState.label}
+                        </span>
+                        <p className="text-xs font-bold leading-5 text-slate-500 dark:text-white/50">{materialState.detail}</p>
+                        <div className="rounded-lg bg-white px-3 py-2 dark:bg-slate-950">
+                          <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Inputs</p>
+                          <p className="mt-1 text-xs font-bold text-slate-600 dark:text-white/60">
+                            {(selectedJob.inputAssets?.length ?? 0) > 0 ? `${selectedJob.inputAssets?.length ?? 0} registrados` : '0 registrados'}
+                          </p>
+                          {inputSummary.length > 0 ? (
+                            <p className="mt-1 text-[10px] font-bold text-slate-400">{inputSummary.join(' · ')}</p>
+                          ) : null}
+                        </div>
+                        {primary3d ? (
+                          <div className="rounded-lg bg-white px-3 py-2 dark:bg-slate-950">
+                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-violet-500">Output 3D detectado</p>
+                            <p className="mt-1 text-xs font-bold text-slate-600 dark:text-white/60">Provider: {getProviderLabel(primary3d)}</p>
+                            <p className="mt-1 text-[10px] font-bold text-slate-400">
+                              {primary3d.viewerReady ? 'Desktop OK' : 'Desktop pendiente'} · {primary3d.mobileReady ? 'Mobile OK' : 'Mobile pendiente'} · {getOutputUrl(primary3d) ? 'Fallback externo OK' : 'Fallback pendiente'}
+                            </p>
+                          </div>
+                        ) : null}
+                      </div>
+                    </div>
+
+                    {guideWarnings.length > 0 ? (
+                      <div className="mt-3 space-y-1">
+                        {guideWarnings.map((warning) => (
+                          <p key={warning} className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">{warning}</p>
+                        ))}
+                      </div>
+                    ) : null}
                   </div>
                 );
               })()}
