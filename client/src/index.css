@@ -57,6 +57,13 @@ body {
   margin: 0;
 }
 
+.capture-viewer-shell {
+  min-height: 100vh;
+  min-height: 100dvh;
+  overscroll-behavior: none;
+  touch-action: manipulation;
+}
+
 button,
 input,
 select,

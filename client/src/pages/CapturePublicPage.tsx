@@ -2,17 +2,11 @@ import { useEffect, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useParams } from 'react-router-dom';
 import { ExternalLink } from 'lucide-react';
+import CaptureViewerShell from '@/components/capture/CaptureViewerShell';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import type { PublicCaptureJob } from '@/types/api';
 
 const PREMIUM_3D_PRIORITY = ['gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
-const AUTO_HOTSPOT_POSITIONS = [
-  { x: 20, y: 30 },
-  { x: 75, y: 30 },
-  { x: 30, y: 70 },
-  { x: 70, y: 70 },
-  { x: 50, y: 50 }
-];
 
 function statusLabel(value: string): string {
   return value.replace(/_/g, ' ');
@@ -40,24 +34,6 @@ function toEmbedUrl(rawUrl: string, type: string): string {
     return normalizeSuperSplatUrl(rawUrl);
   }
   return rawUrl;
-}
-
-function getPercentPosition(position: Record<string, unknown> | null, key: string): number | null {
-  const value = position?.[key];
-  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
-  return Math.max(0, Math.min(100, value));
-}
-
-function getHotspotPosition(hotspot: PublicCaptureJob['hotspots'][number], index: number): { x: number; y: number; mobileX: number; mobileY: number } {
-  const fallback = AUTO_HOTSPOT_POSITIONS[index % AUTO_HOTSPOT_POSITIONS.length];
-  const x = getPercentPosition(hotspot.position, 'x') ?? fallback.x;
-  const y = getPercentPosition(hotspot.position, 'y') ?? fallback.y;
-  return {
-    x,
-    y,
-    mobileX: getPercentPosition(hotspot.position, 'mobileX') ?? x,
-    mobileY: getPercentPosition(hotspot.position, 'mobileY') ?? y
-  };
 }
 
 export default function CapturePublicPage(): JSX.Element {
@@ -139,11 +115,11 @@ export default function CapturePublicPage(): JSX.Element {
   useEffect(() => {
     if (typeof document === 'undefined') return undefined;
     const previousOverflow = document.body.style.overflow;
-    if (isImmersiveMode) document.body.style.overflow = 'hidden';
+    if (isImmersiveMode || viewport.isMobileLandscape) document.body.style.overflow = 'hidden';
     return () => {
       document.body.style.overflow = previousOverflow;
     };
-  }, [isImmersiveMode]);
+  }, [isImmersiveMode, viewport.isMobileLandscape]);
 
   if (loading) {
     return (
@@ -178,9 +154,7 @@ export default function CapturePublicPage(): JSX.Element {
   const heroTitle = applied?.commercialTitle || job.title;
   const heroDescription = applied?.shortDescription || applied?.longDescription || job.clientName;
   const primaryCta = applied?.ctaPrimary || 'Solicitar información';
-  const activeHotspot = job.hotspots.find((hotspot) => hotspot.id === activeHotspotId) ?? null;
   const isMobileViewport = viewport.isMobileLike;
-  const isLandscape = viewport.isLandscape;
   const isMobileLandscape = viewport.isMobileLandscape;
   const isMobilePortrait = viewport.isMobilePortrait;
   const canEmbedPrimary = Boolean(
@@ -189,69 +163,38 @@ export default function CapturePublicPage(): JSX.Element {
     primaryUrl &&
     isSafeHttpUrl(primaryUrl)
   );
-  const normalViewerClass = isMobileLandscape
-    ? 'h-[92dvh] min-h-[360px] w-full'
-    : isMobileViewport
-      ? 'h-[60dvh] min-h-[420px] w-full'
-      : 'aspect-[16/10] min-h-[320px]';
-
-  const renderHotspotOverlay = (immersive = false) => job.hotspots.length > 0 ? (
-    <div className="pointer-events-none absolute inset-0">
-      {job.hotspots.map((hotspot, index) => {
-        const position = getHotspotPosition(hotspot, index);
-        const left = viewport.isMobileLike ? position.mobileX : position.x;
-        const top = viewport.isMobileLike ? position.mobileY : position.y;
-        const isActive = activeHotspotId === hotspot.id;
-        return (
-          <button
-            key={hotspot.id}
-            type="button"
-            aria-label={`Ver hotspot ${hotspot.label}`}
-            onClick={() => setActiveHotspotId(hotspot.id)}
-            className={`pointer-events-auto absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-xs font-black shadow-[0_8px_30px_rgba(0,0,0,0.35)] ring-4 ring-black/20 transition hover:scale-110 focus:outline-none focus:ring-4 focus:ring-violet-300 sm:h-9 sm:w-9 ${isActive ? 'bg-ip-accent text-white' : 'bg-white text-slate-950 hover:bg-violet-100'}`}
-            style={{ left: `${left}%`, top: `${top}%` }}
-          >
-            {index + 1}
-          </button>
-        );
-      })}
-      {activeHotspot ? (
-        <div className={`pointer-events-auto absolute rounded-xl bg-white p-4 text-slate-950 shadow-2xl ring-1 ring-slate-200 ${immersive || isMobileLandscape ? 'inset-x-3 bottom-3 max-h-[34dvh] overflow-auto' : isMobileViewport ? 'inset-x-3 bottom-3 max-h-[42dvh] overflow-auto' : 'right-4 top-4 w-80'}`}>
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ip-accent">{activeHotspot.roomOrZone || statusLabel(activeHotspot.hotspotType)}</p>
-              <h3 className="mt-1 text-base font-black">{activeHotspot.label}</h3>
-            </div>
-            <button type="button" onClick={() => setActiveHotspotId(null)} className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-500 hover:bg-slate-50">
-              Cerrar
-            </button>
-          </div>
-          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{activeHotspot.description}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">{activeHotspot.priority}</span>
-            <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">{statusLabel(activeHotspot.hotspotType)}</span>
-          </div>
-          {activeHotspot.cta ? (
-            <button type="button" className="mt-4 w-full rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white">
-              {activeHotspot.cta}
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
-  ) : null;
-
-  const renderEmbeddedViewer = (immersive = false) => (
-    <div className={`relative bg-black ${immersive ? 'h-[calc(100dvh-64px)] min-h-0 w-screen' : normalViewerClass}`}>
+  const embeddedViewer = (
+    <div className="h-full w-full bg-black">
       <iframe
         src={toEmbedUrl(primaryUrl, premiumOutput?.type ?? '')}
         title="Experiencia 3D inmersiva"
         className="h-full w-full border-0"
         allow="fullscreen; xr-spatial-tracking"
+        allowFullScreen
         loading="lazy"
       />
-      {renderHotspotOverlay(immersive)}
     </div>
+  );
+
+  const renderEmbeddedViewer = (immersive = false) => (
+    <CaptureViewerShell
+      viewer={embeddedViewer}
+      hotspots={job.hotspots}
+      activeHotspotId={activeHotspotId}
+      isImmersive={immersive}
+      isMobileLike={isMobileViewport}
+      isMobileLandscape={isMobileLandscape}
+      isMobilePortrait={isMobilePortrait}
+      title={heroTitle}
+      subtitle={immersive ? heroTitle : statusLabel(premiumOutput?.type ?? 'viewer')}
+      ctaLabel={primaryCta}
+      externalUrl={primaryUrl}
+      showControls={immersive || isMobileLandscape}
+      onHotspotClick={setActiveHotspotId}
+      onCloseHotspot={() => setActiveHotspotId(null)}
+      onEnterImmersive={() => setIsImmersiveMode(true)}
+      onExitImmersive={() => setIsImmersiveMode(false)}
+    />
   );
 
   return (

@@ -95,3 +95,15 @@ La recomendaci√≥n es empezar por Fase 0 y Fase 1 ligera: checklist, estados, pr√
 - 360Gaussian embebido como flujo comercial.
 - Workers y colas hasta tener volumen real.
 - Automatizaciones que puedan prometer resultados no revisados.
+
+## Paso 16D - Viewer-first mobile landscape
+
+Se incorpora `CaptureViewerShell` para que `/capture/:id` no dependa solo de deteccion responsive:
+
+- `/capture/:id` queda tratado como ruta viewer-aware en `AppLayout`.
+- Desktop y movil vertical conservan landing comercial.
+- Movil horizontal entra en modo viewer-first con viewport real, `100dvh`, fondo oscuro y controles minimos.
+- Modo inmersivo reutiliza el mismo shell.
+- Hotspots siguen como overlay 2D relativo al frame real.
+
+Sigue fuera del MVP: controlar zoom/camara inicial internos de SuperSplat u otros iframes externos sin API documentada.

@@ -88,15 +88,21 @@ function MobileNavItem({
   );
 }
 
+function isViewerRoutePath(pathname: string): boolean {
+  return (
+    /^\/property\/[^/]+(?:\/[^/]+)?$/.test(pathname) ||
+    pathname.startsWith('/capture/') ||
+    pathname.startsWith('/embed/')
+  );
+}
+
 function MobileBottomNav(): JSX.Element | null {
   const { isAuthenticated } = useAuthStore();
   const { unreadCount } = useLeadsBadge(isAuthenticated);
   const location = useLocation();
 
   // Hide on public viewer and embed routes
-  const isViewerRoute =
-    /^\/property\/[^/]+(?:\/[^/]+)?$/.test(location.pathname) ||
-    location.pathname.startsWith('/embed/');
+  const isViewerRoute = isViewerRoutePath(location.pathname);
 
   if (!isAuthenticated || isViewerRoute) return null;
 
@@ -169,9 +175,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
   const { unreadCount } = useLeadsBadge(isAuthenticated);
   const location = useLocation();
 
-  const isViewerRoute =
-    /^\/property\/[^/]+(?:\/[^/]+)?$/.test(location.pathname) ||
-    location.pathname.startsWith('/embed/');
+  const isViewerRoute = isViewerRoutePath(location.pathname);
 
   const showMobileNav = isAuthenticated && !isViewerRoute;
 

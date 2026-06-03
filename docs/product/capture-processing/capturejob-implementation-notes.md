@@ -773,3 +773,17 @@ Crear un CaptureJob piloto con una escena real de Supersplat o Spark, probar des
 12. Generar QR.
 13. Cambiar estado a `published`.
 14. Abrir `/capture/:id` y verificar que no aparecen notas internas, costes ni datos privados.
+
+## Paso 16D - CaptureViewerShell / Viewer-first mobile landscape
+
+La optimizacion de landscape movil pasa a ser arquitectonica, no solo de clases responsive:
+
+- `/capture/:id` se trata como ruta viewer-aware para que `AppLayout` no inserte header, footer ni bottom nav sobre la experiencia publica.
+- `CaptureViewerShell` centraliza el frame del viewer, controles minimos y overlay de hotspots.
+- En desktop y movil vertical, la pagina mantiene la landing comercial y el viewer se muestra dentro del flujo normal.
+- En movil horizontal, el shell entra en modo viewer-first con `fixed inset-0`, `100dvh`, fondo oscuro, safe-area y scroll de body bloqueado.
+- En modo inmersivo, el mismo shell ocupa el viewport real y mantiene boton `Salir` visible.
+- El iframe usa `h-full w-full`, `allowFullScreen` y queda dentro de un padre con altura real.
+- Los hotspots se posicionan relativos al frame real y usan `mobileX/mobileY` cuando el dispositivo es mobile-like.
+
+Limitacion: SuperSplat sigue siendo un iframe externo. Immersphere controla contenedor, layout y overlay propio; no controla zoom/camara inicial internos salvo soporte documentado del proveedor.
