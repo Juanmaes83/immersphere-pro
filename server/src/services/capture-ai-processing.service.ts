@@ -313,6 +313,41 @@ function parseAiJson(rawText: string): z.infer<typeof resultSchema> {
   return resultSchema.parse(parsed);
 }
 
+async function completeCaptureAiProcessingRun(runId: string, inputSummary: unknown, model: string): Promise<void> {
+  try {
+    if (!env.ANTHROPIC_API_KEY) {
+      throw new AppError(503, 'ANTHROPIC_API_KEY no configurada');
+    }
+
+    const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+    const response = await anthropic.messages.create({
+      model,
+      max_tokens: 2500,
+      system: buildSystemPrompt(),
+      messages: [{ role: 'user', content: buildUserPrompt(inputSummary) }]
+    });
+    const rawText = response.content.find((item) => item.type === 'text')?.text ?? '';
+    const result = parseAiJson(rawText);
+
+    await getDb().captureAiProcessingRun.update({
+      where: { id: runId },
+      data: {
+        status: 'completed',
+        result,
+        tokensInput: response.usage.input_tokens,
+        tokensOutput: response.usage.output_tokens,
+        error: null
+      }
+    });
+  } catch (error) {
+    const message = error instanceof AppError || error instanceof Error ? error.message : 'Error inesperado procesando IA.';
+    await getDb().captureAiProcessingRun.update({
+      where: { id: runId },
+      data: { status: 'failed', error: truncateText(message, 1000) }
+    });
+  }
+}
+
 export async function processCaptureJobWithAi(captureJobId: string, tenantId: string, userId: string) {
   const job = await getJobForTenant(captureJobId, tenantId);
   const existingRunning = await getDb().captureAiProcessingRun.findFirst({
@@ -335,40 +370,10 @@ export async function processCaptureJobWithAi(captureJobId: string, tenantId: st
     }
   });
 
-  try {
-    if (!env.ANTHROPIC_API_KEY) {
-      throw new AppError(503, 'ANTHROPIC_API_KEY no configurada');
-    }
-
-    const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
-    const response = await anthropic.messages.create({
-      model,
-      max_tokens: 2500,
-      system: buildSystemPrompt(),
-      messages: [{ role: 'user', content: buildUserPrompt(inputSummary) }]
-    });
-    const rawText = response.content.find((item) => item.type === 'text')?.text ?? '';
-    const result = parseAiJson(rawText);
-
-    return getDb().captureAiProcessingRun.update({
-      where: { id: run.id },
-      data: {
-        status: 'completed',
-        result,
-        tokensInput: response.usage.input_tokens,
-        tokensOutput: response.usage.output_tokens,
-        error: null
-      }
-    });
-  } catch (error) {
-    const message = error instanceof AppError || error instanceof Error ? error.message : 'Error inesperado procesando IA.';
-    await getDb().captureAiProcessingRun.update({
-      where: { id: run.id },
-      data: { status: 'failed', error: truncateText(message, 1000) }
-    });
-    if (error instanceof AppError) throw error;
-    throw new AppError(502, message);
-  }
+  void completeCaptureAiProcessingRun(run.id, inputSummary, model).catch((error) => {
+    console.error('[capture-ai] Background processing failed:', error instanceof Error ? error.message : error);
+  });
+  return run;
 }
 
 export async function listCaptureAiProcessingRuns(captureJobId: string, tenantId: string) {

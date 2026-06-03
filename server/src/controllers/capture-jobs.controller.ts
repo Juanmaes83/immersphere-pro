@@ -278,7 +278,7 @@ export async function processCaptureJobAiController(request: Request, response: 
   try {
     const { tenantId, userId } = requireTenantUser(request);
     const data = await processCaptureJobWithAi(request.params.captureJobId, tenantId, userId);
-    response.status(201).json({ success: true, data });
+    response.status(202).json({ success: true, data });
   } catch (error) {
     next(error);
   }

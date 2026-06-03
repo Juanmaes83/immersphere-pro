@@ -359,6 +359,7 @@ Paso 13 anade procesamiento IA real, privado y persistente para `CaptureJob`. El
 ### Que hace
 
 - Crea runs persistentes en `CaptureAiProcessingRun`.
+- `POST /ai/process` responde rapido con el run `running`; el procesamiento continúa en backend.
 - Resume datos basicos del CaptureJob.
 - Resume `inputAssets` y `outputAssets` sin leer binarios.
 - Deriva estado de material, estado 3D y QA desktop/mobile.
@@ -366,6 +367,7 @@ Paso 13 anade procesamiento IA real, privado y persistente para `CaptureJob`. El
 - Guarda `inputSummary`, `result`, `status`, modelo, tokens y errores.
 - Permite consultar ultimos runs desde endpoints privados.
 - Muestra el ultimo run y un historial en `/capture-jobs`.
+- La UI consulta runs cada pocos segundos mientras exista un run `running`.
 - Permite copiar secciones: estructura, hotspots, copy comercial, guion y proximas acciones.
 
 ### Que genera
@@ -450,6 +452,8 @@ Si falta `ANTHROPIC_API_KEY`, el backend no rompe el arranque. Al pulsar "Proces
 - Se truncan notas y nombres largos.
 - Se usa `max_tokens` razonable: `2500`.
 - Se bloquea un nuevo run si ya hay uno `running` para el mismo CaptureJob.
+- El boton queda deshabilitado mientras exista un run `running`.
+- Si el cliente sufre timeout, la UI refresca runs y muestra que el procesamiento sigue en curso.
 - Se guarda uso de tokens cuando Anthropic lo devuelve.
 
 ### Como probar

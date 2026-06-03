@@ -334,6 +334,15 @@ function stringifyAiSection(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
 
+function isStaleRunningRun(run: CaptureAiProcessingRun | null): boolean {
+  if (!run || run.status !== 'running') return false;
+  return Date.now() - new Date(run.createdAt).getTime() > 15 * 60 * 1000;
+}
+
+function isClientTimeout(error: unknown): boolean {
+  return error instanceof Error && error.message.toLowerCase().includes('timeout');
+}
+
 function getSuggestedFormat(type: string): string {
   if (type === 'gaussian_splat') return 'gaussian';
   if (type === 'supersplat' || type === 'splat_viewer') return 'splat';
@@ -443,6 +452,18 @@ export default function CaptureJobsPage(): JSX.Element {
     };
   }, [jobs]);
 
+  const latestAiRun = aiRuns[0] ?? null;
+  const hasRunningAiRun = aiRuns.some((run) => run.status === 'running');
+  const hasStaleRunningAiRun = isStaleRunningRun(latestAiRun);
+
+  useEffect(() => {
+    if (!selectedJob || !hasRunningAiRun) return undefined;
+    const intervalId = window.setInterval(() => {
+      void loadAiRuns(selectedJob.id, true);
+    }, 2500);
+    return () => window.clearInterval(intervalId);
+  }, [selectedJob?.id, hasRunningAiRun]);
+
   async function loadJobs(): Promise<void> {
     setLoading(true);
     setError(null);
@@ -474,12 +495,12 @@ export default function CaptureJobsPage(): JSX.Element {
     }
   }
 
-  async function loadAiRuns(captureJobId: string): Promise<void> {
+  async function loadAiRuns(captureJobId: string, silent = false): Promise<void> {
     try {
       const data = await unwrapApiResponse<CaptureAiProcessingRun[]>(api.get(`/capture-jobs/${captureJobId}/ai/runs`));
       setAiRuns(Array.isArray(data) ? data : []);
     } catch (err) {
-      setError(getApiErrorMessage(err));
+      if (!silent) setError(getApiErrorMessage(err));
     }
   }
 
@@ -533,17 +554,21 @@ export default function CaptureJobsPage(): JSX.Element {
   }
 
   async function processWithAi(): Promise<void> {
-    if (!selectedJob) return;
+    if (!selectedJob || hasRunningAiRun) return;
     setAiProcessing(true);
     setError(null);
     setMessage(null);
     try {
       const run = await unwrapApiResponse<CaptureAiProcessingRun>(api.post(`/capture-jobs/${selectedJob.id}/ai/process`));
       setAiRuns((current) => [run, ...current.filter((item) => item.id !== run.id)]);
-      setMessage(run.status === 'completed' ? 'Procesamiento IA completado.' : 'Procesamiento IA registrado.');
+      setMessage('Procesamiento IA iniciado. Actualizando resultado...');
       await loadAiRuns(selectedJob.id);
     } catch (err) {
-      setError(getApiErrorMessage(err));
+      if (isClientTimeout(err)) {
+        setMessage('El procesamiento sigue en curso. Actualizando resultado...');
+      } else {
+        setError(getApiErrorMessage(err));
+      }
       await loadAiRuns(selectedJob.id);
     } finally {
       setAiProcessing(false);
@@ -1047,7 +1072,7 @@ export default function CaptureJobsPage(): JSX.Element {
               })()}
 
               {(() => {
-                const latestRun = aiRuns[0] ?? null;
+                const latestRun = latestAiRun;
                 const result: CaptureAiProcessingResult | null = latestRun?.result ?? null;
                 return (
                   <div className="rounded-xl border border-sky-200 bg-sky-50/80 p-4 dark:border-sky-900/50 dark:bg-sky-950/20">
@@ -1059,14 +1084,23 @@ export default function CaptureJobsPage(): JSX.Element {
                           Analiza datos existentes, assets resumidos, captura guiada y QA. No modifica el job ni publica entregables.
                         </p>
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => { void processWithAi(); }}
-                        disabled={aiProcessing || aiRuns.some((run) => run.status === 'running')}
-                        className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-sky-600 px-4 py-2 text-xs font-black text-white hover:bg-sky-500 disabled:opacity-50"
-                      >
-                        <BrainCircuit className="h-4 w-4" /> {aiProcessing ? 'Procesando...' : 'Procesar con IA'}
-                      </button>
+                      <div className="flex shrink-0 flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => { void processWithAi(); }}
+                          disabled={aiProcessing || hasRunningAiRun}
+                          className="inline-flex items-center justify-center gap-2 rounded-full bg-sky-600 px-4 py-2 text-xs font-black text-white hover:bg-sky-500 disabled:opacity-50"
+                        >
+                          <BrainCircuit className="h-4 w-4" /> {aiProcessing || hasRunningAiRun ? 'Procesando...' : 'Procesar con IA'}
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { if (selectedJob) void loadAiRuns(selectedJob.id); }}
+                          className="inline-flex items-center justify-center gap-2 rounded-full border border-sky-200 bg-white px-4 py-2 text-xs font-black text-sky-700 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-950 dark:text-sky-300 dark:hover:bg-sky-950/30"
+                        >
+                          <RefreshCw className="h-4 w-4" /> Actualizar resultado
+                        </button>
+                      </div>
                     </div>
 
                     {!latestRun ? (
@@ -1075,6 +1109,16 @@ export default function CaptureJobsPage(): JSX.Element {
                       </p>
                     ) : (
                       <div className="mt-4 space-y-3">
+                        {latestRun.status === 'running' ? (
+                          <p className="rounded-lg bg-sky-100 px-3 py-2 text-xs font-bold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
+                            Procesamiento en curso. La pagina actualiza el resultado automaticamente cada pocos segundos.
+                          </p>
+                        ) : null}
+                        {hasStaleRunningAiRun ? (
+                          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                            Procesamiento anterior sigue marcado como running. Revisa o reintenta mas tarde.
+                          </p>
+                        ) : null}
                         <div className="flex flex-wrap items-center gap-2">
                           <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ring-1 ${latestRun.status === 'completed' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50' : latestRun.status === 'failed' ? 'bg-red-50 text-red-700 ring-red-200 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-800/50' : 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-800/50'}`}>
                             {latestRun.status}
