@@ -717,6 +717,25 @@ Reglas:
 
 Limitación: no son coordenadas 3D nativas dentro del splat. El siguiente paso sería integrar hotspots nativos con un viewer propio o una API compatible del proveedor.
 
+## Modo móvil inmersivo / Landscape Optimized Viewer
+
+La landing pública `/capture/:id` optimiza el viewer para móvil sin modificar el proveedor externo:
+
+- En móvil vertical, muestra una recomendación no intrusiva: girar el móvil para explorar con mayor amplitud.
+- En móvil vertical, ofrece botón `Modo inmersivo`.
+- En móvil horizontal, reduce márgenes y aumenta la altura del viewer hasta ocupar la mayor parte del viewport.
+- En modo inmersivo, el viewer se renderiza en un contenedor `fixed inset-0`, fondo oscuro, botón `Salir` visible y scroll de body bloqueado mientras está activo.
+- El overlay de hotspots sigue funcionando en modo normal e inmersivo.
+- `mobileX` y `mobileY` se usan para ajustar la posición de hotspots en pantallas móviles cuando existen.
+
+Zoom/cámara inicial:
+
+- En proveedores externos embebidos por iframe, como SuperSplat, el zoom/cámara inicial depende del proveedor.
+- Immersphere no modifica la escena externa ni inventa parámetros de cámara.
+- La alternativa aplicada es contenedor amplio, vista no recortada, modo inmersivo y fallback para abrir el viewer externo cuando el usuario necesite control completo.
+
+Camino futuro: viewer propio o integración con una API compatible para controlar cámara inicial, fit-to-view y hotspots nativos.
+
 ## Riesgos pendientes
 
 - Ejecutar la migracion real requiere entorno de base de datos configurado.

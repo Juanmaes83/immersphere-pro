@@ -66,7 +66,8 @@ export default function CapturePublicPage(): JSX.Element {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeHotspotId, setActiveHotspotId] = useState<string | null>(null);
-  const [isMobileViewport, setIsMobileViewport] = useState(false);
+  const [viewport, setViewport] = useState({ isMobile: false, isLandscape: false });
+  const [isImmersiveMode, setIsImmersiveMode] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -91,11 +92,19 @@ export default function CapturePublicPage(): JSX.Element {
   }, [id]);
 
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(max-width: 640px)');
-    const sync = () => setIsMobileViewport(mediaQuery.matches);
+    if (typeof window === 'undefined') return undefined;
+    const sync = () => {
+      const width = window.innerWidth;
+      const height = window.innerHeight;
+      setViewport({ isMobile: width <= 768, isLandscape: width > height });
+    };
     sync();
-    mediaQuery.addEventListener('change', sync);
-    return () => mediaQuery.removeEventListener('change', sync);
+    window.addEventListener('resize', sync);
+    window.addEventListener('orientationchange', sync);
+    return () => {
+      window.removeEventListener('resize', sync);
+      window.removeEventListener('orientationchange', sync);
+    };
   }, []);
 
   useEffect(() => {
@@ -105,6 +114,15 @@ export default function CapturePublicPage(): JSX.Element {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, []);
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return undefined;
+    const previousOverflow = document.body.style.overflow;
+    if (isImmersiveMode) document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [isImmersiveMode]);
 
   if (loading) {
     return (
@@ -140,15 +158,82 @@ export default function CapturePublicPage(): JSX.Element {
   const heroDescription = applied?.shortDescription || applied?.longDescription || job.clientName;
   const primaryCta = applied?.ctaPrimary || 'Solicitar información';
   const activeHotspot = job.hotspots.find((hotspot) => hotspot.id === activeHotspotId) ?? null;
+  const isMobileViewport = viewport.isMobile;
+  const isLandscape = viewport.isLandscape;
   const canEmbedPrimary = Boolean(
     premiumOutput &&
     premiumOutput.embeddable &&
     primaryUrl &&
     isSafeHttpUrl(primaryUrl)
   );
+  const normalViewerClass = isMobileViewport && isLandscape
+    ? 'h-[82vh] min-h-[340px]'
+    : isMobileViewport
+      ? 'h-[60vh] min-h-[420px]'
+      : 'aspect-[16/10] min-h-[320px]';
+
+  const renderHotspotOverlay = (immersive = false) => job.hotspots.length > 0 ? (
+    <div className="pointer-events-none absolute inset-0">
+      {job.hotspots.map((hotspot, index) => {
+        const position = getHotspotPosition(hotspot, index);
+        const left = isMobileViewport ? position.mobileX : position.x;
+        const top = isMobileViewport ? position.mobileY : position.y;
+        const isActive = activeHotspotId === hotspot.id;
+        return (
+          <button
+            key={hotspot.id}
+            type="button"
+            aria-label={`Ver hotspot ${hotspot.label}`}
+            onClick={() => setActiveHotspotId(hotspot.id)}
+            className={`pointer-events-auto absolute flex h-11 w-11 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-xs font-black shadow-[0_8px_30px_rgba(0,0,0,0.35)] ring-4 ring-black/20 transition hover:scale-110 focus:outline-none focus:ring-4 focus:ring-violet-300 sm:h-9 sm:w-9 ${isActive ? 'bg-ip-accent text-white' : 'bg-white text-slate-950 hover:bg-violet-100'}`}
+            style={{ left: `${left}%`, top: `${top}%` }}
+          >
+            {index + 1}
+          </button>
+        );
+      })}
+      {activeHotspot ? (
+        <div className={`pointer-events-auto absolute rounded-xl bg-white p-4 text-slate-950 shadow-2xl ring-1 ring-slate-200 ${immersive || isMobileViewport ? 'inset-x-3 bottom-3 max-h-[42vh] overflow-auto' : 'right-4 top-4 w-80'}`}>
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ip-accent">{activeHotspot.roomOrZone || statusLabel(activeHotspot.hotspotType)}</p>
+              <h3 className="mt-1 text-base font-black">{activeHotspot.label}</h3>
+            </div>
+            <button type="button" onClick={() => setActiveHotspotId(null)} className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-500 hover:bg-slate-50">
+              Cerrar
+            </button>
+          </div>
+          <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{activeHotspot.description}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">{activeHotspot.priority}</span>
+            <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">{statusLabel(activeHotspot.hotspotType)}</span>
+          </div>
+          {activeHotspot.cta ? (
+            <button type="button" className="mt-4 w-full rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white">
+              {activeHotspot.cta}
+            </button>
+          ) : null}
+        </div>
+      ) : null}
+    </div>
+  ) : null;
+
+  const renderEmbeddedViewer = (immersive = false) => (
+    <div className={`relative bg-black ${immersive ? 'h-[calc(100vh-76px)] min-h-0 w-screen' : normalViewerClass}`}>
+      <iframe
+        src={toEmbedUrl(primaryUrl, premiumOutput?.type ?? '')}
+        title="Experiencia 3D inmersiva"
+        className="h-full w-full border-0"
+        allow="fullscreen; xr-spatial-tracking"
+        loading="lazy"
+      />
+      {renderHotspotOverlay(immersive)}
+    </div>
+  );
 
   return (
-    <main className="mx-auto max-w-5xl px-5 py-12">
+    <>
+    <main className={`mx-auto max-w-5xl px-5 ${isMobileViewport && isLandscape ? 'py-4' : 'py-12'}`}>
       <Helmet>
         <title>{job.title} · Immersphere Pro</title>
         <meta name="robots" content="noindex" />
@@ -189,62 +274,21 @@ export default function CapturePublicPage(): JSX.Element {
               <a href={primaryUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-violet-100">
                 {primaryCta} <ExternalLink className="h-4 w-4" />
               </a>
+              <button type="button" onClick={() => setIsImmersiveMode(true)} className="inline-flex items-center justify-center rounded-full border border-white/20 px-5 py-3 text-sm font-black text-white transition hover:bg-white/10">
+                Modo inmersivo
+              </button>
             </div>
-            {canEmbedPrimary ? (
-              <div className="relative aspect-[16/10] min-h-[320px] bg-black">
-                <iframe
-                  src={toEmbedUrl(primaryUrl, premiumOutput.type)}
-                  title="Experiencia 3D inmersiva"
-                  className="h-full w-full border-0"
-                  allow="fullscreen; xr-spatial-tracking"
-                  loading="lazy"
-                />
-                {job.hotspots.length > 0 ? (
-                  <div className="pointer-events-none absolute inset-0">
-                    {job.hotspots.map((hotspot, index) => {
-                      const position = getHotspotPosition(hotspot, index);
-                      const left = isMobileViewport ? position.mobileX : position.x;
-                      const top = isMobileViewport ? position.mobileY : position.y;
-                      const isActive = activeHotspotId === hotspot.id;
-                      return (
-                        <button
-                          key={hotspot.id}
-                          type="button"
-                          aria-label={`Ver hotspot ${hotspot.label}`}
-                          onClick={() => setActiveHotspotId(hotspot.id)}
-                          className={`pointer-events-auto absolute flex h-10 w-10 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full border-2 border-white text-xs font-black shadow-[0_8px_30px_rgba(0,0,0,0.35)] ring-4 ring-black/20 transition hover:scale-110 focus:outline-none focus:ring-4 focus:ring-violet-300 sm:h-9 sm:w-9 ${isActive ? 'bg-ip-accent text-white' : 'bg-white text-slate-950 hover:bg-violet-100'}`}
-                          style={{ left: `${left}%`, top: `${top}%` }}
-                        >
-                          {index + 1}
-                        </button>
-                      );
-                    })}
-                    {activeHotspot ? (
-                      <div className="pointer-events-auto absolute inset-x-3 bottom-3 rounded-xl bg-white p-4 text-slate-950 shadow-2xl ring-1 ring-slate-200 sm:left-auto sm:right-4 sm:top-4 sm:bottom-auto sm:w-80">
-                        <div className="flex items-start justify-between gap-3">
-                          <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-ip-accent">{activeHotspot.roomOrZone || statusLabel(activeHotspot.hotspotType)}</p>
-                            <h3 className="mt-1 text-base font-black">{activeHotspot.label}</h3>
-                          </div>
-                          <button type="button" onClick={() => setActiveHotspotId(null)} className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-500 hover:bg-slate-50">
-                            Cerrar
-                          </button>
-                        </div>
-                        <p className="mt-2 text-sm font-semibold leading-6 text-slate-600">{activeHotspot.description}</p>
-                        <div className="mt-3 flex flex-wrap gap-2">
-                          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">{activeHotspot.priority}</span>
-                          <span className="rounded-full bg-slate-100 px-2 py-1 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500">{statusLabel(activeHotspot.hotspotType)}</span>
-                        </div>
-                        {activeHotspot.cta ? (
-                          <button type="button" className="mt-4 w-full rounded-full bg-slate-950 px-4 py-2 text-sm font-black text-white">
-                            {activeHotspot.cta}
-                          </button>
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                ) : null}
+            {isMobileViewport && !isLandscape ? (
+              <div className="border-b border-white/10 bg-violet-500/15 px-5 py-4">
+                <p className="text-sm font-black text-white">Gira el móvil para explorar la experiencia 3D con mayor amplitud.</p>
+                <p className="mt-1 text-xs font-semibold text-white/60">En horizontal verás mejor estancias, proporciones, splats, panorámicas y vídeos inmersivos.</p>
+                <button type="button" onClick={() => setIsImmersiveMode(true)} className="mt-3 rounded-full bg-white px-4 py-2 text-xs font-black text-slate-950">
+                  Modo inmersivo
+                </button>
               </div>
+            ) : null}
+            {canEmbedPrimary ? (
+              renderEmbeddedViewer()
             ) : (
               <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 bg-slate-900 px-5 py-10 text-center">
                 <p className="max-w-md text-sm font-semibold text-white/60">Este viewer 3D se abre en una pestaña externa para mantener la entrega segura.</p>
@@ -306,5 +350,25 @@ export default function CapturePublicPage(): JSX.Element {
         )}
       </section>
     </main>
+    {isImmersiveMode && canEmbedPrimary ? (
+      <div className="fixed inset-0 z-[80] bg-black text-white">
+        <div className="flex h-[76px] items-center justify-between gap-3 border-b border-white/10 px-4">
+          <div className="min-w-0">
+            <p className="truncate text-sm font-black">{heroTitle}</p>
+            {isMobileViewport && !isLandscape ? <p className="mt-1 text-xs font-semibold text-white/55">Para mejor experiencia, gira el móvil.</p> : null}
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <a href={primaryUrl} target="_blank" rel="noreferrer" className="hidden rounded-full border border-white/15 px-3 py-2 text-xs font-black text-white/80 hover:bg-white/10 sm:inline-flex">
+              Abrir externo
+            </a>
+            <button type="button" onClick={() => setIsImmersiveMode(false)} className="rounded-full bg-white px-4 py-2 text-xs font-black text-slate-950">
+              Salir
+            </button>
+          </div>
+        </div>
+        {renderEmbeddedViewer(true)}
+      </div>
+    ) : null}
+    </>
   );
 }

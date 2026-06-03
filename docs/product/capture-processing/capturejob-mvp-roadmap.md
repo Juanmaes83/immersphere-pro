@@ -43,6 +43,7 @@ Se añade aplicación humana de sugerencias IA y hotspots públicos:
 - aprobar/publicar/ocultar/archivar hotspots manualmente;
 - mostrar en `/capture/:id` solo contenido aplicado seguro y hotspots `published + isPublic`.
 - mostrar hotspots publicados como overlay 2D interno sobre el viewer externo.
+- optimizar `/capture/:id` en móvil con aviso de orientación horizontal y modo inmersivo.
 
 Queda fuera del MVP actual:
 
@@ -50,6 +51,7 @@ Queda fuera del MVP actual:
 - coordenadas 3D nativas dentro de SuperSplat/Spark/Luma;
 - automatización de publicación;
 - workers, OCR, GPU o generación automática Gaussian/Splat.
+- control nativo de zoom/cámara inicial en iframes externos como SuperSplat.
 | Que no se implementa | No hay GPU automatico, Matrix-3D, 360Gaussian integrado ni OCR productivo. |
 | Riesgo | Construir demasiada plataforma antes de validar volumen. |
 | Prioridad | Media-alta cuando haya jobs recurrentes. |
