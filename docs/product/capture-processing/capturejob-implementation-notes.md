@@ -588,14 +588,16 @@ Este corrector solo postprocesa el resultado IA; no modifica datos originales de
 
 La confidence no depende solo del modelo. El backend aplica limites posteriores:
 
-- sin `inputAssets`: maximo 60;
+- sin `inputAssets`: mantiene aviso de limitacion;
 - briefing inexistente o por debajo de 40: maximo 60;
-- output 3D sin inputs: maximo 65;
-- briefing >= 70 y output listo/publicado: puede llegar a 85;
-- inputs + briefing completo + QA OK: puede llegar a 95;
+- briefing >= 70 + output 3D listo/publicado + sin `inputAssets`: confidence entre 60 y 70;
+- briefing >= 90 + output 3D publicado + desktop/mobile/fallback OK + sin `inputAssets`: maximo 70;
+- inputs + briefing completo + QA OK: puede llegar a 90-95;
 - nunca se permite 100 salvo datos realmente completos y QA completo.
 
-Si se limita, la explicacion anade: `Confianza limitada por falta de material/contexto.`
+Si se limita por falta de inputs pero el briefing y el output 3D estan completos, la explicacion debe indicar: `Confianza limitada porque no hay inputAssets registrados, aunque el briefing y el output 3D estan completos.`
+
+El postprocesado evita secciones vacias en runs nuevos. Si la IA devuelve `commercialCopy`, `videoScript`, `nextActions`, `missingMaterial` o `qaRecommendations` sin contenido util, el backend genera fallback minimo desde `commercialBrief`, output 3D, estado de material y QA sin hacer llamadas adicionales ni cambiar el modelo barato por defecto.
 
 ### UI privada
 
@@ -605,6 +607,10 @@ En `/capture-jobs`, el bloque `Briefing comercial` permite editar y guardar el c
 - numero de input assets;
 - si hay output 3D detectado;
 - aviso `Resultado limitado por falta de material/contexto.` cuando falta briefing, inputs o la confidence es baja.
+- copy comercial completo: descripcion corta/larga, highlights, angle, publico y CTAs;
+- guion de video completo: hook, escenas, voiceover, CTA y formatos;
+- proximas acciones con motivo;
+- QA recomendado ampliado con desktop, mobile, performance y viewer.
 
 Tras guardar briefing, el equipo puede pulsar de nuevo `Procesar con IA`. No se borran runs anteriores.
 

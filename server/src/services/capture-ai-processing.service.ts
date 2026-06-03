@@ -4,7 +4,7 @@ import { env } from '../config/env.js';
 import { prisma } from '../index.js';
 import { AppError } from '../middleware/errorHandler.js';
 
-const PROMPT_VERSION = 'capture-ai-v1';
+const PROMPT_VERSION = 'capture-ai-v2';
 const PREMIUM_3D_OUTPUT_TYPES = ['gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
 const CAPTURE_AI_MODEL_BY_TIER = {
   cheap: 'claude-haiku-4-5-20251001',
@@ -481,7 +481,8 @@ Reglas:
 - Usa la tool ${CAPTURE_AI_RESULT_TOOL_NAME} exactamente una vez.
 - No devuelvas markdown, code fences ni explicaciones externas.
 - No inventes datos concretos no presentes.
-- Si faltan datos, indicalo en missingMaterial.
+- No dejes vacias estas secciones: commercialCopy, videoScript, nextActions, missingMaterial y qaRecommendations.
+- Si faltan datos, indicalo en missingMaterial y genera recomendaciones accionables basadas en briefing, output 3D, estado del material y QA.
 - Usa commercialBrief para adaptar tono, CTA, hotspots, copy y guion. Si falta briefing, evita concrecion falsa.
 - La calidad y confianza deben depender del contexto disponible. Si falta briefing, inputAssets o datos de propiedad, baja confidence y explica por que.
 - No digas que se ha generado Gaussian/Splat automaticamente.
@@ -496,7 +497,7 @@ function buildUserPrompt(inputSummary: unknown): string {
 
 ${JSON.stringify(inputSummary, null, 2)}
 
-Si un dato no existe, usa string vacio, arrays vacios o indicalo en missingMaterial. No uses texto fuera de la tool.
+No uses texto fuera de la tool. No dejes vacios commercialCopy, videoScript, nextActions, missingMaterial ni qaRecommendations. Si no hay inputAssets, missingMaterial debe explicarlo. Si hay briefing comercial y output 3D, usa esos datos para generar copy, guion, acciones y QA, indicando claramente las limitaciones.
 
 Estructura conceptual obligatoria:
 {
@@ -545,7 +546,208 @@ function applyStylePolish(result: CaptureAiResult): CaptureAiResult {
   return validateAiResult(polishUnknown(result));
 }
 
-function getContextConfidenceCap(inputSummary: any): { cap: number; limited: boolean; reasons: string[] } {
+function firstNonEmpty(...values: string[]): string {
+  return values.find((value) => value.trim().length > 0)?.trim() ?? '';
+}
+
+function getBrief(inputSummary: any): Record<string, unknown> {
+  return toRecord(inputSummary?.commercialBrief);
+}
+
+function getCtaLabel(ctaGoal: string): string {
+  if (ctaGoal === 'book_visit') return 'Reservar una visita';
+  if (ctaGoal === 'request_info') return 'Solicitar más información';
+  if (ctaGoal === 'download') return 'Descargar información';
+  if (ctaGoal === 'call') return 'Solicitar una llamada';
+  return 'Contactar';
+}
+
+function hasCopyContent(copy: CaptureAiResult['commercialCopy']): boolean {
+  return [
+    copy.shortDescription,
+    copy.longDescription,
+    copy.salesAngle,
+    copy.targetAudience,
+    ...copy.propertyHighlights,
+    ...copy.ctaSuggestions
+  ].some((item) => item.trim().length > 0);
+}
+
+function hasVideoContent(video: CaptureAiResult['videoScript']): boolean {
+  return [
+    video.hook,
+    video.voiceover,
+    video.closingCTA,
+    video.formatRecommendations.horizontal,
+    video.formatRecommendations.vertical,
+    ...video.sceneList.flatMap((scene) => [scene.scene, scene.visual, scene.voiceover, scene.duration])
+  ].some((item) => item.trim().length > 0);
+}
+
+function buildFallbackCommercialCopy(inputSummary: any): CaptureAiResult['commercialCopy'] {
+  const brief = getBrief(inputSummary);
+  const propertyType = firstNonEmpty(toStringValue(brief.propertyType), toStringValue(inputSummary?.captureJob?.title), 'Experiencia inmobiliaria inmersiva');
+  const location = toStringValue(brief.location);
+  const targetAudience = firstNonEmpty(toStringValue(brief.targetAudience), 'Compradores que quieren evaluar el inmueble antes de una visita presencial');
+  const benefits = toStringArray(brief.keyBenefits);
+  const differentiators = toStringArray(brief.differentiators);
+  const cta = getCtaLabel(toStringValue(brief.ctaGoal));
+  const locationText = location ? ` en ${location}` : '';
+  const primaryBenefit = firstNonEmpty(benefits[0] ?? '', 'explorar el espacio en 3D sin desplazamientos');
+
+  return {
+    shortDescription: `${propertyType}${locationText} con visita 3D para ${primaryBenefit}.`,
+    longDescription: `${propertyType}${locationText}. La experiencia inmersiva ayuda a entender la distribución, revisar zonas clave y cualificar el interés antes de coordinar una visita presencial.`,
+    propertyHighlights: (benefits.length > 0 ? benefits : [
+      'Exploración 3D sin desplazamiento',
+      'Mejor comprensión del espacio',
+      'Mayor confianza antes de reservar visita'
+    ]).slice(0, 6),
+    salesAngle: firstNonEmpty(toStringValue(brief.salesObjective), `Usar la visita 3D para convertir interés inicial en solicitudes cualificadas de información.`),
+    targetAudience,
+    ctaSuggestions: [
+      cta,
+      'Ver experiencia 3D',
+      ...(differentiators.length > 0 ? ['Pedir detalles del inmueble'] : [])
+    ].slice(0, 4)
+  };
+}
+
+function buildFallbackVideoScript(inputSummary: any): CaptureAiResult['videoScript'] {
+  const brief = getBrief(inputSummary);
+  const propertyType = firstNonEmpty(toStringValue(brief.propertyType), 'esta experiencia 3D');
+  const location = toStringValue(brief.location);
+  const benefits = toStringArray(brief.keyBenefits);
+  const differentiators = toStringArray(brief.differentiators);
+  const cta = getCtaLabel(toStringValue(brief.ctaGoal));
+  const opening = location ? `${propertyType} en ${location}` : propertyType;
+  const benefit = firstNonEmpty(benefits[0] ?? '', 'recorrer el espacio antes de visitarlo');
+  const differentiator = firstNonEmpty(differentiators[0] ?? '', 'visualización inmersiva');
+
+  return {
+    hook: `Descubre ${opening} con una visita inmersiva pensada para decidir con más contexto.`,
+    sceneList: [
+      {
+        scene: 'Apertura',
+        visual: 'Vista inicial del recorrido 3D y acceso a la landing pública.',
+        voiceover: `Explora ${opening} desde cualquier dispositivo.`,
+        duration: '4-6 s'
+      },
+      {
+        scene: 'Zonas clave',
+        visual: 'Recorrido por las estancias y puntos destacados documentados.',
+        voiceover: benefit,
+        duration: '8-12 s'
+      },
+      {
+        scene: 'Cierre comercial',
+        visual: 'CTA final sobre la experiencia 3D.',
+        voiceover: `${differentiator}. ${cta}.`,
+        duration: '4-6 s'
+      }
+    ],
+    voiceover: `Explora ${opening} mediante una experiencia 3D clara y accesible. Revisa la distribución, detecta zonas de interés y solicita información cuando quieras avanzar.`,
+    closingCTA: cta,
+    formatRecommendations: {
+      horizontal: 'Vídeo 16:9 para web, ficha comercial y presentaciones.',
+      vertical: 'Versión 9:16 con CTA visible para móvil y redes sociales.'
+    }
+  };
+}
+
+function buildInputAssetMissingMaterial(inputSummary: any): CaptureAiResult['missingMaterial'] {
+  const inputCount = Number(inputSummary?.guidedCapture?.inputCount ?? 0);
+  if (inputCount > 0) return [];
+  const severity: 'medium' | 'high' = Number(inputSummary?.guidedCapture?.commercialBriefCompleteness ?? 0) >= 70 ? 'medium' : 'high';
+  return [
+    {
+      item: 'Material original de captura no registrado',
+      severity,
+      reason: 'El procesamiento no tiene inputAssets asociados para contrastar el origen de la experiencia.',
+      recommendation: 'Añadir fotos, vídeos, panoramas o referencias base del material recibido.'
+    },
+    {
+      item: 'Fotos/vídeos/panoramas base no documentados',
+      severity: 'medium',
+      reason: 'Hay output 3D, pero falta trazabilidad del material original.',
+      recommendation: 'Registrar al menos una muestra de material fuente para mejorar QA y recomendaciones.'
+    },
+    {
+      item: 'Metadata técnica del origen 3D pendiente',
+      severity: 'medium',
+      reason: 'El proveedor 3D está detectado, pero no consta metadata del proceso de captura.',
+      recommendation: 'Documentar fuente, formato y comprobaciones técnicas del viewer.'
+    }
+  ];
+}
+
+function buildFallbackNextActions(inputSummary: any): CaptureAiResult['nextActions'] {
+  const inputCount = Number(inputSummary?.guidedCapture?.inputCount ?? 0);
+  const actions: CaptureAiResult['nextActions'] = [
+    {
+      action: inputCount === 0 ? 'Añadir inputAssets de referencia' : 'Revisar inputAssets registrados',
+      ownerSuggestion: 'Operaciones',
+      priority: inputCount === 0 ? 'high' : 'medium',
+      reason: inputCount === 0 ? 'No hay material original registrado para contrastar el output 3D.' : 'El material registrado debe estar alineado con la propuesta IA.'
+    },
+    {
+      action: 'Validar landing pública',
+      ownerSuggestion: 'QA',
+      priority: 'high',
+      reason: 'Confirmar carga del viewer, fallback y CTA principal antes de compartir.'
+    },
+    {
+      action: 'Revisar CTA comercial',
+      ownerSuggestion: 'Comercial',
+      priority: 'medium',
+      reason: 'Asegurar que el CTA coincide con el objetivo del briefing.'
+    },
+    {
+      action: 'Crear galería fallback',
+      ownerSuggestion: 'Producción',
+      priority: 'medium',
+      reason: 'Cubrir navegadores o dispositivos donde el viewer 3D no cargue correctamente.'
+    },
+    {
+      action: 'Reprocesar IA tras añadir material',
+      ownerSuggestion: 'Operaciones',
+      priority: 'medium',
+      reason: 'Mejorar precisión cuando existan inputAssets documentados.'
+    }
+  ];
+  return actions;
+}
+
+function normalizeMinimumContent(result: CaptureAiResult, inputSummary: unknown): CaptureAiResult {
+  const summary = inputSummary as any;
+  const missingMaterial = result.missingMaterial.length > 0 ? result.missingMaterial : buildInputAssetMissingMaterial(summary);
+  const readiness = result.qaRecommendations.publicationReadiness;
+  const needsQaFallback = readiness === 'needs_review' || readiness === 'not_ready';
+  const desktop = result.qaRecommendations.desktop.length > 0 ? result.qaRecommendations.desktop : needsQaFallback ? [
+    'Validar carga, fluidez, iframe y fallback en Chrome, Safari y Firefox.'
+  ] : result.qaRecommendations.desktop;
+  const mobile = result.qaRecommendations.mobile.length > 0 ? result.qaRecommendations.mobile : needsQaFallback ? [
+    'Validar iOS y Android, interacción táctil, tiempo de carga y legibilidad del CTA.'
+  ] : result.qaRecommendations.mobile;
+
+  return validateAiResult({
+    ...result,
+    commercialCopy: hasCopyContent(result.commercialCopy) ? result.commercialCopy : buildFallbackCommercialCopy(summary),
+    videoScript: hasVideoContent(result.videoScript) ? result.videoScript : buildFallbackVideoScript(summary),
+    missingMaterial,
+    qaRecommendations: {
+      ...result.qaRecommendations,
+      desktop,
+      mobile,
+      performance: result.qaRecommendations.performance.length > 0 ? result.qaRecommendations.performance : ['Comprobar tiempo de carga inicial y respuesta del viewer 3D.'],
+      viewer: result.qaRecommendations.viewer.length > 0 ? result.qaRecommendations.viewer : ['Verificar que el proveedor 3D carga correctamente y que existe fallback público.'],
+      fallback: result.qaRecommendations.fallback.length > 0 ? result.qaRecommendations.fallback : ['Preparar enlace o galería alternativa si el iframe no está disponible.']
+    },
+    nextActions: result.nextActions.length > 0 ? result.nextActions : buildFallbackNextActions(summary)
+  });
+}
+
+function getContextConfidenceCap(inputSummary: any): { cap: number; floor: number; limited: boolean; reasons: string[]; explanation?: string } {
   const inputCount = Number(inputSummary?.guidedCapture?.inputCount ?? 0);
   const outputCount = Number(inputSummary?.guidedCapture?.outputCount ?? 0);
   const briefCompleteness = Number(inputSummary?.guidedCapture?.commercialBriefCompleteness ?? 0);
@@ -553,6 +755,7 @@ function getContextConfidenceCap(inputSummary: any): { cap: number; limited: boo
   const hasPublishedOrReadyOutput = outputCount > 0 && ['published', 'approved', 'ready'].includes(String(threeD.status || '').toLowerCase());
   const qaComplete = Boolean(threeD.desktopOk && threeD.mobileOk && threeD.fallbackOk);
   let cap = 80;
+  let floor = 0;
   const reasons: string[] = [];
 
   if (inputCount === 0) {
@@ -566,7 +769,13 @@ function getContextConfidenceCap(inputSummary: any): { cap: number; limited: boo
   if (threeD.hasPrimary3d && inputCount === 0) {
     cap = Math.min(cap, 65);
   }
-  if (briefCompleteness >= 70 && hasPublishedOrReadyOutput) {
+  if (inputCount === 0 && briefCompleteness >= 90 && hasPublishedOrReadyOutput && qaComplete) {
+    cap = 70;
+    floor = 70;
+  } else if (inputCount === 0 && briefCompleteness >= 70 && hasPublishedOrReadyOutput) {
+    cap = 70;
+    floor = 60;
+  } else if (briefCompleteness >= 70 && hasPublishedOrReadyOutput) {
     cap = Math.max(cap, 85);
   }
   if (inputCount > 0 && briefCompleteness >= 85 && qaComplete) {
@@ -575,13 +784,18 @@ function getContextConfidenceCap(inputSummary: any): { cap: number; limited: boo
   if (!(inputCount > 0 && briefCompleteness >= 90 && qaComplete)) {
     cap = Math.min(cap, 95);
   }
-  return { cap, limited: reasons.length > 0, reasons };
+  const explanation = inputCount === 0 && briefCompleteness >= 90 && hasPublishedOrReadyOutput && qaComplete
+    ? 'Confianza limitada porque no hay inputAssets registrados, aunque el briefing y el output 3D están completos.'
+    : undefined;
+  return { cap, floor, limited: reasons.length > 0, reasons, explanation };
 }
 
 function applyConfidencePolicy(result: CaptureAiResult, inputSummary: unknown): CaptureAiResult {
   const policy = getContextConfidenceCap(inputSummary);
-  const score = Math.min(result.confidence.score, policy.cap);
-  const limitNote = policy.limited ? ` Confianza limitada por falta de material/contexto: ${policy.reasons.join(', ')}.` : '';
+  const score = Math.max(policy.floor, Math.min(result.confidence.score, policy.cap));
+  const limitNote = policy.explanation
+    ? ` ${policy.explanation}`
+    : policy.limited ? ` Confianza limitada por falta de material/contexto: ${policy.reasons.join(', ')}.` : '';
   return {
     ...result,
     confidence: {
@@ -592,7 +806,7 @@ function applyConfidencePolicy(result: CaptureAiResult, inputSummary: unknown): 
 }
 
 function postProcessAiResult(result: CaptureAiResult, inputSummary: unknown): CaptureAiResult {
-  return applyConfidencePolicy(applyStylePolish(result), inputSummary);
+  return applyConfidencePolicy(normalizeMinimumContent(applyStylePolish(result), inputSummary), inputSummary);
 }
 
 async function getJobForTenant(captureJobId: string, tenantId: string): Promise<CaptureJobWithAssets> {

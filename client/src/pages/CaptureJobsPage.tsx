@@ -386,6 +386,34 @@ function getCommercialBriefCompleteness(brief: CommercialBriefForm): number {
   return Math.min(100, score);
 }
 
+function hasTextContent(values: Array<string | string[]>): boolean {
+  return values.some((value) => Array.isArray(value)
+    ? value.some((item) => item.trim().length > 0)
+    : value.trim().length > 0);
+}
+
+function hasCommercialCopyContent(result: CaptureAiProcessingResult): boolean {
+  return hasTextContent([
+    result.commercialCopy.shortDescription,
+    result.commercialCopy.longDescription,
+    result.commercialCopy.propertyHighlights,
+    result.commercialCopy.salesAngle,
+    result.commercialCopy.targetAudience,
+    result.commercialCopy.ctaSuggestions
+  ]);
+}
+
+function hasVideoScriptContent(result: CaptureAiProcessingResult): boolean {
+  return hasTextContent([
+    result.videoScript.hook,
+    result.videoScript.voiceover,
+    result.videoScript.closingCTA,
+    result.videoScript.formatRecommendations.horizontal,
+    result.videoScript.formatRecommendations.vertical,
+    result.videoScript.sceneList.flatMap((scene) => [scene.scene, scene.visual, scene.voiceover, scene.duration])
+  ]);
+}
+
 function isStaleRunningRun(run: CaptureAiProcessingRun | null): boolean {
   if (!run || run.status !== 'running') return false;
   return Date.now() - new Date(run.createdAt).getTime() > 15 * 60 * 1000;
@@ -1274,7 +1302,7 @@ export default function CaptureJobsPage(): JSX.Element {
                         InputAssets: <span className="font-black text-slate-800 dark:text-white">{selectedJob.inputAssets?.length ?? 0}</span>
                       </p>
                       <p className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
-                        Output 3D detectado: <span className="font-black text-slate-800 dark:text-white">{getPrimaryPremium3dOutput(selectedJob) ? 'si' : 'no'}</span>
+                        Output 3D detectado: <span className="font-black text-slate-800 dark:text-white">{getPrimaryPremium3dOutput(selectedJob) ? 'sí' : 'no'}</span>
                       </p>
                     </div>
                     {contextLimited ? (
@@ -1358,8 +1386,24 @@ export default function CaptureJobsPage(): JSX.Element {
                                     <Copy className="h-3 w-3" /> Copiar
                                   </button>
                                 </div>
-                                <p className="mt-2 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{result.commercialCopy.shortDescription}</p>
-                                <p className="mt-2 text-xs font-bold text-sky-700 dark:text-sky-300">{result.commercialCopy.salesAngle}</p>
+                                {hasCommercialCopyContent(result) ? (
+                                  <div className="mt-2 space-y-2">
+                                    {result.commercialCopy.shortDescription ? <p className="text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{result.commercialCopy.shortDescription}</p> : null}
+                                    {result.commercialCopy.longDescription ? <p className="text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{result.commercialCopy.longDescription}</p> : null}
+                                    {result.commercialCopy.salesAngle ? <p className="text-xs font-bold text-sky-700 dark:text-sky-300">{result.commercialCopy.salesAngle}</p> : null}
+                                    {result.commercialCopy.targetAudience ? <p className="text-[10px] font-bold text-slate-400">Público: {result.commercialCopy.targetAudience}</p> : null}
+                                    {result.commercialCopy.propertyHighlights.length > 0 ? (
+                                      <div className="flex flex-wrap gap-1">
+                                        {result.commercialCopy.propertyHighlights.slice(0, 4).map((highlight) => (
+                                          <span key={highlight} className="rounded-full bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-white/5 dark:text-white/50">{highlight}</span>
+                                        ))}
+                                      </div>
+                                    ) : null}
+                                    {result.commercialCopy.ctaSuggestions.length > 0 ? <p className="text-[10px] font-black text-sky-700 dark:text-sky-300">CTA: {result.commercialCopy.ctaSuggestions.slice(0, 3).join(' · ')}</p> : null}
+                                  </div>
+                                ) : (
+                                  <p className="mt-2 text-xs font-bold text-slate-400">Sin contenido generado. Reprocesa tras completar briefing/material.</p>
+                                )}
                               </div>
 
                               <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
@@ -1369,8 +1413,23 @@ export default function CaptureJobsPage(): JSX.Element {
                                     <Copy className="h-3 w-3" /> Copiar
                                   </button>
                                 </div>
-                                <p className="mt-2 text-xs font-black text-slate-800 dark:text-white">{result.videoScript.hook}</p>
-                                <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{result.videoScript.closingCTA}</p>
+                                {hasVideoScriptContent(result) ? (
+                                  <div className="mt-2 space-y-2">
+                                    {result.videoScript.hook ? <p className="text-xs font-black text-slate-800 dark:text-white">{result.videoScript.hook}</p> : null}
+                                    {result.videoScript.voiceover ? <p className="text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{result.videoScript.voiceover}</p> : null}
+                                    {result.videoScript.sceneList.slice(0, 3).map((scene) => (
+                                      <p key={`${scene.scene}-${scene.duration}`} className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-white/5 dark:text-white/50">
+                                        <span className="font-black text-slate-700 dark:text-white/70">{scene.scene}</span> · {scene.visual} · {scene.duration}
+                                      </p>
+                                    ))}
+                                    {result.videoScript.closingCTA ? <p className="text-xs font-bold text-sky-700 dark:text-sky-300">{result.videoScript.closingCTA}</p> : null}
+                                    <p className="text-[10px] font-bold text-slate-400">
+                                      Formatos: {result.videoScript.formatRecommendations.horizontal || 'horizontal pendiente'} · {result.videoScript.formatRecommendations.vertical || 'vertical pendiente'}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <p className="mt-2 text-xs font-bold text-slate-400">Sin contenido generado. Reprocesa tras completar briefing/material.</p>
+                                )}
                               </div>
 
                               <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
@@ -1381,9 +1440,10 @@ export default function CaptureJobsPage(): JSX.Element {
                                   </button>
                                 </div>
                                 <div className="mt-2 space-y-2">
-                                  {result.nextActions.slice(0, 4).map((action) => (
+                                  {result.nextActions.length === 0 ? <p className="text-xs font-bold text-slate-400">Sin contenido generado. Reprocesa tras completar briefing/material.</p> : result.nextActions.slice(0, 5).map((action) => (
                                     <p key={`${action.action}-${action.ownerSuggestion}`} className="text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
                                       <span className="font-black text-slate-800 dark:text-white">{action.priority}</span> · {action.action}
+                                      {action.reason ? <span className="block text-[10px] text-slate-400">{action.reason}</span> : null}
                                     </p>
                                   ))}
                                 </div>
@@ -1405,11 +1465,24 @@ export default function CaptureJobsPage(): JSX.Element {
                                 <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">QA recomendado</p>
                                 <p className="mt-2 text-xs font-black text-slate-800 dark:text-white">Readiness: {statusLabel(result.qaRecommendations.publicationReadiness)}</p>
                                 <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
-                                  Desktop: {result.qaRecommendations.desktop.slice(0, 2).join(' · ') || 'sin recomendaciones'}
+                                  Desktop: {result.qaRecommendations.desktop.slice(0, 2).join(' · ') || 'Sin contenido generado. Reprocesa tras completar briefing/material.'}
                                 </p>
                                 <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
-                                  Mobile: {result.qaRecommendations.mobile.slice(0, 2).join(' · ') || 'sin recomendaciones'}
+                                  Mobile: {result.qaRecommendations.mobile.slice(0, 2).join(' · ') || 'Sin contenido generado. Reprocesa tras completar briefing/material.'}
                                 </p>
+                                {result.qaRecommendations.performance.length > 0 ? (
+                                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
+                                    Performance: {result.qaRecommendations.performance.slice(0, 2).join(' · ')}
+                                  </p>
+                                ) : null}
+                                {result.qaRecommendations.viewer.length > 0 ? (
+                                  <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
+                                    Viewer: {result.qaRecommendations.viewer.slice(0, 2).join(' · ')}
+                                  </p>
+                                ) : null}
+                                {result.confidence.explanation ? (
+                                  <p className="mt-2 rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-white/5 dark:text-white/50">{result.confidence.explanation}</p>
+                                ) : null}
                               </div>
                             </div>
                           </div>
