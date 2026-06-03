@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { Upload, QrCode, ExternalLink, Archive, RefreshCw, Copy, BrainCircuit } from 'lucide-react';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { usePropertyStore } from '@/store/propertyStore';
-import type { CaptureAiProcessingResult, CaptureAiProcessingRun, CaptureCommercialBrief, CaptureJob, CaptureOutputAsset } from '@/types/api';
+import type { CaptureAiProcessingResult, CaptureAiProcessingRun, CaptureCommercialBrief, CaptureHotspot, CaptureJob, CaptureOutputAsset } from '@/types/api';
 
 const STATUSES = [
   'draft',
@@ -83,6 +83,18 @@ interface OutputForm {
 
 type CommercialBriefForm = CaptureCommercialBrief;
 
+interface HotspotForm {
+  label: string;
+  description: string;
+  roomOrZone: string;
+  hotspotType: CaptureHotspot['hotspotType'];
+  priority: CaptureHotspot['priority'];
+  cta: string;
+  mediaSuggestion: string;
+  businessObjective: string;
+  sortOrder: string;
+}
+
 const emptyJobForm: CaptureJobForm = {
   leadId: '',
   propertyId: '',
@@ -132,6 +144,18 @@ const emptyCommercialBriefForm: CommercialBriefForm = {
   ctaGoal: 'contact',
   brandNotes: '',
   constraints: ''
+};
+
+const emptyHotspotForm: HotspotForm = {
+  label: '',
+  description: '',
+  roomOrZone: '',
+  hotspotType: 'info',
+  priority: 'medium',
+  cta: '',
+  mediaSuggestion: '',
+  businessObjective: '',
+  sortOrder: '0'
 };
 
 function isPremium3dOutput(type: string): boolean {
@@ -530,6 +554,8 @@ export default function CaptureJobsPage(): JSX.Element {
   const [form, setForm] = useState<CaptureJobForm>(emptyJobForm);
   const [outputForm, setOutputForm] = useState<OutputForm>(emptyOutputForm);
   const [commercialBriefForm, setCommercialBriefForm] = useState<CommercialBriefForm>(emptyCommercialBriefForm);
+  const [hotspotForm, setHotspotForm] = useState<HotspotForm>(emptyHotspotForm);
+  const [editingHotspotId, setEditingHotspotId] = useState<string | null>(null);
   const [filters, setFilters] = useState({ status: '', priority: '', riskLevel: '', q: '' });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -561,6 +587,7 @@ export default function CaptureJobsPage(): JSX.Element {
   const hasStaleRunningAiRun = isStaleRunningRun(latestAiRun);
   const commercialBriefCompleteness = selectedJob?.commercialBriefCompleteness ?? getCommercialBriefCompleteness(commercialBriefForm);
   const contextLimited = (selectedJob?.inputAssets?.length ?? 0) === 0 || commercialBriefCompleteness < 40 || (latestAiRun?.result?.confidence.score ?? 100) <= 60;
+  const visibleHotspots = selectedJob?.hotspots?.filter((hotspot) => hotspot.status !== 'archived') ?? [];
 
   useEffect(() => {
     if (!selectedJob || !hasRunningAiRun) return undefined;
@@ -595,6 +622,8 @@ export default function CaptureJobsPage(): JSX.Element {
       setSelectedJob(data);
       setForm(toJobForm(data));
       setCommercialBriefForm(toCommercialBriefForm(data));
+      setHotspotForm(emptyHotspotForm);
+      setEditingHotspotId(null);
       setGuideTypeOverride('');
       await loadAiRuns(id);
     } catch (err) {
@@ -616,6 +645,8 @@ export default function CaptureJobsPage(): JSX.Element {
     setForm(emptyJobForm);
     setOutputForm(emptyOutputForm);
     setCommercialBriefForm(emptyCommercialBriefForm);
+    setHotspotForm(emptyHotspotForm);
+    setEditingHotspotId(null);
     setGuideTypeOverride('');
     setAiRuns([]);
     setAiRunsOpen(false);
@@ -633,6 +664,10 @@ export default function CaptureJobsPage(): JSX.Element {
 
   function updateCommercialBrief<K extends keyof CommercialBriefForm>(key: K, value: CommercialBriefForm[K]): void {
     setCommercialBriefForm((current) => ({ ...current, [key]: value }));
+  }
+
+  function updateHotspotForm<K extends keyof HotspotForm>(key: K, value: HotspotForm[K]): void {
+    setHotspotForm((current) => ({ ...current, [key]: value }));
   }
 
   function updateOutputType(type: string): void {
@@ -700,6 +735,115 @@ export default function CaptureJobsPage(): JSX.Element {
       setCommercialBriefForm(toCommercialBriefForm(data));
       setMessage('Briefing comercial guardado.');
       await loadJobs();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function applyAiContent(runId: string): Promise<void> {
+    if (!selectedJob) return;
+    if (selectedJob.appliedAiContent && !window.confirm('Esto reemplazará el contenido aplicado anterior. ¿Continuar?')) return;
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const data = await unwrapApiResponse<CaptureJob>(api.post(`/capture-jobs/${selectedJob.id}/ai/runs/${runId}/apply-content`));
+      setSelectedJob(data);
+      setForm(toJobForm(data));
+      setMessage('Copy IA aplicado al CaptureJob.');
+      await loadJobs();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function createHotspotsFromAi(runId: string): Promise<void> {
+    if (!selectedJob) return;
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const data = await unwrapApiResponse<{ created: CaptureHotspot[]; skipped: number }>(api.post(`/capture-jobs/${selectedJob.id}/ai/runs/${runId}/create-hotspots`));
+      setMessage(`Hotspots borrador creados: ${data.created.length}. Omitidos por duplicado: ${data.skipped}.`);
+      await loadJob(selectedJob.id);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  function editHotspot(hotspot: CaptureHotspot): void {
+    setEditingHotspotId(hotspot.id);
+    setHotspotForm({
+      label: hotspot.label,
+      description: hotspot.description,
+      roomOrZone: hotspot.roomOrZone,
+      hotspotType: hotspot.hotspotType,
+      priority: hotspot.priority,
+      cta: hotspot.cta,
+      mediaSuggestion: hotspot.mediaSuggestion,
+      businessObjective: hotspot.businessObjective,
+      sortOrder: String(hotspot.sortOrder)
+    });
+  }
+
+  async function saveHotspot(): Promise<void> {
+    if (!selectedJob) return;
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    const payload = {
+      ...hotspotForm,
+      sortOrder: Number(hotspotForm.sortOrder) || 0
+    };
+    try {
+      if (editingHotspotId) {
+        await unwrapApiResponse<CaptureHotspot>(api.put(`/capture-jobs/${selectedJob.id}/hotspots/${editingHotspotId}`, payload));
+        setMessage('Hotspot actualizado.');
+      } else {
+        await unwrapApiResponse<CaptureHotspot>(api.post(`/capture-jobs/${selectedJob.id}/hotspots`, payload));
+        setMessage('Hotspot manual creado.');
+      }
+      setHotspotForm(emptyHotspotForm);
+      setEditingHotspotId(null);
+      await loadJob(selectedJob.id);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function patchHotspot(hotspot: CaptureHotspot, patch: Partial<CaptureHotspot>): Promise<void> {
+    if (!selectedJob) return;
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await unwrapApiResponse<CaptureHotspot>(api.put(`/capture-jobs/${selectedJob.id}/hotspots/${hotspot.id}`, patch));
+      setMessage('Hotspot actualizado.');
+      await loadJob(selectedJob.id);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function archiveHotspot(hotspot: CaptureHotspot): Promise<void> {
+    if (!selectedJob) return;
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await unwrapApiResponse<CaptureHotspot>(api.delete(`/capture-jobs/${selectedJob.id}/hotspots/${hotspot.id}`));
+      setMessage('Hotspot archivado.');
+      await loadJob(selectedJob.id);
     } catch (err) {
       setError(getApiErrorMessage(err));
     } finally {
@@ -1336,6 +1480,20 @@ export default function CaptureJobsPage(): JSX.Element {
                           {result ? <span className="text-xs font-black text-sky-700 dark:text-sky-300">Confidence {result.confidence.score}/100</span> : null}
                         </div>
 
+                        {latestRun.status === 'completed' && result ? (
+                          <div className="flex flex-wrap gap-2">
+                            <button type="button" onClick={() => { void applyAiContent(latestRun.id); }} disabled={saving} className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950">
+                              Aplicar copy al CaptureJob
+                            </button>
+                            <button type="button" onClick={() => { void createHotspotsFromAi(latestRun.id); }} disabled={saving} className="rounded-full border border-sky-200 px-4 py-2 text-xs font-black text-sky-700 hover:bg-sky-50 disabled:opacity-50 dark:border-sky-900/50 dark:text-sky-300 dark:hover:bg-sky-950/30">
+                              Crear hotspots borrador
+                            </button>
+                            <button type="button" onClick={() => { void applyAiContent(latestRun.id); }} disabled={saving} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5">
+                              Crear checklist de producción
+                            </button>
+                          </div>
+                        ) : null}
+
                         {latestRun.error ? (
                           <p className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300">{getAiRunErrorMessage(latestRun.error)}</p>
                         ) : null}
@@ -1509,6 +1667,110 @@ export default function CaptureJobsPage(): JSX.Element {
                   </div>
                 );
               })()}
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-white/5">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">Contenido aplicado</p>
+                    <h3 className="mt-1 text-base font-black text-slate-950 dark:text-white">{selectedJob.appliedAiContent?.commercialTitle || 'Sin copy aplicado'}</h3>
+                    {selectedJob.appliedAiContentUpdatedAt ? <p className="mt-1 text-xs font-bold text-slate-400">Actualizado: {formatRunDate(selectedJob.appliedAiContentUpdatedAt)}</p> : null}
+                    {selectedJob.appliedAiContent?.sourceRunId ? <p className="mt-1 text-[10px] font-bold text-slate-400">sourceRunId: {selectedJob.appliedAiContent.sourceRunId}</p> : null}
+                  </div>
+                  {selectedJob.appliedAiContent ? (
+                    <button type="button" onClick={() => { void copyAiSection('Contenido aplicado', selectedJob.appliedAiContent); }} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
+                      <Copy className="h-3.5 w-3.5" /> Copiar contenido aplicado
+                    </button>
+                  ) : null}
+                </div>
+                {selectedJob.appliedAiContent ? (
+                  <div className="mt-3 grid gap-3 lg:grid-cols-2">
+                    <p className="text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{selectedJob.appliedAiContent.shortDescription || selectedJob.appliedAiContent.longDescription}</p>
+                    <p className="text-xs font-bold leading-5 text-sky-700 dark:text-sky-300">{selectedJob.appliedAiContent.salesAngle}</p>
+                    {selectedJob.appliedAiContent.benefits.length > 0 ? (
+                      <div className="flex flex-wrap gap-1 lg:col-span-2">
+                        {selectedJob.appliedAiContent.benefits.slice(0, 6).map((benefit) => (
+                          <span key={benefit} className="rounded-full bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">{benefit}</span>
+                        ))}
+                      </div>
+                    ) : null}
+                    {selectedJob.appliedAiContent.nextActions?.length ? (
+                      <div className="lg:col-span-2">
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Checklist de producción</p>
+                        <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                          {selectedJob.appliedAiContent.nextActions.slice(0, 6).map((action) => (
+                            <p key={`${action.action}-${action.priority}`} className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
+                              <span className="font-black text-slate-700 dark:text-white/70">{action.priority}</span> · {action.action}
+                            </p>
+                          ))}
+                        </div>
+                      </div>
+                    ) : null}
+                  </div>
+                ) : (
+                  <p className="mt-3 text-sm font-semibold text-slate-400">Aplica un run IA completado para guardar copy operativo. Nada se publica automáticamente.</p>
+                )}
+              </div>
+
+              <div className="rounded-xl border border-slate-200 bg-white p-4 dark:border-white/10 dark:bg-white/5">
+                <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">Hotspots</p>
+                    <h3 className="mt-1 text-base font-black text-slate-950 dark:text-white">{visibleHotspots.length} hotspots operativos</h3>
+                  </div>
+                  <p className="text-xs font-bold text-slate-400">Publicar = status published + público activo.</p>
+                </div>
+
+                <div className="mt-4 grid gap-2 sm:grid-cols-2">
+                  <input value={hotspotForm.label} onChange={(e) => updateHotspotForm('label', e.target.value)} placeholder="Label" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={hotspotForm.roomOrZone} onChange={(e) => updateHotspotForm('roomOrZone', e.target.value)} placeholder="Zona" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <textarea value={hotspotForm.description} onChange={(e) => updateHotspotForm('description', e.target.value)} rows={2} placeholder="Descripción" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900 sm:col-span-2" />
+                  <select value={hotspotForm.hotspotType} onChange={(e) => updateHotspotForm('hotspotType', e.target.value as HotspotForm['hotspotType'])} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
+                    {['info', 'cta', 'navigation', 'feature', 'warning'].map((type) => <option key={type} value={type}>{statusLabel(type)}</option>)}
+                  </select>
+                  <select value={hotspotForm.priority} onChange={(e) => updateHotspotForm('priority', e.target.value as HotspotForm['priority'])} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
+                    {['low', 'medium', 'high'].map((priority) => <option key={priority} value={priority}>{priority}</option>)}
+                  </select>
+                  <input value={hotspotForm.cta} onChange={(e) => updateHotspotForm('cta', e.target.value)} placeholder="CTA" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={hotspotForm.sortOrder} onChange={(e) => updateHotspotForm('sortOrder', e.target.value)} placeholder="Orden" inputMode="numeric" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={hotspotForm.mediaSuggestion} onChange={(e) => updateHotspotForm('mediaSuggestion', e.target.value)} placeholder="Sugerencia media" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={hotspotForm.businessObjective} onChange={(e) => updateHotspotForm('businessObjective', e.target.value)} placeholder="Objetivo" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => { void saveHotspot(); }} disabled={saving || !hotspotForm.label.trim() || !hotspotForm.description.trim()} className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950">
+                    {editingHotspotId ? 'Guardar hotspot' : 'Crear hotspot manual'}
+                  </button>
+                  {editingHotspotId ? (
+                    <button type="button" onClick={() => { setEditingHotspotId(null); setHotspotForm(emptyHotspotForm); }} disabled={saving} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5">
+                      Cancelar edición
+                    </button>
+                  ) : null}
+                </div>
+
+                <div className="mt-4 space-y-2">
+                  {visibleHotspots.length === 0 ? <p className="text-sm font-semibold text-slate-400">Sin hotspots. Crea borradores desde IA o manualmente.</p> : visibleHotspots.map((hotspot) => (
+                    <div key={hotspot.id} className="rounded-xl border border-slate-100 p-3 dark:border-white/10">
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h4 className="text-sm font-black text-slate-900 dark:text-white">{hotspot.label}</h4>
+                            <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] ${hotspot.status === 'published' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : hotspot.status === 'approved' ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-white/60'}`}>{hotspot.status}</span>
+                            {hotspot.isPublic ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">público</span> : null}
+                          </div>
+                          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{hotspot.roomOrZone ? `${hotspot.roomOrZone} · ` : ''}{hotspot.description}</p>
+                          <p className="mt-1 text-[10px] font-bold text-slate-400">{hotspot.hotspotType} · {hotspot.priority}{hotspot.cta ? ` · CTA: ${hotspot.cta}` : ''}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-1">
+                          <button type="button" onClick={() => editHotspot(hotspot)} className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/60">Editar</button>
+                          <button type="button" onClick={() => { void patchHotspot(hotspot, { status: 'approved', isPublic: false }); }} className="rounded-full border border-sky-200 px-2 py-1 text-[10px] font-black text-sky-700 hover:bg-sky-50 dark:border-sky-900/50 dark:text-sky-300">Aprobar</button>
+                          <button type="button" onClick={() => { void patchHotspot(hotspot, { status: 'published', isPublic: true }); }} className="rounded-full border border-emerald-200 px-2 py-1 text-[10px] font-black text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/50 dark:text-emerald-300">Publicar</button>
+                          <button type="button" onClick={() => { void patchHotspot(hotspot, { status: 'draft', isPublic: false }); }} className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/60">Ocultar</button>
+                          <button type="button" onClick={() => { void archiveHotspot(hotspot); }} className="rounded-full border border-red-200 px-2 py-1 text-[10px] font-black text-red-600 hover:bg-red-50 dark:border-red-900/40 dark:text-red-300">Archivar</button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
 
               <div>
                 <div className="mb-3 flex items-center justify-between">

@@ -120,6 +120,48 @@ export interface CaptureCommercialBrief {
   constraints: string;
 }
 
+export interface CaptureAppliedAiContent {
+  sourceRunId?: string;
+  commercialTitle: string;
+  shortDescription: string;
+  longDescription: string;
+  salesAngle: string;
+  targetAudience: string;
+  ctaPrimary: string;
+  ctaSecondary: string;
+  benefits: string[];
+  videoHook: string;
+  videoScriptSummary: string;
+  nextActions?: Array<{
+    action: string;
+    priority: 'low' | 'medium' | 'high';
+    reason: string;
+    status: 'draft' | 'accepted' | 'done';
+  }>;
+  qaSummary?: string;
+}
+
+export interface CaptureHotspot {
+  id: string;
+  captureJobId: string;
+  tenantId: string;
+  sourceRunId: string | null;
+  label: string;
+  description: string;
+  roomOrZone: string;
+  hotspotType: 'info' | 'cta' | 'navigation' | 'feature' | 'warning';
+  priority: 'low' | 'medium' | 'high';
+  cta: string;
+  mediaSuggestion: string;
+  businessObjective: string;
+  position: Record<string, unknown> | null;
+  status: 'draft' | 'approved' | 'published' | 'archived';
+  isPublic: boolean;
+  sortOrder: number;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface CaptureJob {
   id: string;
   tenantId: string;
@@ -141,6 +183,8 @@ export interface CaptureJob {
   commercialBrief: CaptureCommercialBrief | null;
   commercialBriefUpdatedAt: string | null;
   commercialBriefCompleteness: number | null;
+  appliedAiContent: CaptureAppliedAiContent | null;
+  appliedAiContentUpdatedAt: string | null;
   riskLevel: string;
   nextAction: string;
   notes: string;
@@ -152,6 +196,7 @@ export interface CaptureJob {
   lead?: { id: string; email: string; phone?: string; status: string } | null;
   inputAssets?: CaptureInputAsset[];
   outputAssets?: CaptureOutputAsset[];
+  hotspots?: CaptureHotspot[];
   _count?: {
     inputAssets: number;
     outputAssets: number;
@@ -257,6 +302,19 @@ export interface PublicCaptureJob {
   status: string;
   publicUrl: string;
   qrUrl: string;
+  appliedAiContent: Omit<CaptureAppliedAiContent, 'sourceRunId' | 'nextActions' | 'qaSummary'> | null;
+  hotspots: Array<{
+    id: string;
+    label: string;
+    description: string;
+    roomOrZone: string;
+    hotspotType: 'info' | 'cta' | 'navigation' | 'feature' | 'warning';
+    priority: 'low' | 'medium' | 'high';
+    cta: string;
+    mediaSuggestion: string;
+    position: Record<string, unknown> | null;
+    sortOrder: number;
+  }>;
   outputAssets: Array<{
     id: string;
     type: string;

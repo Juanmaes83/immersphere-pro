@@ -92,6 +92,10 @@ export default function CapturePublicPage(): JSX.Element {
     })[0] ?? null;
   const primaryOutput = premiumOutput ?? job.outputAssets[0] ?? null;
   const primaryUrl = primaryOutput?.url ?? job.publicUrl;
+  const applied = job.appliedAiContent;
+  const heroTitle = applied?.commercialTitle || job.title;
+  const heroDescription = applied?.shortDescription || applied?.longDescription || job.clientName;
+  const primaryCta = applied?.ctaPrimary || 'Solicitar información';
   const canEmbedPrimary = Boolean(
     premiumOutput &&
     premiumOutput.embeddable &&
@@ -108,13 +112,21 @@ export default function CapturePublicPage(): JSX.Element {
 
       <section className="border-b border-slate-200 pb-8 dark:border-white/10">
         <p className="text-xs font-black uppercase tracking-[0.22em] text-ip-accent">Entrega visual publicada</p>
-        <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight text-slate-950 dark:text-white">{job.title}</h1>
-        <p className="mt-3 text-lg font-semibold text-slate-500 dark:text-white/45">{job.clientName}</p>
+        <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight text-slate-950 dark:text-white">{heroTitle}</h1>
+        <p className="mt-3 max-w-3xl text-lg font-semibold leading-8 text-slate-500 dark:text-white/45">{heroDescription}</p>
+        {applied?.salesAngle ? <p className="mt-3 max-w-3xl text-sm font-black text-ip-accent">{applied.salesAngle}</p> : null}
         <div className="mt-5 flex flex-wrap gap-2">
           <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50">{statusLabel(job.status)}</span>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-slate-600 ring-1 ring-slate-200 dark:bg-white/5 dark:text-white/60 dark:ring-white/10">{job.projectType}</span>
           <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-slate-600 ring-1 ring-slate-200 dark:bg-white/5 dark:text-white/60 dark:ring-white/10">{job.vertical}</span>
         </div>
+        {applied?.benefits?.length ? (
+          <div className="mt-5 flex flex-wrap gap-2">
+            {applied.benefits.slice(0, 5).map((benefit) => (
+              <span key={benefit} className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200 dark:bg-white/5 dark:text-white/60 dark:ring-white/10">{benefit}</span>
+            ))}
+          </div>
+        ) : null}
       </section>
 
       <section className="mt-8 grid gap-4">
@@ -131,7 +143,7 @@ export default function CapturePublicPage(): JSX.Element {
                 </div>
               </div>
               <a href={primaryUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-violet-100">
-                Abrir experiencia 3D <ExternalLink className="h-4 w-4" />
+                {primaryCta} <ExternalLink className="h-4 w-4" />
               </a>
             </div>
             {canEmbedPrimary ? (
@@ -158,6 +170,31 @@ export default function CapturePublicPage(): JSX.Element {
             <span className="font-black">Abrir experiencia publicada</span>
             <ExternalLink className="h-5 w-5" />
           </a>
+        ) : null}
+
+        {job.hotspots.length > 0 ? (
+          <section className="rounded-ip-card bg-white p-5 ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-ip-accent">Puntos destacados</p>
+                <h2 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">Hotspots publicados</h2>
+              </div>
+              {applied?.ctaPrimary ? <p className="text-sm font-black text-slate-500 dark:text-white/50">{applied.ctaPrimary}</p> : null}
+            </div>
+            <div className="mt-4 grid gap-3 md:grid-cols-2">
+              {job.hotspots.map((hotspot) => (
+                <article key={hotspot.id} className="rounded-xl border border-slate-100 p-4 dark:border-white/10">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="text-base font-black text-slate-950 dark:text-white">{hotspot.label}</h3>
+                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500 dark:bg-white/10 dark:text-white/50">{hotspot.priority}</span>
+                  </div>
+                  {hotspot.roomOrZone ? <p className="mt-1 text-xs font-black uppercase tracking-[0.12em] text-slate-400">{hotspot.roomOrZone}</p> : null}
+                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-500 dark:text-white/50">{hotspot.description}</p>
+                  {hotspot.cta ? <p className="mt-3 text-sm font-black text-ip-accent">{hotspot.cta}</p> : null}
+                </article>
+              ))}
+            </div>
+          </section>
         ) : null}
 
         {job.outputAssets.length > 0 ? (

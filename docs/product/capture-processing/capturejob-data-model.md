@@ -57,6 +57,36 @@ Este documento define un modelo funcional. No es un contrato final de base de da
 | `viewerReady` | Indica si el activo esta listo para visor. |
 | `mobileReady` | Indica si ha pasado revision movil. |
 | `publishedUrl` | URL pública si ya está publicado. |
+
+### Contenido IA aplicado
+
+`CaptureJob` puede guardar `appliedAiContent` como JSON aprobado manualmente desde un run IA completado. El contenido aplicado incluye título comercial, descripciones, beneficios, CTAs, resumen de guion, checklist operativo y `sourceRunId` privado.
+
+Campos:
+
+| Campo | Uso |
+| --- | --- |
+| `appliedAiContent` | JSON privado con copy/checklist aplicado por humano. |
+| `appliedAiContentUpdatedAt` | Fecha de última aplicación. |
+
+### CaptureHotspot
+
+Modelo persistente para convertir sugerencias IA o entradas manuales en hotspots operativos.
+
+| Campo | Uso |
+| --- | --- |
+| `captureJobId` | CaptureJob propietario. |
+| `tenantId` | Validación multi-tenant. |
+| `sourceRunId` | Run IA origen, privado y opcional. |
+| `label` / `description` | Contenido visible del hotspot. |
+| `roomOrZone` | Zona comercial o estancia. |
+| `hotspotType` | info, cta, navigation, feature o warning. |
+| `priority` | low, medium o high. |
+| `cta` | CTA opcional visible si se publica. |
+| `position` | JSON reservado para posicionamiento futuro. |
+| `status` | draft, approved, published o archived. |
+| `isPublic` | Solo visible públicamente con `status=published`. |
+| `sortOrder` | Orden en landing/listado. |
 | `qrUrl` | URL del QR generado o asset asociado. |
 | `analyticsEnabled` | Indica si el activo tiene seguimiento de visitas, clics o eventos. |
 | `notes` | Notas de entrega, limitaciones o mejoras pendientes. |

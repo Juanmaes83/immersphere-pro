@@ -648,6 +648,47 @@ Tras guardar briefing, el equipo puede pulsar de nuevo `Procesar con IA`. No se 
 - Generacion automatica de Gaussian/Splat.
 - Upload de `.ply`, `.spz`, `.splat`, `.sog`, `html` o `zip` dentro de CaptureJob.
 
+## Aplicación de sugerencias IA y hotspots públicos
+
+La IA pasa de ser consultiva a operativa, pero siempre con humano en control. Un run IA `completed` puede aplicarse desde la UI privada de `/capture-jobs` con botones explícitos:
+
+- `Aplicar copy al CaptureJob`: guarda `appliedAiContent` en el CaptureJob y registra `sourceRunId`.
+- `Crear checklist de producción`: reutiliza `nextActions` dentro de `appliedAiContent`.
+- `Crear hotspots borrador`: crea `CaptureHotspot` en `draft` e `isPublic=false`.
+
+Nada se publica automáticamente. Los hotspots se gestionan manualmente con estados:
+
+- `draft`: borrador privado.
+- `approved`: aprobado internamente, privado.
+- `published`: visible solo si `isPublic=true`.
+- `archived`: oculto y no público.
+
+La landing pública `/capture/:id` puede mostrar contenido aplicado seguro:
+
+- título comercial;
+- descripción corta/larga;
+- beneficios;
+- CTA;
+- puntos destacados publicados.
+
+No expone:
+
+- briefing comercial completo;
+- runs IA;
+- resultado IA completo;
+- inputAssets privados;
+- notas internas;
+- costes;
+- `tenantId`, `userId`, `leadId`;
+- `sourceRunId`;
+- QA interno completo.
+
+Limitaciones actuales:
+
+- No hay posicionamiento 3D dentro del iframe SuperSplat/Spark/Luma.
+- Los hotspots públicos se muestran como panel/listado comercial junto al viewer.
+- No hay publicación automática: publicar requiere cambiar estado a `published` e `isPublic=true`.
+
 ## Riesgos pendientes
 
 - Ejecutar la migracion real requiere entorno de base de datos configurado.

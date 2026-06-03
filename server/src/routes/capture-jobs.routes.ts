@@ -4,19 +4,25 @@ import path from 'node:path';
 import { Router, type RequestHandler } from 'express';
 import multer from 'multer';
 import {
+  applyCaptureJobAiContentController,
   archiveCaptureJobController,
+  createCaptureHotspotController,
   createCaptureInputAssetController,
   createCaptureJobController,
+  createCaptureJobHotspotsFromAiController,
   createCaptureOutputAssetController,
+  deleteCaptureHotspotController,
   deleteCaptureInputAssetController,
   deleteCaptureOutputAssetController,
   generateCaptureJobQrController,
   getCaptureJobAiRunController,
   getCaptureJobController,
   getPublicCaptureJobController,
+  listCaptureHotspotsController,
   listCaptureJobAiRunsController,
   listCaptureJobsController,
   processCaptureJobAiController,
+  updateCaptureHotspotController,
   updateCaptureInputAssetController,
   updateCaptureJobController,
   updateCaptureOutputAssetController,
@@ -101,6 +107,13 @@ captureJobsRoutes.post('/:captureJobId/qr', requireAuth, generateCaptureJobQrCon
 captureJobsRoutes.post('/:captureJobId/ai/process', requireAuth, processCaptureJobAiController);
 captureJobsRoutes.get('/:captureJobId/ai/runs', requireAuth, listCaptureJobAiRunsController);
 captureJobsRoutes.get('/:captureJobId/ai/runs/:runId', requireAuth, getCaptureJobAiRunController);
+captureJobsRoutes.post('/:captureJobId/ai/runs/:runId/apply-content', requireAuth, applyCaptureJobAiContentController);
+captureJobsRoutes.post('/:captureJobId/ai/runs/:runId/create-hotspots', requireAuth, createCaptureJobHotspotsFromAiController);
+
+captureJobsRoutes.get('/:captureJobId/hotspots', requireAuth, listCaptureHotspotsController);
+captureJobsRoutes.post('/:captureJobId/hotspots', requireAuth, createCaptureHotspotController);
+captureJobsRoutes.put('/:captureJobId/hotspots/:hotspotId', requireAuth, updateCaptureHotspotController);
+captureJobsRoutes.delete('/:captureJobId/hotspots/:hotspotId', requireAuth, deleteCaptureHotspotController);
 
 captureJobsRoutes.post('/:captureJobId/upload', requireAuth, uploadCaptureFile, uploadCaptureInputAssetController);
 

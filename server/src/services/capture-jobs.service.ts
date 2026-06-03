@@ -52,10 +52,15 @@ type Db = typeof prisma & {
   captureJob: any;
   captureInputAsset: any;
   captureOutputAsset: any;
+  captureAiProcessingRun: any;
+  captureHotspot: any;
 };
 
 const COMMERCIAL_BRIEF_TONES = ['professional', 'premium', 'direct', 'inspirational', 'technical'] as const;
 const COMMERCIAL_BRIEF_CTA_GOALS = ['contact', 'book_visit', 'request_info', 'download', 'call'] as const;
+const CAPTURE_HOTSPOT_STATUSES = ['draft', 'approved', 'published', 'archived'] as const;
+const CAPTURE_HOTSPOT_TYPES = ['info', 'cta', 'navigation', 'feature', 'warning'] as const;
+const CAPTURE_HOTSPOT_PRIORITIES = ['low', 'medium', 'high'] as const;
 
 export interface CaptureCommercialBriefInput {
   propertyType?: string;
@@ -136,6 +141,21 @@ export interface CaptureOutputAssetInput {
   notes?: string;
 }
 
+export interface CaptureHotspotInput {
+  label?: string;
+  description?: string;
+  roomOrZone?: string;
+  hotspotType?: string;
+  priority?: string;
+  cta?: string;
+  mediaSuggestion?: string;
+  businessObjective?: string;
+  position?: unknown;
+  status?: string;
+  isPublic?: boolean;
+  sortOrder?: number;
+}
+
 function assertValue(value: string | undefined, allowed: readonly string[], label: string): void {
   if (value !== undefined && !allowed.includes(value)) {
     throw new AppError(400, `${label} invalido: ${value}. Valores permitidos: ${allowed.join(', ')}.`);
@@ -152,6 +172,34 @@ function cleanStringArray(value: unknown): string[] {
     .map((item) => cleanString(typeof item === 'string' ? item : String(item ?? '')))
     .filter(Boolean)
     .slice(0, 12);
+}
+
+function toRecord(value: unknown): Record<string, any> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, any> : {};
+}
+
+function getSafePosition(value: unknown): unknown {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  return value;
+}
+
+function normalizeHotspotStatus(value: string | undefined, fallback = 'draft'): string {
+  const clean = cleanString(value, fallback);
+  return CAPTURE_HOTSPOT_STATUSES.includes(clean as any) ? clean : fallback;
+}
+
+function normalizeHotspotType(value: string | undefined): string {
+  const clean = cleanString(value, 'info');
+  return CAPTURE_HOTSPOT_TYPES.includes(clean as any) ? clean : 'info';
+}
+
+function normalizeHotspotPriority(value: string | undefined): string {
+  const clean = cleanString(value, 'medium');
+  return CAPTURE_HOTSPOT_PRIORITIES.includes(clean as any) ? clean : 'medium';
+}
+
+function normalizePublicFlag(status: string, isPublic: boolean | undefined): boolean {
+  return status === 'published' && Boolean(isPublic);
 }
 
 export function normalizeCommercialBrief(input: CaptureCommercialBriefInput | null | undefined): CaptureCommercialBriefInput | null {
@@ -341,7 +389,8 @@ async function getJobForTenant(captureJobId: string, tenantId: string) {
       property: { select: { id: true, title: true } },
       lead: { select: { id: true, email: true, phone: true, status: true } },
       inputAssets: { orderBy: { createdAt: 'desc' } },
-      outputAssets: { orderBy: { createdAt: 'desc' } }
+      outputAssets: { orderBy: { createdAt: 'desc' } },
+      hotspots: { where: { status: { not: 'archived' } }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }
     }
   });
   if (!job) throw new AppError(404, 'CaptureJob no encontrado.');
@@ -388,6 +437,10 @@ export async function listCaptureJobs(tenantId: string, filters: CaptureJobFilte
         where: { type: { in: [...PREMIUM_3D_OUTPUT_TYPES] } },
         orderBy: { createdAt: 'desc' }
       },
+      hotspots: {
+        where: { status: { not: 'archived' } },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
+      },
       _count: { select: { inputAssets: true, outputAssets: true } }
     },
     orderBy: [{ updatedAt: 'desc' }],
@@ -414,7 +467,8 @@ export async function createCaptureJob(tenantId: string, userId: string, input: 
       property: { select: { id: true, title: true } },
       lead: { select: { id: true, email: true, status: true } },
       inputAssets: true,
-      outputAssets: true
+      outputAssets: true,
+      hotspots: true
     }
   });
 }
@@ -435,7 +489,8 @@ export async function updateCaptureJob(captureJobId: string, tenantId: string, i
       property: { select: { id: true, title: true } },
       lead: { select: { id: true, email: true, status: true } },
       inputAssets: { orderBy: { createdAt: 'desc' } },
-      outputAssets: { orderBy: { createdAt: 'desc' } }
+      outputAssets: { orderBy: { createdAt: 'desc' } },
+      hotspots: { where: { status: { not: 'archived' } }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }
     }
   });
 }
@@ -559,6 +614,208 @@ export async function archiveCaptureOutputAsset(captureJobId: string, assetId: s
   return updateCaptureOutputAsset(captureJobId, assetId, tenantId, { status: 'archived' });
 }
 
+async function getCompletedAiRunForJob(captureJobId: string, runId: string, tenantId: string) {
+  await getJobForTenant(captureJobId, tenantId);
+  const run = await getDb().captureAiProcessingRun.findFirst({
+    where: { id: runId, captureJobId, tenantId }
+  });
+  if (!run) throw new AppError(404, 'Run IA no encontrado.');
+  if (run.status !== 'completed' || !run.result) {
+    throw new AppError(400, 'Solo se pueden aplicar runs IA completados.');
+  }
+  return run;
+}
+
+function buildAppliedAiContent(run: any): Record<string, unknown> {
+  const result = toRecord(run.result);
+  const experience = toRecord(result.experienceStructure);
+  const copy = toRecord(result.commercialCopy);
+  const video = toRecord(result.videoScript);
+  const qa = toRecord(result.qaRecommendations);
+  const ctaSuggestions = cleanStringArray(copy.ctaSuggestions);
+  const nextActions = Array.isArray(result.nextActions) ? result.nextActions.map((item: unknown) => {
+    const action = toRecord(item);
+    const priority = normalizeHotspotPriority(cleanString(action.priority));
+    return {
+      action: cleanString(action.action),
+      priority,
+      reason: cleanString(action.reason),
+      status: 'draft'
+    };
+  }).filter((item: any) => item.action) : [];
+
+  return {
+    sourceRunId: run.id,
+    commercialTitle: cleanString(experience.recommendedTitle),
+    shortDescription: cleanString(copy.shortDescription),
+    longDescription: cleanString(copy.longDescription),
+    salesAngle: cleanString(copy.salesAngle),
+    targetAudience: cleanString(copy.targetAudience),
+    ctaPrimary: ctaSuggestions[0] ?? '',
+    ctaSecondary: ctaSuggestions[1] ?? '',
+    benefits: cleanStringArray(copy.propertyHighlights),
+    videoHook: cleanString(video.hook),
+    videoScriptSummary: cleanString(video.voiceover || video.closingCTA),
+    nextActions,
+    qaSummary: [
+      ...cleanStringArray(qa.desktop).slice(0, 1),
+      ...cleanStringArray(qa.mobile).slice(0, 1),
+      ...cleanStringArray(qa.viewer).slice(0, 1)
+    ].join(' ')
+  };
+}
+
+export async function applyCaptureAiContent(captureJobId: string, runId: string, tenantId: string) {
+  const run = await getCompletedAiRunForJob(captureJobId, runId, tenantId);
+  return getDb().captureJob.update({
+    where: { id: captureJobId },
+    data: {
+      appliedAiContent: buildAppliedAiContent(run),
+      appliedAiContentUpdatedAt: new Date()
+    },
+    include: {
+      property: { select: { id: true, title: true } },
+      lead: { select: { id: true, email: true, status: true } },
+      inputAssets: { orderBy: { createdAt: 'desc' } },
+      outputAssets: { orderBy: { createdAt: 'desc' } },
+      hotspots: { where: { status: { not: 'archived' } }, orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }] }
+    }
+  });
+}
+
+export async function createCaptureHotspotsFromAi(captureJobId: string, runId: string, tenantId: string) {
+  const run = await getCompletedAiRunForJob(captureJobId, runId, tenantId);
+  const result = toRecord(run.result);
+  const suggested = Array.isArray(result.suggestedHotspots) ? result.suggestedHotspots : [];
+  if (suggested.length === 0) throw new AppError(400, 'Este run no contiene hotspots sugeridos.');
+
+  const created: unknown[] = [];
+  let skipped = 0;
+  for (const [index, item] of suggested.entries()) {
+    const hotspot = toRecord(item);
+    const label = cleanString(hotspot.label);
+    const roomOrZone = cleanString(hotspot.roomOrZone);
+    if (!label) {
+      skipped += 1;
+      continue;
+    }
+    const duplicate = await getDb().captureHotspot.findFirst({
+      where: {
+        captureJobId,
+        tenantId,
+        label,
+        roomOrZone,
+        status: { not: 'archived' }
+      }
+    });
+    if (duplicate) {
+      skipped += 1;
+      continue;
+    }
+    created.push(await getDb().captureHotspot.create({
+      data: {
+        captureJobId,
+        tenantId,
+        sourceRunId: run.id,
+        label,
+        description: cleanString(hotspot.description),
+        roomOrZone,
+        hotspotType: normalizeHotspotType(cleanString(hotspot.hotspotType)),
+        priority: normalizeHotspotPriority(cleanString(hotspot.priority)),
+        cta: cleanString(hotspot.cta),
+        mediaSuggestion: cleanString(hotspot.mediaSuggestion),
+        businessObjective: cleanString(hotspot.businessObjective),
+        status: 'draft',
+        isPublic: false,
+        sortOrder: index
+      }
+    }));
+  }
+
+  return { created, skipped };
+}
+
+export async function listCaptureHotspots(captureJobId: string, tenantId: string) {
+  await getJobForTenant(captureJobId, tenantId);
+  return getDb().captureHotspot.findMany({
+    where: { captureJobId, tenantId, status: { not: 'archived' } },
+    orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
+  });
+}
+
+export async function createCaptureHotspot(captureJobId: string, tenantId: string, input: CaptureHotspotInput) {
+  await getJobForTenant(captureJobId, tenantId);
+  const label = cleanString(input.label);
+  if (!label) throw new AppError(400, 'label requerido.');
+  const description = cleanString(input.description);
+  if (!description) throw new AppError(400, 'description requerido.');
+  const status = normalizeHotspotStatus(input.status);
+  return getDb().captureHotspot.create({
+    data: {
+      captureJobId,
+      tenantId,
+      label,
+      description,
+      roomOrZone: cleanString(input.roomOrZone),
+      hotspotType: normalizeHotspotType(input.hotspotType),
+      priority: normalizeHotspotPriority(input.priority),
+      cta: cleanString(input.cta),
+      mediaSuggestion: cleanString(input.mediaSuggestion),
+      businessObjective: cleanString(input.businessObjective),
+      position: getSafePosition(input.position),
+      status,
+      isPublic: normalizePublicFlag(status, input.isPublic),
+      sortOrder: Math.max(0, Math.round(input.sortOrder ?? 0))
+    }
+  });
+}
+
+export async function updateCaptureHotspot(captureJobId: string, hotspotId: string, tenantId: string, input: CaptureHotspotInput) {
+  await getJobForTenant(captureJobId, tenantId);
+  const existing = await getDb().captureHotspot.findFirst({ where: { id: hotspotId, captureJobId, tenantId } });
+  if (!existing) throw new AppError(404, 'Hotspot no encontrado.');
+  const status = normalizeHotspotStatus(input.status, existing.status);
+  const isPublic = input.isPublic === undefined ? existing.isPublic : input.isPublic;
+  return getDb().captureHotspot.update({
+    where: { id: hotspotId },
+    data: {
+      ...(input.label !== undefined ? { label: cleanString(input.label) } : {}),
+      ...(input.description !== undefined ? { description: cleanString(input.description) } : {}),
+      ...(input.roomOrZone !== undefined ? { roomOrZone: cleanString(input.roomOrZone) } : {}),
+      ...(input.hotspotType !== undefined ? { hotspotType: normalizeHotspotType(input.hotspotType) } : {}),
+      ...(input.priority !== undefined ? { priority: normalizeHotspotPriority(input.priority) } : {}),
+      ...(input.cta !== undefined ? { cta: cleanString(input.cta) } : {}),
+      ...(input.mediaSuggestion !== undefined ? { mediaSuggestion: cleanString(input.mediaSuggestion) } : {}),
+      ...(input.businessObjective !== undefined ? { businessObjective: cleanString(input.businessObjective) } : {}),
+      ...(input.position !== undefined ? { position: getSafePosition(input.position) } : {}),
+      ...(input.status !== undefined ? { status } : {}),
+      ...((input.status !== undefined || input.isPublic !== undefined) ? { isPublic: normalizePublicFlag(status, isPublic) } : {}),
+      ...(input.sortOrder !== undefined ? { sortOrder: Math.max(0, Math.round(input.sortOrder)) } : {})
+    }
+  });
+}
+
+export async function archiveCaptureHotspot(captureJobId: string, hotspotId: string, tenantId: string) {
+  return updateCaptureHotspot(captureJobId, hotspotId, tenantId, { status: 'archived', isPublic: false });
+}
+
+function buildPublicAppliedAiContent(value: unknown): Record<string, unknown> | null {
+  const content = toRecord(value);
+  if (Object.keys(content).length === 0) return null;
+  return {
+    commercialTitle: cleanString(content.commercialTitle),
+    shortDescription: cleanString(content.shortDescription),
+    longDescription: cleanString(content.longDescription),
+    salesAngle: cleanString(content.salesAngle),
+    targetAudience: cleanString(content.targetAudience),
+    ctaPrimary: cleanString(content.ctaPrimary),
+    ctaSecondary: cleanString(content.ctaSecondary),
+    benefits: cleanStringArray(content.benefits),
+    videoHook: cleanString(content.videoHook),
+    videoScriptSummary: cleanString(content.videoScriptSummary)
+  };
+}
+
 export async function getPublicCaptureJob(captureJobId: string) {
   const job = await getDb().captureJob.findUnique({
     where: { id: captureJobId },
@@ -566,6 +823,10 @@ export async function getPublicCaptureJob(captureJobId: string) {
       outputAssets: {
         where: { status: 'published' },
         orderBy: { createdAt: 'desc' }
+      },
+      hotspots: {
+        where: { status: 'published', isPublic: true },
+        orderBy: [{ sortOrder: 'asc' }, { createdAt: 'asc' }]
       }
     }
   });
@@ -586,6 +847,19 @@ export async function getPublicCaptureJob(captureJobId: string) {
     status: job.status,
     publicUrl: job.publicUrl,
     qrUrl: job.qrUrl,
+    appliedAiContent: buildPublicAppliedAiContent(job.appliedAiContent),
+    hotspots: job.hotspots.map((hotspot: any) => ({
+      id: hotspot.id,
+      label: hotspot.label,
+      description: hotspot.description,
+      roomOrZone: hotspot.roomOrZone,
+      hotspotType: hotspot.hotspotType,
+      priority: hotspot.priority,
+      cta: hotspot.cta,
+      mediaSuggestion: hotspot.mediaSuggestion,
+      position: hotspot.position,
+      sortOrder: hotspot.sortOrder
+    })),
     outputAssets: publicOutputAssets.map((asset: any) => ({
       id: asset.id,
       type: asset.type,

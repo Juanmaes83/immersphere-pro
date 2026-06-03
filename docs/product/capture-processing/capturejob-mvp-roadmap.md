@@ -32,6 +32,22 @@ Este roadmap separa utilidad comercial, operacion interna y automatizacion tecni
 | --- | --- |
 | Objetivo | Crear CaptureJob como entidad real dentro de Immersphere Pro SaaS. |
 | Que se implementa | Tabla CaptureJob, uploads controlados, estados, input assets, output assets, QR, landing y URL publicada. |
+
+## Paso 15 + Paso 16
+
+Se añade aplicación humana de sugerencias IA y hotspots públicos:
+
+- aplicar copy IA al CaptureJob sin publicar automáticamente;
+- guardar checklist operativo dentro de `appliedAiContent`;
+- crear hotspots borrador desde `suggestedHotspots`;
+- aprobar/publicar/ocultar/archivar hotspots manualmente;
+- mostrar en `/capture/:id` solo contenido aplicado seguro y hotspots `published + isPublic`.
+
+Queda fuera del MVP actual:
+
+- posicionamiento dentro del iframe 3D;
+- automatización de publicación;
+- workers, OCR, GPU o generación automática Gaussian/Splat.
 | Que no se implementa | No hay GPU automatico, Matrix-3D, 360Gaussian integrado ni OCR productivo. |
 | Riesgo | Construir demasiada plataforma antes de validar volumen. |
 | Prioridad | Media-alta cuando haya jobs recurrentes. |

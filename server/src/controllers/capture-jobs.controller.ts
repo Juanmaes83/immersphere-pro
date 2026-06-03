@@ -10,19 +10,26 @@ import {
   processCaptureJobWithAi
 } from '../services/capture-ai-processing.service.js';
 import {
+  applyCaptureAiContent,
   archiveCaptureJob,
+  archiveCaptureHotspot,
   archiveCaptureOutputAsset,
+  createCaptureHotspot,
   createCaptureInputAsset,
   createCaptureJob,
   createCaptureOutputAsset,
+  createCaptureHotspotsFromAi,
   generateCaptureJobQr,
   getCaptureJob,
   getPublicCaptureJob,
+  listCaptureHotspots,
   listCaptureJobs,
   markCaptureInputAssetReplaced,
+  updateCaptureHotspot,
   updateCaptureInputAsset,
   updateCaptureJob,
   updateCaptureOutputAsset,
+  type CaptureHotspotInput,
   type CaptureInputAssetInput,
   type CaptureJobInput,
   type CaptureOutputAssetInput
@@ -103,6 +110,28 @@ const outputAssetSchema = z.object({
 });
 
 const outputAssetUpdateSchema = outputAssetSchema.partial();
+
+const hotspotSchema = z.object({
+  label: z.string().trim().min(1, 'label requerido.').optional(),
+  description: z.string().trim().min(1, 'description requerido.').optional(),
+  roomOrZone: z.string().trim().optional(),
+  hotspotType: z.enum(['info', 'cta', 'navigation', 'feature', 'warning']).optional(),
+  priority: z.enum(['low', 'medium', 'high']).optional(),
+  cta: z.string().trim().optional(),
+  mediaSuggestion: z.string().trim().optional(),
+  businessObjective: z.string().trim().optional(),
+  position: z.record(z.unknown()).nullable().optional(),
+  status: z.enum(['draft', 'approved', 'published', 'archived']).optional(),
+  isPublic: z.boolean().optional(),
+  sortOrder: z.number().int().min(0).optional()
+});
+
+const hotspotCreateSchema = hotspotSchema.extend({
+  label: z.string().trim().min(1, 'label requerido.'),
+  description: z.string().trim().min(1, 'description requerido.')
+});
+
+const hotspotUpdateSchema = hotspotSchema.partial();
 
 async function safeDeleteTempFile(filePath: string | undefined): Promise<void> {
   if (!filePath) return;
@@ -314,6 +343,68 @@ export async function getCaptureJobAiRunController(request: Request, response: R
   try {
     const { tenantId } = requireTenantUser(request);
     const data = await getCaptureAiProcessingRun(request.params.captureJobId, request.params.runId, tenantId);
+    response.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function applyCaptureJobAiContentController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const { tenantId } = requireTenantUser(request);
+    const data = await applyCaptureAiContent(request.params.captureJobId, request.params.runId, tenantId);
+    response.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createCaptureJobHotspotsFromAiController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const { tenantId } = requireTenantUser(request);
+    const data = await createCaptureHotspotsFromAi(request.params.captureJobId, request.params.runId, tenantId);
+    response.status(201).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function listCaptureHotspotsController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const { tenantId } = requireTenantUser(request);
+    const data = await listCaptureHotspots(request.params.captureJobId, tenantId);
+    response.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function createCaptureHotspotController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const { tenantId } = requireTenantUser(request);
+    const input = hotspotCreateSchema.parse(request.body) as CaptureHotspotInput;
+    const data = await createCaptureHotspot(request.params.captureJobId, tenantId, input);
+    response.status(201).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateCaptureHotspotController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const { tenantId } = requireTenantUser(request);
+    const input = hotspotUpdateSchema.parse(request.body) as CaptureHotspotInput;
+    const data = await updateCaptureHotspot(request.params.captureJobId, request.params.hotspotId, tenantId, input);
+    response.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function deleteCaptureHotspotController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const { tenantId } = requireTenantUser(request);
+    const data = await archiveCaptureHotspot(request.params.captureJobId, request.params.hotspotId, tenantId);
     response.status(200).json({ success: true, data });
   } catch (error) {
     next(error);

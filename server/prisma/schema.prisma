@@ -26,6 +26,7 @@ model Tenant {
   users         User[]
   properties    Property[]
   captureJobs   CaptureJob[]
+  captureHotspots CaptureHotspot[]
   captureAiProcessingRuns CaptureAiProcessingRun[]
   subscription  Subscription?
   refreshTokens RefreshToken[]
@@ -193,6 +194,8 @@ model CaptureJob {
   commercialBrief Json?
   commercialBriefUpdatedAt DateTime?
   commercialBriefCompleteness Int?
+  appliedAiContent Json?
+  appliedAiContentUpdatedAt DateTime?
   riskLevel       String   @default("low")
   nextAction      String   @default("")
   notes           String   @default("")
@@ -203,6 +206,7 @@ model CaptureJob {
   inputAssets     CaptureInputAsset[]
   outputAssets    CaptureOutputAsset[]
   aiProcessingRuns CaptureAiProcessingRun[]
+  hotspots        CaptureHotspot[]
 
   @@index([tenantId])
   @@index([userId])
@@ -212,6 +216,34 @@ model CaptureJob {
   @@index([priority])
   @@index([riskLevel])
   @@index([dueDate])
+}
+
+model CaptureHotspot {
+  id                String     @id @default(uuid())
+  captureJobId      String
+  captureJob        CaptureJob @relation(fields: [captureJobId], references: [id], onDelete: Cascade)
+  tenantId          String
+  tenant            Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sourceRunId       String?
+  label             String
+  description       String
+  roomOrZone        String     @default("")
+  hotspotType       String
+  priority          String
+  cta               String     @default("")
+  mediaSuggestion   String     @default("")
+  businessObjective String     @default("")
+  position          Json?
+  status            String     @default("draft")
+  isPublic          Boolean    @default(false)
+  sortOrder         Int        @default(0)
+  createdAt         DateTime   @default(now())
+  updatedAt         DateTime   @updatedAt
+
+  @@index([captureJobId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([isPublic])
 }
 
 model CaptureAiProcessingRun {
