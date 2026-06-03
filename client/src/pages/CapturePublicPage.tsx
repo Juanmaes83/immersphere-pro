@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link, useParams } from 'react-router-dom';
-import { ExternalLink } from 'lucide-react';
+import { ArrowDown, CheckCircle2, ExternalLink, ShieldCheck } from 'lucide-react';
 import CaptureViewerShell from '@/components/capture/CaptureViewerShell';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import type { PublicCaptureJob } from '@/types/api';
@@ -34,6 +34,30 @@ function toEmbedUrl(rawUrl: string, type: string): string {
     return normalizeSuperSplatUrl(rawUrl);
   }
   return rawUrl;
+}
+
+function scrollToViewer(): void {
+  document.getElementById('capture-viewer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function getProviderLabel(type: string): string {
+  if (type === 'supersplat' || type === 'splat_viewer' || type === 'gaussian_splat') return '3D / Gaussian / Splat';
+  if (type === 'spark_viewer') return 'Spark viewer';
+  if (type === 'external_3d_viewer') return 'Viewer 3D externo';
+  return statusLabel(type);
+}
+
+function CaptureBadge({ children, tone = 'neutral' }: { children: string; tone?: 'neutral' | 'success' | 'accent' }): JSX.Element {
+  const toneClass = {
+    neutral: 'bg-white text-slate-600 ring-slate-200 dark:bg-white/5 dark:text-white/60 dark:ring-white/10',
+    success: 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50',
+    accent: 'bg-violet-50 text-ip-accent ring-violet-200 dark:bg-violet-950/30 dark:text-violet-200 dark:ring-violet-800/50'
+  }[tone];
+  return (
+    <span className={`rounded-full px-3 py-1 text-xs font-black uppercase tracking-[0.12em] ring-1 ${toneClass}`}>
+      {children}
+    </span>
+  );
 }
 
 export default function CapturePublicPage(): JSX.Element {
@@ -121,6 +145,17 @@ export default function CapturePublicPage(): JSX.Element {
     };
   }, [isImmersiveMode, viewport.isMobileLandscape]);
 
+  const premiumOutput = useMemo(() => {
+    if (!job) return null;
+    return [...job.outputAssets]
+      .filter((asset) => asset.isPremium3d)
+      .sort((a, b) => {
+        const ai = PREMIUM_3D_PRIORITY.indexOf(a.type);
+        const bi = PREMIUM_3D_PRIORITY.indexOf(b.type);
+        return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
+      })[0] ?? null;
+  }, [job]);
+
   if (loading) {
     return (
       <main className="mx-auto flex min-h-[70vh] max-w-5xl items-center justify-center px-5 py-16">
@@ -141,19 +176,15 @@ export default function CapturePublicPage(): JSX.Element {
     );
   }
 
-  const premiumOutput = [...job.outputAssets]
-    .filter((asset) => asset.isPremium3d)
-    .sort((a, b) => {
-      const ai = PREMIUM_3D_PRIORITY.indexOf(a.type);
-      const bi = PREMIUM_3D_PRIORITY.indexOf(b.type);
-      return (ai === -1 ? 99 : ai) - (bi === -1 ? 99 : bi);
-    })[0] ?? null;
   const primaryOutput = premiumOutput ?? job.outputAssets[0] ?? null;
   const primaryUrl = primaryOutput?.url ?? job.publicUrl;
   const applied = job.appliedAiContent;
   const heroTitle = applied?.commercialTitle || job.title;
-  const heroDescription = applied?.shortDescription || applied?.longDescription || job.clientName;
+  const shortDescription = applied?.shortDescription || job.clientName;
+  const heroDescription = applied?.salesAngle || applied?.longDescription || shortDescription;
   const primaryCta = applied?.ctaPrimary || 'Solicitar información';
+  const secondaryCta = applied?.ctaSecondary || 'Ver experiencia 3D';
+  const benefits = applied?.benefits?.filter(Boolean).slice(0, 6) ?? [];
   const isMobileViewport = viewport.isMobileLike;
   const isMobileLandscape = viewport.isMobileLandscape;
   const isMobilePortrait = viewport.isMobilePortrait;
@@ -163,6 +194,10 @@ export default function CapturePublicPage(): JSX.Element {
     primaryUrl &&
     isSafeHttpUrl(primaryUrl)
   );
+  const hasPublic3d = Boolean(premiumOutput);
+  const providerLabel = premiumOutput ? getProviderLabel(premiumOutput.type) : null;
+  const metaDescription = shortDescription || heroDescription || job.clientName;
+
   const embeddedViewer = (
     <div className="h-full w-full bg-black">
       <iframe
@@ -199,149 +234,191 @@ export default function CapturePublicPage(): JSX.Element {
 
   return (
     <>
-    <main className={`mx-auto ${isMobileLandscape ? 'max-w-none px-2 py-2' : 'max-w-5xl px-5 py-12'}`}>
-      <Helmet>
-        <title>{job.title} · Immersphere Pro</title>
-        <meta name="robots" content="noindex" />
-      </Helmet>
+      <main className={isMobileLandscape ? 'mx-auto max-w-none px-2 py-2' : 'bg-[#F8FAFC] text-slate-950 dark:bg-slate-900 dark:text-slate-100'}>
+        <Helmet>
+          <title>{heroTitle} · Immersphere Pro</title>
+          <meta name="description" content={metaDescription} />
+          <meta property="og:title" content={heroTitle} />
+          <meta property="og:description" content={metaDescription} />
+          <meta name="robots" content="noindex" />
+        </Helmet>
 
-      {import.meta.env.DEV ? (
-        <output className="sr-only">
-          capture viewport debug: mobileLike={String(viewport.isMobileLike)}, landscape={String(viewport.isLandscape)}, mobileLandscape={String(viewport.isMobileLandscape)}, width={Math.round(viewport.width)}, height={Math.round(viewport.height)}
-        </output>
-      ) : null}
-
-      <section className={`border-b border-slate-200 dark:border-white/10 ${isMobileLandscape ? 'sr-only' : 'pb-8'}`}>
-        <p className="text-xs font-black uppercase tracking-[0.22em] text-ip-accent">Entrega visual publicada</p>
-        <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-tight text-slate-950 dark:text-white">{heroTitle}</h1>
-        <p className="mt-3 max-w-3xl text-lg font-semibold leading-8 text-slate-500 dark:text-white/45">{heroDescription}</p>
-        {applied?.salesAngle ? <p className="mt-3 max-w-3xl text-sm font-black text-ip-accent">{applied.salesAngle}</p> : null}
-        <div className="mt-5 flex flex-wrap gap-2">
-          <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50">{statusLabel(job.status)}</span>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-slate-600 ring-1 ring-slate-200 dark:bg-white/5 dark:text-white/60 dark:ring-white/10">{job.projectType}</span>
-          <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-slate-600 ring-1 ring-slate-200 dark:bg-white/5 dark:text-white/60 dark:ring-white/10">{job.vertical}</span>
-        </div>
-        {applied?.benefits?.length ? (
-          <div className="mt-5 flex flex-wrap gap-2">
-            {applied.benefits.slice(0, 5).map((benefit) => (
-              <span key={benefit} className="rounded-full bg-white px-3 py-1 text-xs font-bold text-slate-600 ring-1 ring-slate-200 dark:bg-white/5 dark:text-white/60 dark:ring-white/10">{benefit}</span>
-            ))}
-          </div>
+        {import.meta.env.DEV ? (
+          <output className="sr-only">
+            capture viewport debug: mobileLike={String(viewport.isMobileLike)}, landscape={String(viewport.isLandscape)}, mobileLandscape={String(viewport.isMobileLandscape)}, width={Math.round(viewport.width)}, height={Math.round(viewport.height)}
+          </output>
         ) : null}
-      </section>
 
-      <section className={`${isMobileLandscape ? 'mt-0 grid gap-2' : 'mt-8 grid gap-4'}`}>
-        {premiumOutput ? (
-          <div className={`overflow-hidden bg-slate-950 text-white ring-1 ring-slate-800 dark:bg-black dark:ring-white/10 ${isMobileLandscape ? 'rounded-xl' : 'rounded-ip-card'}`}>
-            <div className={`flex gap-4 border-b border-white/10 md:flex-row md:items-center md:justify-between ${isMobileLandscape ? 'items-center justify-between px-3 py-2' : 'flex-col px-5 py-4'}`}>
+        {!isMobileLandscape ? (
+          <section className="border-b border-slate-200 bg-white dark:border-white/10 dark:bg-slate-950">
+            <div className="mx-auto grid max-w-6xl gap-8 px-5 py-10 lg:grid-cols-[1.1fr_0.9fr] lg:items-end lg:py-14">
               <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-300">Experiencia 3D inmersiva</p>
-                <h2 className={`${isMobileLandscape ? 'text-base' : 'mt-1 text-2xl'} font-black`}>{statusLabel(premiumOutput.type)}</h2>
-                <div className={`${isMobileLandscape ? 'hidden' : 'mt-3 flex'} flex-wrap gap-2`}>
-                  <span className="rounded-full bg-violet-500/20 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-violet-100 ring-1 ring-violet-300/30">3D / Gaussian / Splat</span>
-                  {premiumOutput.viewerReady ? <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-emerald-100 ring-1 ring-emerald-300/30">Desktop OK</span> : null}
-                  {premiumOutput.mobileReady ? <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-emerald-100 ring-1 ring-emerald-300/30">Mobile OK</span> : null}
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-ip-accent">Entrega visual publicada</p>
+                <h1 className="mt-4 max-w-4xl text-4xl font-black tracking-tight text-slate-950 dark:text-white md:text-6xl">{heroTitle}</h1>
+                <p className="mt-5 max-w-3xl text-lg font-semibold leading-8 text-slate-600 dark:text-white/55">{shortDescription}</p>
+                {applied?.salesAngle ? <p className="mt-4 max-w-3xl text-sm font-black leading-6 text-ip-accent">{applied.salesAngle}</p> : null}
+                <div className="mt-6 flex flex-wrap gap-2">
+                  <CaptureBadge tone="success">{statusLabel(job.status)}</CaptureBadge>
+                  <CaptureBadge>{statusLabel(job.projectType)}</CaptureBadge>
+                  <CaptureBadge>{statusLabel(job.vertical)}</CaptureBadge>
+                  {providerLabel ? <CaptureBadge tone="accent">{providerLabel}</CaptureBadge> : null}
+                  {premiumOutput?.viewerReady ? <CaptureBadge tone="success">Desktop OK</CaptureBadge> : null}
+                  {premiumOutput?.mobileReady ? <CaptureBadge tone="success">Mobile OK</CaptureBadge> : null}
                 </div>
               </div>
-              {isMobileLandscape ? <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-emerald-100 ring-1 ring-emerald-300/30">Modo horizontal activo</span> : null}
-              <a href={primaryUrl} target="_blank" rel="noreferrer" className={`${isMobileLandscape ? 'hidden' : 'inline-flex'} items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-violet-100`}>
-                {primaryCta} <ExternalLink className="h-4 w-4" />
-              </a>
-              <button type="button" onClick={() => setIsImmersiveMode(true)} className="inline-flex items-center justify-center rounded-full border border-white/20 px-5 py-3 text-sm font-black text-white transition hover:bg-white/10">
-                Modo inmersivo
-              </button>
-            </div>
-            {isMobilePortrait ? (
-              <div className="border-b border-white/10 bg-violet-500/15 px-5 py-4">
-                <p className="text-sm font-black text-white">Gira el móvil para ver la experiencia en formato inmersivo.</p>
-                <p className="mt-1 text-xs font-semibold text-white/60">En horizontal verás mejor estancias, proporciones, splats, panorámicas y vídeos inmersivos.</p>
-                <button type="button" onClick={() => setIsImmersiveMode(true)} className="mt-3 rounded-full bg-white px-4 py-2 text-xs font-black text-slate-950">
-                  Modo inmersivo
-                </button>
-              </div>
-            ) : null}
-            {canEmbedPrimary ? (
-              renderEmbeddedViewer()
-            ) : (
-              <div className="flex min-h-[260px] flex-col items-center justify-center gap-3 bg-slate-900 px-5 py-10 text-center">
-                <p className="max-w-md text-sm font-semibold text-white/60">Este viewer 3D se abre en una pestaña externa para mantener la entrega segura.</p>
-                <a href={primaryUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-violet-500 px-5 py-3 text-sm font-black text-white hover:bg-violet-400">
-                  Abrir experiencia 3D <ExternalLink className="h-4 w-4" />
-                </a>
-              </div>
-            )}
-          </div>
-        ) : primaryUrl ? (
-          <a href={primaryUrl} target="_blank" rel="noreferrer" className="flex items-center justify-between rounded-ip-card bg-slate-950 px-5 py-4 text-white dark:bg-white dark:text-slate-950">
-            <span className="font-black">Abrir experiencia publicada</span>
-            <ExternalLink className="h-5 w-5" />
-          </a>
-        ) : null}
 
-        {job.hotspots.length > 0 ? (
-          <section className="rounded-ip-card bg-white p-5 ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border">
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-ip-accent">Puntos destacados</p>
-                <h2 className="mt-1 text-2xl font-black text-slate-950 dark:text-white">Hotspots publicados</h2>
-                <p className="mt-1 text-sm font-semibold text-slate-500 dark:text-white/45">También aparecen como puntos interactivos sobre la experiencia 3D cuando el viewer está embebido.</p>
+              <div className="rounded-ip-card border border-slate-200 bg-slate-50 p-5 dark:border-white/10 dark:bg-white/5">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Siguiente acción</p>
+                <p className="mt-3 text-2xl font-black text-slate-950 dark:text-white">{primaryCta}</p>
+                <p className="mt-3 text-sm font-semibold leading-6 text-slate-500 dark:text-white/50">{heroDescription}</p>
+                <div className="mt-5 flex flex-col gap-3 sm:flex-row lg:flex-col">
+                  <button type="button" onClick={scrollToViewer} className="rounded-full bg-ip-accent px-5 py-3 text-sm font-black text-white transition hover:bg-ip-accent-hover">
+                    {primaryCta}
+                  </button>
+                  <button type="button" onClick={scrollToViewer} className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-white dark:border-white/10 dark:text-white/70 dark:hover:bg-white/10">
+                    {secondaryCta} <ArrowDown className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
-              {applied?.ctaPrimary ? <p className="text-sm font-black text-slate-500 dark:text-white/50">{applied.ctaPrimary}</p> : null}
-            </div>
-            <div className="mt-4 grid gap-3 md:grid-cols-2">
-              {job.hotspots.map((hotspot) => (
-                <article key={hotspot.id} className="rounded-xl border border-slate-100 p-4 dark:border-white/10">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="text-base font-black text-slate-950 dark:text-white">{hotspot.label}</h3>
-                    <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500 dark:bg-white/10 dark:text-white/50">{hotspot.priority}</span>
-                  </div>
-                  {hotspot.roomOrZone ? <p className="mt-1 text-xs font-black uppercase tracking-[0.12em] text-slate-400">{hotspot.roomOrZone}</p> : null}
-                  <p className="mt-2 text-sm font-semibold leading-6 text-slate-500 dark:text-white/50">{hotspot.description}</p>
-                  {hotspot.cta ? <p className="mt-3 text-sm font-black text-ip-accent">{hotspot.cta}</p> : null}
-                </article>
-              ))}
             </div>
           </section>
         ) : null}
 
-        {job.outputAssets.length > 0 ? (
-          <div className="grid gap-3 sm:grid-cols-2">
-            {job.outputAssets.filter((asset) => asset.id !== premiumOutput?.id).map((asset) => (
-              <a key={asset.id} href={asset.url} target="_blank" rel="noreferrer" className="rounded-ip-card bg-white p-5 ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:shadow-lg dark:bg-ip-card dark:ring-ip-card-border">
-                <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-400">{asset.type}</p>
-                <p className="mt-2 text-lg font-black text-slate-950 dark:text-white">{asset.format || 'url'}</p>
-                <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-white/45">
-                  {asset.viewerReady ? 'Viewer listo' : 'Viewer pendiente'} · {asset.mobileReady ? 'Movil listo' : 'Movil pendiente'}
-                </p>
-              </a>
-            ))}
-          </div>
-        ) : (
-          <p className="rounded-ip-card bg-white p-6 text-sm font-semibold text-slate-500 ring-1 ring-slate-200 dark:bg-ip-card dark:text-white/45 dark:ring-ip-card-border">
-            La entrega esta publicada, pero aun no tiene outputs publicos vinculados.
-          </p>
-        )}
-      </section>
-    </main>
-    {isImmersiveMode && canEmbedPrimary ? (
-      <div className="fixed inset-0 z-[80] h-[100dvh] bg-black text-white">
-        <div className="flex h-16 items-center justify-between gap-3 border-b border-white/10 px-4">
-          <div className="min-w-0">
-            <p className="truncate text-sm font-black">{heroTitle}</p>
-            {isMobilePortrait ? <p className="mt-1 text-xs font-semibold text-white/55">Para mejor experiencia, gira el móvil.</p> : null}
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <a href={primaryUrl} target="_blank" rel="noreferrer" className="hidden rounded-full border border-white/15 px-3 py-2 text-xs font-black text-white/80 hover:bg-white/10 sm:inline-flex">
-              Abrir externo
-            </a>
-            <button type="button" onClick={() => setIsImmersiveMode(false)} className="rounded-full bg-white px-4 py-2 text-xs font-black text-slate-950">
-              Salir
-            </button>
-          </div>
-        </div>
-        {renderEmbeddedViewer(true)}
-      </div>
-    ) : null}
+        <section id="capture-viewer" className={isMobileLandscape ? 'mt-0' : 'mx-auto max-w-6xl px-5 py-8 md:py-12'}>
+          {premiumOutput ? (
+            <div className={isMobileLandscape ? '' : 'overflow-hidden rounded-ip-card bg-slate-950 text-white shadow-2xl ring-1 ring-slate-800 dark:bg-black dark:ring-white/10'}>
+              {!isMobileLandscape ? (
+                <div className="flex flex-col gap-4 border-b border-white/10 px-5 py-5 md:flex-row md:items-center md:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-violet-300">Experiencia 3D inmersiva</p>
+                    <h2 className="mt-1 text-2xl font-black">{statusLabel(premiumOutput.type)}</h2>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {providerLabel ? <span className="rounded-full bg-violet-500/20 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-violet-100 ring-1 ring-violet-300/30">{providerLabel}</span> : null}
+                      {premiumOutput.viewerReady ? <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-emerald-100 ring-1 ring-emerald-300/30">Desktop OK</span> : null}
+                      {premiumOutput.mobileReady ? <span className="rounded-full bg-emerald-500/20 px-3 py-1 text-xs font-black uppercase tracking-[0.12em] text-emerald-100 ring-1 ring-emerald-300/30">Mobile OK</span> : null}
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-3 sm:flex-row">
+                    <a href={primaryUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-violet-100">
+                      {primaryCta} <ExternalLink className="h-4 w-4" />
+                    </a>
+                    <button type="button" onClick={() => setIsImmersiveMode(true)} className="rounded-full border border-white/20 px-5 py-3 text-sm font-black text-white transition hover:bg-white/10">
+                      Modo inmersivo
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+
+              {canEmbedPrimary ? (
+                renderEmbeddedViewer()
+              ) : (
+                <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 bg-slate-900 px-5 py-10 text-center">
+                  <p className="max-w-md text-sm font-semibold text-white/60">Este viewer 3D se abre en una pestaña externa para mantener la entrega segura.</p>
+                  <a href={primaryUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full bg-violet-500 px-5 py-3 text-sm font-black text-white hover:bg-violet-400">
+                    Abrir experiencia 3D <ExternalLink className="h-4 w-4" />
+                  </a>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="rounded-ip-card bg-white p-8 text-center ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border">
+              <p className="text-xs font-black uppercase tracking-[0.16em] text-slate-400">Experiencia visual</p>
+              <h2 className="mt-2 text-2xl font-black text-slate-950 dark:text-white">La experiencia visual todavía no está disponible.</h2>
+              {primaryUrl ? (
+                <a href={primaryUrl} target="_blank" rel="noreferrer" className="mt-5 inline-flex items-center gap-2 rounded-full bg-slate-950 px-5 py-3 text-sm font-black text-white dark:bg-white dark:text-slate-950">
+                  Abrir enlace publicado <ExternalLink className="h-4 w-4" />
+                </a>
+              ) : null}
+            </div>
+          )}
+        </section>
+
+        {!isMobileLandscape ? (
+          <>
+            {benefits.length > 0 ? (
+              <section className="mx-auto max-w-6xl px-5 py-6">
+                <div className="mb-5">
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-ip-accent">Beneficios clave</p>
+                  <h2 className="mt-2 text-3xl font-black text-slate-950 dark:text-white">Motivos para avanzar</h2>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3">
+                  {benefits.map((benefit) => (
+                    <article key={benefit} className="rounded-xl bg-white p-5 ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border">
+                      <CheckCircle2 className="h-5 w-5 text-ip-accent" />
+                      <p className="mt-3 text-sm font-black leading-6 text-slate-700 dark:text-white/75">{benefit}</p>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            {job.hotspots.length > 0 ? (
+              <section className="mx-auto max-w-6xl px-5 py-6">
+                <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                  <div>
+                    <p className="text-xs font-black uppercase tracking-[0.16em] text-ip-accent">Puntos destacados</p>
+                    <h2 className="mt-2 text-3xl font-black text-slate-950 dark:text-white">Puntos destacados de la experiencia</h2>
+                    <p className="mt-2 text-sm font-semibold text-slate-500 dark:text-white/45">Explora las zonas y acciones principales de la entrega.</p>
+                  </div>
+                  <button type="button" onClick={scrollToViewer} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 hover:bg-white dark:border-white/10 dark:text-white/60 dark:hover:bg-white/10">
+                    Ver sobre el viewer
+                  </button>
+                </div>
+                <div className="grid gap-3 md:grid-cols-2">
+                  {job.hotspots.map((hotspot) => (
+                    <article key={hotspot.id} className="rounded-xl bg-white p-5 ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <h3 className="text-lg font-black text-slate-950 dark:text-white">{hotspot.label}</h3>
+                        <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-500 dark:bg-white/10 dark:text-white/50">{hotspot.priority}</span>
+                        <span className="rounded-full bg-violet-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-ip-accent dark:bg-violet-950/30 dark:text-violet-200">{statusLabel(hotspot.hotspotType)}</span>
+                      </div>
+                      {hotspot.roomOrZone ? <p className="mt-1 text-xs font-black uppercase tracking-[0.12em] text-slate-400">{hotspot.roomOrZone}</p> : null}
+                      <p className="mt-3 text-sm font-semibold leading-6 text-slate-500 dark:text-white/50">{hotspot.description}</p>
+                      {hotspot.cta ? <p className="mt-4 rounded-full bg-slate-950 px-4 py-2 text-center text-sm font-black text-white dark:bg-white dark:text-slate-950">{hotspot.cta}</p> : null}
+                    </article>
+                  ))}
+                </div>
+              </section>
+            ) : null}
+
+            <section className="mx-auto max-w-6xl px-5 py-6">
+              <div className="grid gap-4 rounded-ip-card bg-slate-950 p-6 text-white ring-1 ring-slate-800 md:grid-cols-[0.8fr_1.2fr] md:p-8">
+                <div>
+                  <ShieldCheck className="h-7 w-7 text-violet-300" />
+                  <p className="mt-4 text-xs font-black uppercase tracking-[0.16em] text-violet-300">Confianza técnica</p>
+                  <h2 className="mt-2 text-3xl font-black">Entrega preparada para revisión comercial</h2>
+                </div>
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <p className="rounded-xl bg-white/10 p-4 text-sm font-bold text-white/75">Viewer 3D publicado: {hasPublic3d ? 'sí' : 'pendiente'}</p>
+                  <p className="rounded-xl bg-white/10 p-4 text-sm font-bold text-white/75">Compatibilidad desktop: {premiumOutput?.viewerReady ? 'validada' : 'pendiente de revisión'}</p>
+                  <p className="rounded-xl bg-white/10 p-4 text-sm font-bold text-white/75">Compatibilidad móvil: {premiumOutput?.mobileReady ? 'validada' : 'pendiente de revisión'}</p>
+                  <p className="rounded-xl bg-white/10 p-4 text-sm font-bold text-white/75">Hotspots publicados: {job.hotspots.length}</p>
+                  <p className="rounded-xl bg-white/10 p-4 text-sm font-bold text-white/75">Landing compartible: activa</p>
+                  <p className="rounded-xl bg-white/10 p-4 text-sm font-bold text-white/75">Material original: no se muestra en la entrega pública</p>
+                </div>
+              </div>
+            </section>
+
+            <section className="mx-auto max-w-6xl px-5 py-8 pb-14">
+              <div className="rounded-ip-card bg-white p-6 text-center ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border md:p-10">
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-ip-accent">Conversión</p>
+                <h2 className="mt-2 text-3xl font-black text-slate-950 dark:text-white">¿Quieres recibir más información?</h2>
+                <p className="mx-auto mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-500 dark:text-white/50">Explora la experiencia 3D y solicita información para avanzar con una visita cualificada.</p>
+                <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+                  <button type="button" onClick={scrollToViewer} className="rounded-full bg-ip-accent px-6 py-3 text-sm font-black text-white transition hover:bg-ip-accent-hover">
+                    {primaryCta}
+                  </button>
+                  <button type="button" onClick={scrollToViewer} className="rounded-full border border-slate-200 px-6 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/10">
+                    Volver a ver la experiencia 3D
+                  </button>
+                </div>
+              </div>
+            </section>
+          </>
+        ) : null}
+      </main>
+
+      {isImmersiveMode && canEmbedPrimary ? renderEmbeddedViewer(true) : null}
     </>
   );
 }

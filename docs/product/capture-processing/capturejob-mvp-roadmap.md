@@ -107,3 +107,22 @@ Se incorpora `CaptureViewerShell` para que `/capture/:id` no dependa solo de det
 - Hotspots siguen como overlay 2D relativo al frame real.
 
 Sigue fuera del MVP: controlar zoom/camara inicial internos de SuperSplat u otros iframes externos sin API documentada.
+
+## Paso 17 - Landing comercial premium desde CaptureJob
+
+La landing publica `/capture/:id` deja de ser solo una ficha tecnica y pasa a funcionar como entrega comercial:
+
+- Hero premium con copy aplicado por IA y aprobado manualmente.
+- Viewer 3D como pieza central.
+- Beneficios comerciales desde `appliedAiContent.benefits`.
+- Hotspots publicados como overlay y como fallback accesible.
+- Seccion compacta de confianza tecnica.
+- Bloque final de conversion con CTA preparado.
+
+Se mantiene fuera del MVP actual:
+
+- formulario publico real de lead capture;
+- analitica de conversion;
+- automatizacion de follow-up;
+- control nativo de camara/zoom de iframes externos;
+- publicacion automatica de contenido IA sin revision humana.

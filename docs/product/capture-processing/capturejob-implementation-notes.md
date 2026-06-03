@@ -787,3 +787,26 @@ La optimizacion de landscape movil pasa a ser arquitectonica, no solo de clases 
 - Los hotspots se posicionan relativos al frame real y usan `mobileX/mobileY` cuando el dispositivo es mobile-like.
 
 Limitacion: SuperSplat sigue siendo un iframe externo. Immersphere controla contenedor, layout y overlay propio; no controla zoom/camara inicial internos salvo soporte documentado del proveedor.
+
+## Paso 17 - Landing comercial premium desde CaptureJob
+
+La landing publica `/capture/:id` se convierte en una entrega comercial premium generada desde datos reales del CaptureJob:
+
+- Hero comercial con `appliedAiContent.commercialTitle`, `shortDescription`, `salesAngle`, estado, vertical, tipo de proyecto y badges tecnicos.
+- Viewer 3D como pieza central, manteniendo `CaptureViewerShell`, overlay de hotspots, mobile landscape viewer-first y modo inmersivo.
+- Beneficios clave desde `appliedAiContent.benefits`, sin inventar beneficios si no existen.
+- Bloque accesible de hotspots publicados con label, zona, descripcion, prioridad, tipo y CTA.
+- Seccion de confianza tecnica con datos publicos: viewer publicado, compatibilidad desktop/movil, hotspots publicados y landing compartible.
+- Bloque final de conversion con CTA visual que devuelve al viewer mientras no exista lead capture real en esta landing.
+
+Privacidad:
+
+- El endpoint publico solo expone `appliedAiContent` saneado, outputs publicados y hotspots `published + isPublic`.
+- No se muestran `tenantId`, `userId`, `leadId`, `sourceRunId`, runs IA, notas internas, costes, input assets privados ni QA interno.
+
+Limitaciones actuales:
+
+- No hay formulario real de lead capture en `/capture/:id`; los CTA se mantienen como acciones visuales/anclas hacia la experiencia.
+- SuperSplat sigue controlando camara y zoom inicial dentro del iframe.
+
+Proximos pasos: lead capture real, analitica de conversion, formularios publicos, eventos del viewer y opciones white label por tenant.
