@@ -36,9 +36,14 @@ type CaptureJobWithAssets = {
   inputAssets?: Array<{
     id: string;
     type: string;
+    zone?: string;
+    assetType?: string;
     filename: string;
     format: string;
+    mimeType?: string;
     status: string;
+    captureQualityStatus?: string;
+    notes?: string;
     createdAt: Date | string;
   }>;
   outputAssets?: Array<{
@@ -387,10 +392,32 @@ function buildInputSummary(job: CaptureJobWithAssets) {
   const inputAssets = (job.inputAssets ?? []).slice(0, maxAssets).map((asset) => ({
     id: asset.id,
     type: asset.type,
+    zone: truncateText(toStringValue(asset.zone), 120),
+    assetType: truncateText(toStringValue(asset.assetType || asset.type), 40),
     filename: truncateText(asset.filename, 120),
-    mimeType: asset.format,
+    mimeType: truncateText(toStringValue(asset.mimeType || asset.format), 120),
     status: asset.status,
+    captureQualityStatus: truncateText(toStringValue(asset.captureQualityStatus || 'pending'), 40),
+    notes: truncateText(toStringValue(asset.notes), 300),
     createdAt: new Date(asset.createdAt).toISOString()
+  }));
+  const zoneMap = new Map<string, { total: number; sufficient: number; needsReview: number; pending: number; types: Set<string> }>();
+  for (const asset of job.inputAssets ?? []) {
+    const zone = truncateText(toStringValue(asset.zone), 120) || 'Sin zona';
+    const item = zoneMap.get(zone) ?? { total: 0, sufficient: 0, needsReview: 0, pending: 0, types: new Set<string>() };
+    item.total += 1;
+    item.types.add(toStringValue(asset.assetType || asset.type) || 'other');
+    const quality = toStringValue(asset.captureQualityStatus || 'pending');
+    if (quality === 'sufficient') item.sufficient += 1;
+    else if (quality === 'needs_review') item.needsReview += 1;
+    else item.pending += 1;
+    zoneMap.set(zone, item);
+  }
+  const materialByZone = [...zoneMap.entries()].map(([zone, item]) => ({
+    zone,
+    total: item.total,
+    status: item.sufficient > 0 ? 'sufficient' : item.needsReview > 0 ? 'needs_review' : 'pending',
+    assetTypes: [...item.types].slice(0, 6)
   }));
   const outputAssets = (job.outputAssets ?? []).slice(0, maxAssets).map((asset) => {
     const url = asset.publishedUrl || asset.url;
@@ -442,10 +469,13 @@ function buildInputSummary(job: CaptureJobWithAssets) {
       materialStatus: getMaterialStatus(job),
       inputCount: job.inputAssets?.length ?? 0,
       outputCount: job.outputAssets?.length ?? 0,
-      commercialBriefCompleteness: job.commercialBriefCompleteness ?? 0
+      commercialBriefCompleteness: job.commercialBriefCompleteness ?? 0,
+      zonesCovered: materialByZone.filter((zone) => zone.status === 'sufficient').length,
+      zonesPending: materialByZone.filter((zone) => zone.status !== 'sufficient').length
     },
     commercialBrief,
     inputAssets,
+    materialByZone,
     outputAssets,
     threeD: primary3d ? {
       hasPrimary3d: true,
@@ -483,6 +513,7 @@ Reglas:
 - No inventes datos concretos no presentes.
 - No dejes vacias estas secciones: commercialCopy, videoScript, nextActions, missingMaterial y qaRecommendations.
 - Si faltan datos, indicalo en missingMaterial y genera recomendaciones accionables basadas en briefing, output 3D, estado del material y QA.
+- Usa inputAssets y materialByZone para detectar zonas cubiertas, zonas sin material suficiente y recomendaciones concretas por estancia. No asumas que una zona esta cubierta si no aparece como sufficient.
 - Usa commercialBrief para adaptar tono, CTA, hotspots, copy y guion. Si falta briefing, evita concrecion falsa.
 - La calidad y confianza deben depender del contexto disponible. Si falta briefing, inputAssets o datos de propiedad, baja confidence y explica por que.
 - No digas que se ha generado Gaussian/Splat automaticamente.

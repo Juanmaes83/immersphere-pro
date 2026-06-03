@@ -17,6 +17,7 @@ import {
   createCaptureHotspot,
   createCaptureInputAsset,
   createCaptureJob,
+  createPublicCaptureLead,
   createCaptureOutputAsset,
   createCaptureHotspotsFromAi,
   generateCaptureJobQr,
@@ -32,7 +33,8 @@ import {
   type CaptureHotspotInput,
   type CaptureInputAssetInput,
   type CaptureJobInput,
-  type CaptureOutputAssetInput
+  type CaptureOutputAssetInput,
+  type PublicCaptureLeadInput
 } from '../services/capture-jobs.service.js';
 
 type UploadRequest = Request & {
@@ -81,16 +83,22 @@ const captureJobUpdateSchema = captureJobSchema.partial();
 
 const inputAssetSchema = z.object({
   type: z.string().trim().min(1, 'type requerido.'),
+  zone: z.string().trim().max(120).optional(),
+  assetType: z.enum(['photo', 'video', 'panorama', 'floorplan', 'splat_external', 'document', 'other']).optional(),
   filename: z.string().trim().optional(),
   url: z.string().trim().min(1, 'url requerida.'),
   publicId: z.string().trim().optional(),
   source: z.string().trim().optional(),
   format: z.string().trim().optional(),
+  mimeType: z.string().trim().optional(),
   size: z.number().int().min(0).optional(),
+  sizeBytes: z.number().int().min(0).optional(),
   status: z.string().trim().optional(),
+  captureQualityStatus: z.enum(['pending', 'sufficient', 'needs_review', 'missing']).optional(),
   rightsStatus: z.string().trim().optional(),
   qualityScore: z.number().int().min(0).max(100).nullable().optional(),
-  notes: z.string().optional()
+  notes: z.string().max(1000).optional(),
+  sortOrder: z.number().int().min(0).optional()
 });
 
 const inputAssetUpdateSchema = inputAssetSchema.partial();
@@ -132,6 +140,16 @@ const hotspotCreateSchema = hotspotSchema.extend({
 });
 
 const hotspotUpdateSchema = hotspotSchema.partial();
+
+const publicCaptureLeadSchema = z.object({
+  name: z.string().trim().min(2, 'Nombre requerido.').max(120),
+  email: z.string().trim().email('Email no valido.').max(160),
+  phone: z.string().trim().min(3).max(40).optional().or(z.literal('')),
+  message: z.string().trim().max(1000).optional().or(z.literal('')),
+  interestType: z.enum(['request_info', 'book_visit', 'investment', 'general']).optional(),
+  consent: z.literal(true, { errorMap: () => ({ message: 'Consentimiento requerido.' }) }),
+  honeypot: z.string().trim().max(200).optional()
+});
 
 async function safeDeleteTempFile(filePath: string | undefined): Promise<void> {
   if (!filePath) return;
@@ -260,15 +278,21 @@ export async function uploadCaptureInputAssetController(request: UploadRequest, 
     const storedUpload = await storeUploadFile(file, { tenantId, userId });
     const input: CaptureInputAssetInput = {
       type: String(request.body?.type || storedUpload.resourceType || 'file'),
+      zone: String(request.body?.zone || ''),
+      assetType: String(request.body?.assetType || request.body?.type || ''),
       filename: storedUpload.originalName,
       url: storedUpload.url,
       publicId: storedUpload.publicId ?? '',
       source: String(request.body?.source || 'upload'),
       format: storedUpload.format,
+      mimeType: storedUpload.mimeType,
       size: storedUpload.bytes,
+      sizeBytes: storedUpload.bytes,
       status: 'received',
+      captureQualityStatus: String(request.body?.captureQualityStatus || 'pending'),
       rightsStatus: String(request.body?.rightsStatus || 'unknown'),
-      notes: String(request.body?.notes || '')
+      notes: String(request.body?.notes || ''),
+      sortOrder: Number.isFinite(Number(request.body?.sortOrder)) ? Number(request.body?.sortOrder) : 0
     };
     const asset = await createCaptureInputAsset(request.params.captureJobId, tenantId, input);
     response.status(201).json({ success: true, data: { upload: storedUpload, asset } });
@@ -314,6 +338,25 @@ export async function getPublicCaptureJobController(request: Request, response: 
   try {
     const data = await getPublicCaptureJob(request.params.captureJobId);
     response.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+function getRequestIp(request: Request): string {
+  const forwarded = request.headers['x-forwarded-for'];
+  if (typeof forwarded === 'string') return forwarded.split(',')[0]?.trim() ?? '';
+  return request.ip || request.socket.remoteAddress || '';
+}
+
+export async function createPublicCaptureLeadController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const input = publicCaptureLeadSchema.parse(request.body) as PublicCaptureLeadInput;
+    const data = await createPublicCaptureLead(request.params.captureJobId, input, {
+      userAgent: request.headers['user-agent'],
+      ip: getRequestIp(request)
+    });
+    response.status(201).json({ success: true, data });
   } catch (error) {
     next(error);
   }

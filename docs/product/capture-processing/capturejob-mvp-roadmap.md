@@ -126,3 +126,48 @@ Se mantiene fuera del MVP actual:
 - automatizacion de follow-up;
 - control nativo de camara/zoom de iframes externos;
 - publicacion automatica de contenido IA sin revision humana.
+
+## Paso 19 - Lead capture real en landing publica
+
+La landing publica `/capture/:id` captura solicitudes reales sin login:
+
+- formulario ligero integrado en la seccion final de conversion;
+- endpoint publico seguro `POST /api/capture-jobs/public/:captureJobId/leads`;
+- persistencia en `CaptureLead`;
+- asociacion directa con `CaptureJob` y `Tenant`;
+- validacion de nombre, email, consentimiento, honeypot y tipo de interes;
+- anti-spam basico por email/CaptureJob en ventana de 10 minutos;
+- respuesta publica generica sin exponer datos privados.
+
+Queda fuera de este paso:
+
+- email/notificaciones;
+- sincronizacion automatica con CRM;
+- bandeja privada de CaptureLeads;
+- scoring, analytics y exportacion.
+
+## Paso 20 - QR y entrega cliente
+
+La entrega comercial queda preparada para uso real:
+
+- bloque privado "Entrega cliente" en `/capture-jobs`;
+- enlace canonico `/capture/:id`;
+- generacion/actualizacion de QR desde backend;
+- copia y descarga del QR;
+- modo presentacion con `?present=1`;
+- ficha imprimible con `?print=1`;
+- acciones publicas de compartir, copiar enlace, inmersivo y solicitud de informacion.
+
+Esto reduce friccion comercial sin tocar el viewer externo ni anadir infraestructura.
+
+## Paso 21 - Material guiado privado
+
+El MVP incorpora captura guiada de material por zona:
+
+- zona/estancia, tipo de asset, estado de calidad y notas;
+- resumen global y por zona para saber si falta material;
+- subida o URL manual usando endpoints existentes;
+- input assets privados, no expuestos en la landing publica;
+- IA alimentada con metadatos resumidos, no con binarios.
+
+Queda fuera de este paso: OCR, descarga automatica de assets, modelo de hotspots nuevo y automatizacion multiworker.

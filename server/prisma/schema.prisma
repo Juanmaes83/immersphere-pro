@@ -27,6 +27,7 @@ model Tenant {
   properties    Property[]
   captureJobs   CaptureJob[]
   captureHotspots CaptureHotspot[]
+  captureLeads CaptureLead[]
   captureAiProcessingRuns CaptureAiProcessingRun[]
   subscription  Subscription?
   refreshTokens RefreshToken[]
@@ -207,6 +208,7 @@ model CaptureJob {
   outputAssets    CaptureOutputAsset[]
   aiProcessingRuns CaptureAiProcessingRun[]
   hotspots        CaptureHotspot[]
+  captureLeads    CaptureLead[]
 
   @@index([tenantId])
   @@index([userId])
@@ -216,6 +218,32 @@ model CaptureJob {
   @@index([priority])
   @@index([riskLevel])
   @@index([dueDate])
+}
+
+model CaptureLead {
+  id           String     @id @default(uuid())
+  captureJobId String
+  captureJob   CaptureJob @relation(fields: [captureJobId], references: [id], onDelete: Cascade)
+  tenantId     String
+  tenant       Tenant     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name         String
+  email        String
+  phone        String     @default("")
+  message      String     @default("")
+  interestType String     @default("general")
+  source       String     @default("capture_public")
+  status       String     @default("new")
+  userAgent    String     @default("")
+  ipHash       String     @default("")
+  consent      Boolean    @default(false)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@index([captureJobId])
+  @@index([tenantId])
+  @@index([status])
+  @@index([createdAt])
+  @@index([email])
 }
 
 model CaptureHotspot {
@@ -277,22 +305,31 @@ model CaptureInputAsset {
   captureJobId  String
   captureJob    CaptureJob @relation(fields: [captureJobId], references: [id], onDelete: Cascade)
   type          String
+  zone          String     @default("")
+  assetType     String     @default("other")
   filename      String     @default("")
   url           String
   publicId      String     @default("")
   source        String     @default("manual")
   format        String     @default("")
+  mimeType      String     @default("")
   size          Int        @default(0)
+  sizeBytes     Int        @default(0)
   status        String     @default("received")
+  captureQualityStatus String @default("pending")
   rightsStatus  String     @default("unknown")
   qualityScore  Int?
   notes         String     @default("")
+  sortOrder     Int        @default(0)
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
   @@index([captureJobId])
   @@index([type])
+  @@index([zone])
+  @@index([assetType])
   @@index([status])
+  @@index([captureQualityStatus])
 }
 
 model CaptureOutputAsset {

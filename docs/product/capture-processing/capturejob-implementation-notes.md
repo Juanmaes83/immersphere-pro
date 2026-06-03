@@ -810,3 +810,57 @@ Limitaciones actuales:
 - SuperSplat sigue controlando camara y zoom inicial dentro del iframe.
 
 Proximos pasos: lead capture real, analitica de conversion, formularios publicos, eventos del viewer y opciones white label por tenant.
+
+## Paso 19 - Lead capture real en landing publica
+
+La landing publica `/capture/:id` incorpora formulario real de solicitud de informacion:
+
+- Endpoint publico: `POST /api/capture-jobs/public/:captureJobId/leads`.
+- Persistencia en `CaptureLead`, asociado a `CaptureJob` y `Tenant`.
+- Campos capturados: nombre, email, telefono opcional, mensaje opcional, tipo de interes, consentimiento, user-agent e IP hasheada si existe.
+- El endpoint solo acepta CaptureJobs con estado `published` o `connected_to_crm`.
+- No requiere login y no devuelve IDs internos, tenantId ni datos privados.
+
+Validaciones:
+
+- `name` requerido, 2-120 caracteres.
+- `email` requerido con formato valido.
+- `phone` opcional, 3-40 caracteres si se envia.
+- `message` opcional, maximo 1000 caracteres.
+- `interestType`: `request_info`, `book_visit`, `investment` o `general`.
+- `consent` obligatorio.
+- Honeypot oculto debe estar vacio.
+
+Anti-spam basico:
+
+- Honeypot en frontend/backend.
+- Bloqueo de multiples solicitudes del mismo email para el mismo CaptureJob durante 10 minutos.
+- No se guarda IP en claro; solo hash SHA-256 si el request proporciona IP.
+
+Limitaciones actuales:
+
+- No hay notificacion por email ni sincronizacion automatica con CRM.
+- No hay bandeja privada especifica de CaptureLeads todavia.
+- Exportacion, scoring y analitica quedan como siguientes pasos.
+
+## Paso 20 - QR y enlace compartible premium
+
+La entrega cliente queda centralizada en `/capture-jobs` para CaptureJobs publicados o conectados a CRM:
+
+- URL publica canonica: `/capture/:id`, generada con el origin actual de la app.
+- Acciones privadas: copiar enlace, abrir landing, abrir en movil, generar/actualizar QR, copiar QR y descargar QR.
+- Modos publicos: `/capture/:id?present=1` para presentacion comercial y `/capture/:id?print=1` para ficha imprimible.
+- La landing publica incorpora acciones de compartir, copiar enlace, ficha imprimible, modo inmersivo y solicitud de informacion.
+- El QR usa el endpoint existente `POST /api/capture-jobs/:captureJobId/qr`; no se anade proveedor externo ni infraestructura nueva.
+
+## Paso 21 - Upload guiado real de material
+
+`CaptureInputAsset` pasa de lista plana a inventario privado guiado:
+
+- Metadatos nuevos: zona, tipo de asset, estado de suficiencia, mime type, bytes y orden.
+- `/capture-jobs` permite subir o registrar URL manual con zona, tipo, estado y notas privadas.
+- La UI resume suficiencia por zona y estado global sin exponer el material en `/capture/:id`.
+- El procesamiento IA recibe solo resumen de metadatos (`inputAssets` y `materialByZone`), nunca binarios, OCR, descargas ni assets completos.
+- Los estados de calidad son controlados: `pending`, `sufficient`, `needs_review`, `missing`.
+
+Privacidad: los input assets siguen siendo privados y no forman parte del payload publico de `/capture/:id`.

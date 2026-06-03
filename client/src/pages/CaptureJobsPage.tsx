@@ -2,10 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
-import { Upload, QrCode, ExternalLink, Archive, RefreshCw, Copy, BrainCircuit } from 'lucide-react';
+import { Upload, QrCode, ExternalLink, Archive, RefreshCw, Copy, BrainCircuit, Smartphone, Printer, Download } from 'lucide-react';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { usePropertyStore } from '@/store/propertyStore';
-import type { CaptureAiProcessingResult, CaptureAiProcessingRun, CaptureCommercialBrief, CaptureHotspot, CaptureJob, CaptureOutputAsset } from '@/types/api';
+import type { CaptureAiProcessingResult, CaptureAiProcessingRun, CaptureCommercialBrief, CaptureHotspot, CaptureInputAsset, CaptureJob, CaptureOutputAsset } from '@/types/api';
 
 const STATUSES = [
   'draft',
@@ -44,8 +44,24 @@ const PREMIUM_3D_OUTPUT_TYPES = ['gaussian_splat', 'splat_viewer', 'supersplat',
 const PREMIUM_3D_PRIORITY = ['gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
 const EMBEDDABLE_3D_HOSTS = ['superspl.at', 'sparkjs.dev', 'playcanvas.com', 'luma.ai', 'lumalabs.ai', 'immersphere.io', 'immersphere-pro.vercel.app'];
 const CAPTURE_GUIDE_TYPES = ['3d', 'tour_360', 'video', 'photos', 'document', 'general'] as const;
+const INPUT_ZONES = [
+  'Entrada / acceso',
+  'Salón',
+  'Cocina',
+  'Dormitorio principal',
+  'Dormitorios secundarios',
+  'Baños',
+  'Terraza / exterior',
+  'Plano / documentación',
+  'Viewer 3D / Splat externo',
+  'Otros'
+] as const;
+const INPUT_ASSET_TYPES = ['photo', 'video', 'panorama', 'floorplan', 'splat_external', 'document', 'other'] as const;
+const INPUT_QUALITY_STATUSES = ['pending', 'sufficient', 'needs_review', 'missing'] as const;
 
 type CaptureGuideType = (typeof CAPTURE_GUIDE_TYPES)[number];
+type InputAssetType = (typeof INPUT_ASSET_TYPES)[number];
+type InputQualityStatus = (typeof INPUT_QUALITY_STATUSES)[number];
 
 interface CaptureJobForm {
   leadId: string;
@@ -78,6 +94,15 @@ interface OutputForm {
   mobileReady: boolean;
   publishedUrl: string;
   analyticsEnabled: boolean;
+  notes: string;
+}
+
+interface InputAssetForm {
+  zone: string;
+  assetType: InputAssetType;
+  captureQualityStatus: InputQualityStatus;
+  url: string;
+  filename: string;
   notes: string;
 }
 
@@ -133,6 +158,15 @@ const emptyOutputForm: OutputForm = {
   notes: ''
 };
 
+const emptyInputAssetForm: InputAssetForm = {
+  zone: INPUT_ZONES[1],
+  assetType: 'photo',
+  captureQualityStatus: 'pending',
+  url: '',
+  filename: '',
+  notes: ''
+};
+
 const emptyCommercialBriefForm: CommercialBriefForm = {
   propertyType: '',
   location: '',
@@ -185,6 +219,14 @@ function getCaptureLandingPath(captureJobId: string): string {
 function getCaptureLandingUrl(captureJobId: string): string {
   if (typeof window === 'undefined') return getCaptureLandingPath(captureJobId);
   return `${window.location.origin}${getCaptureLandingPath(captureJobId)}`;
+}
+
+function getCapturePresentationUrl(captureJobId: string): string {
+  return `${getCaptureLandingUrl(captureJobId)}?present=1`;
+}
+
+function getCapturePrintUrl(captureJobId: string): string {
+  return `${getCaptureLandingUrl(captureJobId)}?print=1`;
 }
 
 function getProviderLabel(assetOrType: CaptureOutputAsset | string, rawUrl = ''): string {
@@ -571,6 +613,55 @@ function statusLabel(value: string): string {
   return value.replace(/_/g, ' ');
 }
 
+function inputAssetTypeLabel(value: string): string {
+  const labels: Record<string, string> = {
+    photo: 'Foto',
+    video: 'Vídeo',
+    panorama: 'Panorámica / 360',
+    floorplan: 'Plano',
+    splat_external: 'Splat externo',
+    document: 'Documento',
+    other: 'Otro'
+  };
+  return labels[value] ?? statusLabel(value);
+}
+
+function qualityStatusLabel(value: string): string {
+  const labels: Record<string, string> = {
+    pending: 'Pendiente',
+    sufficient: 'Suficiente',
+    needs_review: 'Revisar',
+    missing: 'Faltante'
+  };
+  return labels[value] ?? statusLabel(value);
+}
+
+function inferInputAssetType(file: File): InputAssetType {
+  const name = file.name.toLowerCase();
+  if (file.type.startsWith('image/')) return name.includes('360') || name.includes('panorama') ? 'panorama' : 'photo';
+  if (file.type.startsWith('video/')) return 'video';
+  if (file.type === 'application/pdf' || name.endsWith('.pdf')) return 'document';
+  return 'other';
+}
+
+function getZoneStatus(assets: CaptureInputAsset[], zone: string): { status: InputQualityStatus; count: number } {
+  const zoneAssets = assets.filter((asset) => (asset.zone || 'Otros') === zone);
+  if (zoneAssets.length === 0) return { status: 'missing', count: 0 };
+  if (zoneAssets.some((asset) => asset.captureQualityStatus === 'sufficient')) return { status: 'sufficient', count: zoneAssets.length };
+  if (zoneAssets.some((asset) => asset.captureQualityStatus === 'needs_review')) return { status: 'needs_review', count: zoneAssets.length };
+  return { status: 'pending', count: zoneAssets.length };
+}
+
+function getGlobalMaterialSummary(job: CaptureJob): { label: string; detail: string; pendingZones: number; coveredZones: number } {
+  const assets = job.inputAssets ?? [];
+  const statuses = INPUT_ZONES.map((zone) => getZoneStatus(assets, zone));
+  const coveredZones = statuses.filter((item) => item.status === 'sufficient').length;
+  const pendingZones = statuses.filter((item) => item.status !== 'sufficient').length;
+  if (assets.length === 0) return { label: 'Material incompleto', detail: 'Añade al menos una imagen/panorama por estancia principal para mejorar QA e IA.', pendingZones, coveredZones };
+  if (statuses.some((item) => item.status === 'needs_review' || item.status === 'pending')) return { label: 'Material pendiente de revisar', detail: 'Marca como suficiente el material validado por zona.', pendingZones, coveredZones };
+  return { label: 'Material suficiente', detail: 'Hay cobertura suficiente en las zonas principales registradas.', pendingZones, coveredZones };
+}
+
 function badgeClass(value: string): string {
   if (['published', 'approved', 'connected_to_crm', 'ready'].includes(value)) return 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50';
   if (['failed', 'cancelled', 'blocked'].includes(value)) return 'bg-red-50 text-red-700 ring-red-200 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-800/50';
@@ -588,6 +679,7 @@ export default function CaptureJobsPage(): JSX.Element {
   const [selectedJob, setSelectedJob] = useState<CaptureJob | null>(null);
   const [form, setForm] = useState<CaptureJobForm>(emptyJobForm);
   const [outputForm, setOutputForm] = useState<OutputForm>(emptyOutputForm);
+  const [inputAssetForm, setInputAssetForm] = useState<InputAssetForm>(emptyInputAssetForm);
   const [commercialBriefForm, setCommercialBriefForm] = useState<CommercialBriefForm>(emptyCommercialBriefForm);
   const [hotspotForm, setHotspotForm] = useState<HotspotForm>(emptyHotspotForm);
   const [editingHotspotId, setEditingHotspotId] = useState<string | null>(null);
@@ -679,6 +771,7 @@ export default function CaptureJobsPage(): JSX.Element {
     setSelectedJob(null);
     setForm(emptyJobForm);
     setOutputForm(emptyOutputForm);
+    setInputAssetForm(emptyInputAssetForm);
     setCommercialBriefForm(emptyCommercialBriefForm);
     setHotspotForm(emptyHotspotForm);
     setEditingHotspotId(null);
@@ -729,6 +822,19 @@ export default function CaptureJobsPage(): JSX.Element {
 
   async function copyViewerUrl(url: string): Promise<void> {
     await copyToClipboard(url, 'Viewer externo copiado.');
+  }
+
+  async function copyQrUrl(): Promise<void> {
+    if (!selectedJob?.qrUrl) return;
+    await copyToClipboard(selectedJob.qrUrl, 'QR copiado.');
+  }
+
+  function downloadQr(): void {
+    if (!selectedJob?.qrUrl) return;
+    const link = document.createElement('a');
+    link.href = selectedJob.qrUrl;
+    link.download = `${selectedJob.title || 'capture-job'}-qr.png`;
+    link.click();
   }
 
   async function copyAiSection(label: string, value: unknown): Promise<void> {
@@ -962,7 +1068,12 @@ export default function CaptureJobsPage(): JSX.Element {
     try {
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('type', file.type.startsWith('video/') ? 'video' : file.type === 'application/pdf' ? 'document' : 'image');
+      const inferredType = inferInputAssetType(file);
+      formData.append('type', inferredType);
+      formData.append('assetType', inputAssetForm.assetType || inferredType);
+      formData.append('zone', inputAssetForm.zone);
+      formData.append('captureQualityStatus', inputAssetForm.captureQualityStatus);
+      formData.append('notes', inputAssetForm.notes);
       formData.append('source', 'upload');
       await unwrapApiResponse(api.post(`/capture-jobs/${selectedJob.id}/upload`, formData, { headers: { 'Content-Type': 'multipart/form-data' } }));
       setMessage('Input asset subido y registrado.');
@@ -972,6 +1083,71 @@ export default function CaptureJobsPage(): JSX.Element {
       setError(getApiErrorMessage(err));
     } finally {
       setUploading(false);
+    }
+  }
+
+  async function registerInputAsset(event: FormEvent): Promise<void> {
+    event.preventDefault();
+    if (!selectedJob || !inputAssetForm.url.trim()) return;
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await unwrapApiResponse<CaptureInputAsset>(api.post(`/capture-jobs/${selectedJob.id}/input-assets`, {
+        type: inputAssetForm.assetType,
+        assetType: inputAssetForm.assetType,
+        zone: inputAssetForm.zone,
+        filename: inputAssetForm.filename,
+        url: inputAssetForm.url,
+        source: 'manual_url',
+        format: inputAssetForm.assetType === 'splat_external' ? 'external_url' : 'url',
+        mimeType: '',
+        status: 'received',
+        captureQualityStatus: inputAssetForm.captureQualityStatus,
+        notes: inputAssetForm.notes
+      }));
+      setInputAssetForm(emptyInputAssetForm);
+      setMessage('Input asset registrado.');
+      await loadJob(selectedJob.id);
+      await loadJobs();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function patchInputAsset(asset: CaptureInputAsset, patch: Partial<CaptureInputAsset>): Promise<void> {
+    if (!selectedJob) return;
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await unwrapApiResponse<CaptureInputAsset>(api.put(`/capture-jobs/${selectedJob.id}/input-assets/${asset.id}`, patch));
+      setMessage('Input asset actualizado.');
+      await loadJob(selectedJob.id);
+      await loadJobs();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function archiveInputAsset(asset: CaptureInputAsset): Promise<void> {
+    if (!selectedJob) return;
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await unwrapApiResponse<CaptureInputAsset>(api.delete(`/capture-jobs/${selectedJob.id}/input-assets/${asset.id}`));
+      setMessage('Input asset marcado como reemplazado.');
+      await loadJob(selectedJob.id);
+      await loadJobs();
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setSaving(false);
     }
   }
 
@@ -1250,6 +1426,57 @@ export default function CaptureJobsPage(): JSX.Element {
               </p>
             ) : null}
           </form>
+
+          {selectedJob && isPublicCaptureStatus(selectedJob.status) ? (
+            <section className="mt-6 rounded-xl border border-emerald-200 bg-emerald-50/70 p-4 dark:border-emerald-900/50 dark:bg-emerald-950/20">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs font-black uppercase tracking-[0.14em] text-emerald-700 dark:text-emerald-300">Entrega cliente</p>
+                  <h3 className="mt-1 text-lg font-black text-slate-950 dark:text-white">Enlace premium compartible</h3>
+                  <p className="mt-2 break-all rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-600 ring-1 ring-emerald-100 dark:bg-slate-950 dark:text-white/60 dark:ring-emerald-900/50">
+                    {getCaptureLandingUrl(selectedJob.id)}
+                  </p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button type="button" onClick={() => { void copyLandingUrl(selectedJob.id); }} className="inline-flex items-center gap-2 rounded-full bg-emerald-600 px-3 py-2 text-xs font-black text-white hover:bg-emerald-700">
+                      <Copy className="h-3.5 w-3.5" /> Copiar enlace
+                    </button>
+                    <Link to={getCaptureLandingPath(selectedJob.id)} target="_blank" className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/50 dark:bg-slate-950 dark:text-emerald-300">
+                      <ExternalLink className="h-3.5 w-3.5" /> Abrir landing
+                    </Link>
+                    <a href={getCaptureLandingUrl(selectedJob.id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/50 dark:bg-slate-950 dark:text-emerald-300">
+                      <Smartphone className="h-3.5 w-3.5" /> Abrir en móvil
+                    </a>
+                    <a href={getCapturePresentationUrl(selectedJob.id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white px-3 py-2 text-xs font-black text-violet-700 hover:bg-violet-50 dark:border-violet-900/50 dark:bg-slate-950 dark:text-violet-300">
+                      <ExternalLink className="h-3.5 w-3.5" /> Modo presentación
+                    </a>
+                    <a href={getCapturePrintUrl(selectedJob.id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-950 dark:text-white/70">
+                      <Printer className="h-3.5 w-3.5" /> Ficha imprimible
+                    </a>
+                  </div>
+                </div>
+                <div className="w-full rounded-xl bg-white p-3 ring-1 ring-emerald-100 dark:bg-slate-950 dark:ring-emerald-900/50 lg:w-48">
+                  {selectedJob.qrUrl ? (
+                    <img src={selectedJob.qrUrl} alt="QR de la landing pública" className="mx-auto h-36 w-36 rounded-lg bg-white object-contain" />
+                  ) : (
+                    <div className="flex h-36 w-full items-center justify-center rounded-lg border border-dashed border-emerald-200 text-center text-xs font-black text-emerald-700 dark:border-emerald-900/50 dark:text-emerald-300">
+                      QR pendiente
+                    </div>
+                  )}
+                  <div className="mt-3 grid gap-2">
+                    <button type="button" onClick={() => { void generateQr(); }} disabled={saving} className="inline-flex items-center justify-center gap-2 rounded-full bg-slate-950 px-3 py-2 text-xs font-black text-white disabled:opacity-50 dark:bg-white dark:text-slate-950">
+                      <QrCode className="h-3.5 w-3.5" /> {selectedJob.qrUrl ? 'Actualizar QR' : 'Generar QR'}
+                    </button>
+                    <button type="button" onClick={() => { void copyQrUrl(); }} disabled={!selectedJob.qrUrl} className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-50 dark:border-white/10 dark:text-white/70">
+                      <Copy className="h-3.5 w-3.5" /> Copiar QR
+                    </button>
+                    <button type="button" onClick={downloadQr} disabled={!selectedJob.qrUrl} className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 disabled:opacity-50 dark:border-white/10 dark:text-white/70">
+                      <Download className="h-3.5 w-3.5" /> Descargar
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </section>
+          ) : null}
 
           {selectedJob ? (
             <div className="mt-6 space-y-5 border-t border-slate-100 pt-5 dark:border-white/10">
@@ -1840,6 +2067,92 @@ export default function CaptureJobsPage(): JSX.Element {
               </div>
 
               <div>
+                {(() => {
+                  const materialSummary = getGlobalMaterialSummary(selectedJob);
+                  return (
+                    <>
+                      <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+                        <div>
+                          <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">Material guiado</h3>
+                          <p className="mt-1 text-xs font-bold text-slate-400">
+                            {(selectedJob.inputAssets ?? []).length} assets privados · {materialSummary.coveredZones} zonas suficientes · {materialSummary.pendingZones} zonas pendientes
+                          </p>
+                        </div>
+                        <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
+                          <Upload className="h-3.5 w-3.5" /> {uploading ? 'Subiendo...' : 'Subir con metadatos'}
+                          <input type="file" className="hidden" accept=".jpg,.jpeg,.png,.webp,.mp4,.mov,.pdf" onChange={(event) => { void uploadInputAsset(event); }} disabled={uploading} />
+                        </label>
+                      </div>
+
+                      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+                        {INPUT_ZONES.map((zone) => {
+                          const state = getZoneStatus(selectedJob.inputAssets ?? [], zone);
+                          const stateClass = state.status === 'sufficient'
+                            ? 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900/50 dark:bg-emerald-950/20 dark:text-emerald-300'
+                            : state.status === 'needs_review'
+                              ? 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300'
+                              : 'border-slate-200 bg-white text-slate-500 dark:border-white/10 dark:bg-white/5 dark:text-white/50';
+                          return (
+                            <button key={zone} type="button" onClick={() => setInputAssetForm((current) => ({ ...current, zone }))} className={`rounded-xl border px-3 py-2 text-left text-xs font-black ${stateClass}`}>
+                              <span className="block">{zone}</span>
+                              <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.12em]">{qualityStatusLabel(state.status)} · {state.count}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      <form onSubmit={(event) => { void registerInputAsset(event); }} className="mt-4 grid gap-3 rounded-xl bg-slate-50 p-3 dark:bg-white/5">
+                        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                          <select value={inputAssetForm.zone} onChange={(event) => setInputAssetForm((current) => ({ ...current, zone: event.target.value }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
+                            {INPUT_ZONES.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+                          </select>
+                          <select value={inputAssetForm.assetType} onChange={(event) => setInputAssetForm((current) => ({ ...current, assetType: event.target.value as InputAssetType }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
+                            {INPUT_ASSET_TYPES.map((type) => <option key={type} value={type}>{inputAssetTypeLabel(type)}</option>)}
+                          </select>
+                          <select value={inputAssetForm.captureQualityStatus} onChange={(event) => setInputAssetForm((current) => ({ ...current, captureQualityStatus: event.target.value as InputQualityStatus }))} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
+                            {INPUT_QUALITY_STATUSES.map((status) => <option key={status} value={status}>{qualityStatusLabel(status)}</option>)}
+                          </select>
+                          <input value={inputAssetForm.filename} onChange={(event) => setInputAssetForm((current) => ({ ...current, filename: event.target.value }))} placeholder="Nombre visible interno" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                          <input value={inputAssetForm.url} onChange={(event) => setInputAssetForm((current) => ({ ...current, url: event.target.value }))} placeholder="URL manual opcional" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900 sm:col-span-2 lg:col-span-3" />
+                          <button type="submit" disabled={saving || !inputAssetForm.url.trim()} className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white disabled:opacity-50 dark:bg-white dark:text-slate-950">Registrar URL</button>
+                        </div>
+                        <textarea value={inputAssetForm.notes} onChange={(event) => setInputAssetForm((current) => ({ ...current, notes: event.target.value }))} rows={2} placeholder="Notas privadas para produccion/IA: faltantes, calidad, estancia, instrucciones..." className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                      </form>
+
+                      <div className="mt-4 space-y-2">
+                        {(selectedJob.inputAssets ?? []).length === 0 ? <p className="text-sm font-semibold text-slate-400">Sin material registrado.</p> : selectedJob.inputAssets?.map((asset) => (
+                          <div key={asset.id} className="rounded-xl border border-slate-100 px-3 py-3 text-sm dark:border-white/10">
+                            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+                              <a href={asset.url} target="_blank" rel="noreferrer" className="min-w-0 font-black text-slate-800 hover:text-ip-accent dark:text-white">
+                                {asset.filename || asset.type}
+                                <span className="ml-2 text-xs font-bold text-slate-400">{asset.status} · {asset.format || asset.type}</span>
+                              </a>
+                              <div className="flex flex-wrap gap-1">
+                                <select value={asset.zone || 'Otros'} onChange={(event) => { void patchInputAsset(asset, { zone: event.target.value }); }} className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black dark:border-white/10 dark:bg-slate-900">
+                                  {INPUT_ZONES.map((zone) => <option key={zone} value={zone}>{zone}</option>)}
+                                </select>
+                                <select value={(asset.assetType || asset.type || 'other') as InputAssetType} onChange={(event) => { void patchInputAsset(asset, { assetType: event.target.value as CaptureInputAsset['assetType'], type: event.target.value }); }} className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black dark:border-white/10 dark:bg-slate-900">
+                                  {INPUT_ASSET_TYPES.map((type) => <option key={type} value={type}>{inputAssetTypeLabel(type)}</option>)}
+                                </select>
+                                <select value={(asset.captureQualityStatus || 'pending') as InputQualityStatus} onChange={(event) => { void patchInputAsset(asset, { captureQualityStatus: event.target.value as CaptureInputAsset['captureQualityStatus'] }); }} className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black dark:border-white/10 dark:bg-slate-900">
+                                  {INPUT_QUALITY_STATUSES.map((status) => <option key={status} value={status}>{qualityStatusLabel(status)}</option>)}
+                                </select>
+                                <button type="button" onClick={() => { void archiveInputAsset(asset); }} className="rounded-full border border-red-200 px-2 py-1 text-[10px] font-black text-red-600 hover:bg-red-50 dark:border-red-900/40 dark:text-red-300">Reemplazar</button>
+                              </div>
+                            </div>
+                            <p className="mt-2 text-[11px] font-bold text-slate-400">
+                              {asset.zone || 'Sin zona'} · {inputAssetTypeLabel(asset.assetType || 'other')} · {qualityStatusLabel(asset.captureQualityStatus || 'pending')} · {asset.mimeType || asset.format || 'sin mime'} · {asset.sizeBytes ? `${Math.round(asset.sizeBytes / 1024)} KB` : 'sin tamaño'}
+                            </p>
+                            {asset.notes ? <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500 dark:bg-white/5 dark:text-white/50">{asset.notes}</p> : null}
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+              </div>
+
+              <div className="hidden">
                 <div className="mb-3 flex items-center justify-between">
                   <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">Input assets</h3>
                   <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">

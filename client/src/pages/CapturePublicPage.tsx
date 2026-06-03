@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { Helmet } from 'react-helmet-async';
-import { Link, useParams } from 'react-router-dom';
-import { ArrowDown, CheckCircle2, ExternalLink, ShieldCheck } from 'lucide-react';
+import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowDown, CheckCircle2, Copy, ExternalLink, Printer, Share2, ShieldCheck } from 'lucide-react';
 import CaptureViewerShell from '@/components/capture/CaptureViewerShell';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
-import type { PublicCaptureJob } from '@/types/api';
+import type { PublicCaptureJob, PublicCaptureLeadInput, PublicCaptureLeadResponse } from '@/types/api';
 
 const PREMIUM_3D_PRIORITY = ['gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
 
@@ -40,6 +40,18 @@ function scrollToViewer(): void {
   document.getElementById('capture-viewer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
 
+function scrollToLeadForm(): void {
+  document.getElementById('capture-lead-form')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+
+function inferInterestType(value: string): PublicCaptureLeadInput['interestType'] {
+  const lower = value.toLowerCase();
+  if (lower.includes('visita') || lower.includes('agenda') || lower.includes('reserv')) return 'book_visit';
+  if (lower.includes('invers')) return 'investment';
+  if (lower.includes('info') || lower.includes('contact')) return 'request_info';
+  return 'general';
+}
+
 function getProviderLabel(type: string): string {
   if (type === 'supersplat' || type === 'splat_viewer' || type === 'gaussian_splat') return '3D / Gaussian / Splat';
   if (type === 'spark_viewer') return 'Spark viewer';
@@ -62,10 +74,23 @@ function CaptureBadge({ children, tone = 'neutral' }: { children: string; tone?:
 
 export default function CapturePublicPage(): JSX.Element {
   const { id } = useParams();
+  const [searchParams] = useSearchParams();
   const [job, setJob] = useState<PublicCaptureJob | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [activeHotspotId, setActiveHotspotId] = useState<string | null>(null);
+  const [leadForm, setLeadForm] = useState<PublicCaptureLeadInput>({
+    name: '',
+    email: '',
+    phone: '',
+    message: '',
+    interestType: 'request_info',
+    consent: false,
+    honeypot: ''
+  });
+  const [leadStatus, setLeadStatus] = useState<'idle' | 'submitting' | 'success' | 'error'>('idle');
+  const [leadMessage, setLeadMessage] = useState('');
+  const [shareMessage, setShareMessage] = useState('');
   const [viewport, setViewport] = useState({
     width: 0,
     height: 0,
@@ -75,6 +100,73 @@ export default function CapturePublicPage(): JSX.Element {
     isMobilePortrait: false
   });
   const [isImmersiveMode, setIsImmersiveMode] = useState(false);
+
+  function updateLeadField<K extends keyof PublicCaptureLeadInput>(key: K, value: PublicCaptureLeadInput[K]): void {
+    setLeadForm((current) => ({ ...current, [key]: value }));
+    if (leadStatus === 'error') {
+      setLeadStatus('idle');
+      setLeadMessage('');
+    }
+  }
+
+  function handleHotspotLeadIntent(cta: string): void {
+    updateLeadField('interestType', inferInterestType(cta));
+    scrollToLeadForm();
+  }
+
+  async function copyPublicLink(publicUrl: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(publicUrl);
+      setShareMessage('Enlace copiado.');
+    } catch {
+      setShareMessage('No se pudo copiar el enlace.');
+    }
+  }
+
+  async function sharePublicLink(publicUrl: string, title: string): Promise<void> {
+    if ('share' in navigator) {
+      try {
+        await navigator.share({ title, url: publicUrl });
+        setShareMessage('Enlace compartido.');
+        return;
+      } catch {
+        setShareMessage('');
+        return;
+      }
+    }
+    await copyPublicLink(publicUrl);
+  }
+
+  async function submitLeadForm(event: FormEvent<HTMLFormElement>): Promise<void> {
+    event.preventDefault();
+    if (!leadForm.name.trim() || !leadForm.email.trim() || !leadForm.consent) {
+      setLeadStatus('error');
+      setLeadMessage('No se pudo enviar la solicitud. Revisa los datos e inténtalo de nuevo.');
+      return;
+    }
+
+    try {
+      setLeadStatus('submitting');
+      setLeadMessage('');
+      const data = await unwrapApiResponse<PublicCaptureLeadResponse>(
+        api.post(`/capture-jobs/public/${id}/leads`, leadForm)
+      );
+      setLeadStatus('success');
+      setLeadMessage(data.message);
+      setLeadForm({
+        name: '',
+        email: '',
+        phone: '',
+        message: '',
+        interestType: 'request_info',
+        consent: false,
+        honeypot: ''
+      });
+    } catch (err) {
+      setLeadStatus('error');
+      setLeadMessage(getApiErrorMessage(err) || 'No se pudo enviar la solicitud. Revisa los datos e inténtalo de nuevo.');
+    }
+  }
 
   useEffect(() => {
     let cancelled = false;
@@ -185,6 +277,8 @@ export default function CapturePublicPage(): JSX.Element {
   const primaryCta = applied?.ctaPrimary || 'Solicitar información';
   const secondaryCta = applied?.ctaSecondary || 'Ver experiencia 3D';
   const benefits = applied?.benefits?.filter(Boolean).slice(0, 6) ?? [];
+  const isPresentationMode = searchParams.get('present') === '1';
+  const isPrintMode = searchParams.get('print') === '1';
   const isMobileViewport = viewport.isMobileLike;
   const isMobileLandscape = viewport.isMobileLandscape;
   const isMobilePortrait = viewport.isMobilePortrait;
@@ -197,6 +291,9 @@ export default function CapturePublicPage(): JSX.Element {
   const hasPublic3d = Boolean(premiumOutput);
   const providerLabel = premiumOutput ? getProviderLabel(premiumOutput.type) : null;
   const metaDescription = shortDescription || heroDescription || job.clientName;
+  const publicUrl = typeof window === 'undefined' ? `/capture/${job.id}` : `${window.location.origin}/capture/${job.id}`;
+  const printUrl = `${publicUrl}?print=1`;
+  const showSecondarySections = !isMobileLandscape;
 
   const embeddedViewer = (
     <div className="h-full w-full bg-black">
@@ -272,14 +369,46 @@ export default function CapturePublicPage(): JSX.Element {
                 <p className="mt-3 text-2xl font-black text-slate-950 dark:text-white">{primaryCta}</p>
                 <p className="mt-3 text-sm font-semibold leading-6 text-slate-500 dark:text-white/50">{heroDescription}</p>
                 <div className="mt-5 flex flex-col gap-3 sm:flex-row lg:flex-col">
-                  <button type="button" onClick={scrollToViewer} className="rounded-full bg-ip-accent px-5 py-3 text-sm font-black text-white transition hover:bg-ip-accent-hover">
+                  <button type="button" onClick={scrollToLeadForm} className="rounded-full bg-ip-accent px-5 py-3 text-sm font-black text-white transition hover:bg-ip-accent-hover">
                     {primaryCta}
                   </button>
                   <button type="button" onClick={scrollToViewer} className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-white dark:border-white/10 dark:text-white/70 dark:hover:bg-white/10">
                     {secondaryCta} <ArrowDown className="h-4 w-4" />
                   </button>
+                  <button type="button" onClick={() => { void sharePublicLink(publicUrl, heroTitle); }} className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-white dark:border-white/10 dark:text-white/70 dark:hover:bg-white/10">
+                    Compartir <Share2 className="h-4 w-4" />
+                  </button>
+                  <button type="button" onClick={() => { void copyPublicLink(publicUrl); }} className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-white dark:border-white/10 dark:text-white/70 dark:hover:bg-white/10">
+                    Copiar enlace <Copy className="h-4 w-4" />
+                  </button>
+                  <a href={printUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-white dark:border-white/10 dark:text-white/70 dark:hover:bg-white/10">
+                    Ficha <Printer className="h-4 w-4" />
+                  </a>
+                </div>
+                {shareMessage ? <p className="mt-3 text-xs font-black text-ip-accent">{shareMessage}</p> : null}
+              </div>
+            </div>
+          </section>
+        ) : null}
+
+        {isPrintMode && !isMobileLandscape ? (
+          <section className="mx-auto max-w-6xl px-5 py-6">
+            <div className="grid gap-5 rounded-ip-card bg-white p-6 ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border md:grid-cols-[1fr_auto]">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.16em] text-ip-accent">Ficha imprimible</p>
+                <h2 className="mt-2 text-2xl font-black text-slate-950 dark:text-white">{heroTitle}</h2>
+                <p className="mt-3 max-w-3xl text-sm font-semibold leading-6 text-slate-500 dark:text-white/50">{heroDescription}</p>
+                <p className="mt-4 break-all rounded-xl bg-slate-50 px-4 py-3 text-xs font-bold text-slate-600 dark:bg-white/5 dark:text-white/60">{publicUrl}</p>
+                <div className="mt-4 flex flex-wrap gap-2">
+                  <button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white dark:bg-white dark:text-slate-950">
+                    <Printer className="h-3.5 w-3.5" /> Imprimir
+                  </button>
+                  <button type="button" onClick={() => { void copyPublicLink(publicUrl); }} className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-xs font-black text-slate-700 dark:border-white/10 dark:text-white/70">
+                    <Copy className="h-3.5 w-3.5" /> Copiar enlace
+                  </button>
                 </div>
               </div>
+              {job.qrUrl ? <img src={job.qrUrl} alt="QR de la experiencia" className="h-36 w-36 rounded-xl bg-white object-contain p-2 ring-1 ring-slate-200" /> : null}
             </div>
           </section>
         ) : null}
@@ -299,9 +428,9 @@ export default function CapturePublicPage(): JSX.Element {
                     </div>
                   </div>
                   <div className="flex flex-col gap-3 sm:flex-row">
-                    <a href={primaryUrl} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-violet-100">
-                      {primaryCta} <ExternalLink className="h-4 w-4" />
-                    </a>
+                    <button type="button" onClick={scrollToLeadForm} className="inline-flex items-center justify-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-violet-100">
+                      {primaryCta} <ArrowDown className="h-4 w-4" />
+                    </button>
                     <button type="button" onClick={() => setIsImmersiveMode(true)} className="rounded-full border border-white/20 px-5 py-3 text-sm font-black text-white transition hover:bg-white/10">
                       Modo inmersivo
                     </button>
@@ -333,9 +462,9 @@ export default function CapturePublicPage(): JSX.Element {
           )}
         </section>
 
-        {!isMobileLandscape ? (
+        {showSecondarySections ? (
           <>
-            {benefits.length > 0 ? (
+            {!isPresentationMode && benefits.length > 0 ? (
               <section className="mx-auto max-w-6xl px-5 py-6">
                 <div className="mb-5">
                   <p className="text-xs font-black uppercase tracking-[0.16em] text-ip-accent">Beneficios clave</p>
@@ -352,7 +481,7 @@ export default function CapturePublicPage(): JSX.Element {
               </section>
             ) : null}
 
-            {job.hotspots.length > 0 ? (
+            {!isPresentationMode && job.hotspots.length > 0 ? (
               <section className="mx-auto max-w-6xl px-5 py-6">
                 <div className="mb-5 flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
                   <div>
@@ -374,13 +503,18 @@ export default function CapturePublicPage(): JSX.Element {
                       </div>
                       {hotspot.roomOrZone ? <p className="mt-1 text-xs font-black uppercase tracking-[0.12em] text-slate-400">{hotspot.roomOrZone}</p> : null}
                       <p className="mt-3 text-sm font-semibold leading-6 text-slate-500 dark:text-white/50">{hotspot.description}</p>
-                      {hotspot.cta ? <p className="mt-4 rounded-full bg-slate-950 px-4 py-2 text-center text-sm font-black text-white dark:bg-white dark:text-slate-950">{hotspot.cta}</p> : null}
+                      {hotspot.cta ? (
+                        <button type="button" onClick={() => handleHotspotLeadIntent(hotspot.cta)} className="mt-4 w-full rounded-full bg-slate-950 px-4 py-2 text-center text-sm font-black text-white dark:bg-white dark:text-slate-950">
+                          {hotspot.cta}
+                        </button>
+                      ) : null}
                     </article>
                   ))}
                 </div>
               </section>
             ) : null}
 
+            {!isPresentationMode ? (
             <section className="mx-auto max-w-6xl px-5 py-6">
               <div className="grid gap-4 rounded-ip-card bg-slate-950 p-6 text-white ring-1 ring-slate-800 md:grid-cols-[0.8fr_1.2fr] md:p-8">
                 <div>
@@ -398,20 +532,72 @@ export default function CapturePublicPage(): JSX.Element {
                 </div>
               </div>
             </section>
+            ) : null}
 
-            <section className="mx-auto max-w-6xl px-5 py-8 pb-14">
-              <div className="rounded-ip-card bg-white p-6 text-center ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border md:p-10">
-                <p className="text-xs font-black uppercase tracking-[0.16em] text-ip-accent">Conversión</p>
-                <h2 className="mt-2 text-3xl font-black text-slate-950 dark:text-white">¿Quieres recibir más información?</h2>
-                <p className="mx-auto mt-3 max-w-2xl text-sm font-semibold leading-6 text-slate-500 dark:text-white/50">Explora la experiencia 3D y solicita información para avanzar con una visita cualificada.</p>
-                <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
-                  <button type="button" onClick={scrollToViewer} className="rounded-full bg-ip-accent px-6 py-3 text-sm font-black text-white transition hover:bg-ip-accent-hover">
-                    {primaryCta}
-                  </button>
-                  <button type="button" onClick={scrollToViewer} className="rounded-full border border-slate-200 px-6 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/10">
+            <section id="capture-lead-form" className="mx-auto max-w-6xl px-5 py-8 pb-14">
+              <div className="grid gap-6 rounded-ip-card bg-white p-6 ring-1 ring-slate-200 dark:bg-ip-card dark:ring-ip-card-border md:grid-cols-[0.8fr_1.2fr] md:p-10">
+                <div>
+                  <p className="text-xs font-black uppercase tracking-[0.16em] text-ip-accent">Conversión</p>
+                  <h2 className="mt-2 text-3xl font-black text-slate-950 dark:text-white">¿Quieres recibir más información?</h2>
+                  <p className="mt-3 text-sm font-semibold leading-6 text-slate-500 dark:text-white/50">Explora la experiencia 3D y solicita información para avanzar con una visita cualificada.</p>
+                  <button type="button" onClick={scrollToViewer} className="mt-6 rounded-full border border-slate-200 px-5 py-3 text-sm font-black text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/10">
                     Volver a ver la experiencia 3D
                   </button>
                 </div>
+
+                <form onSubmit={submitLeadForm} className="grid gap-4" noValidate>
+                  <input
+                    type="text"
+                    name="website"
+                    value={leadForm.honeypot ?? ''}
+                    onChange={(event) => updateLeadField('honeypot', event.target.value)}
+                    className="hidden"
+                    tabIndex={-1}
+                    autoComplete="off"
+                    aria-hidden="true"
+                  />
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="grid gap-2 text-sm font-black text-slate-700 dark:text-white/70">
+                      Nombre
+                      <input value={leadForm.name} onChange={(event) => updateLeadField('name', event.target.value)} required className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 outline-none transition focus:border-ip-accent dark:border-white/10 dark:bg-black/20 dark:text-white" />
+                    </label>
+                    <label className="grid gap-2 text-sm font-black text-slate-700 dark:text-white/70">
+                      Email
+                      <input type="email" value={leadForm.email} onChange={(event) => updateLeadField('email', event.target.value)} required className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 outline-none transition focus:border-ip-accent dark:border-white/10 dark:bg-black/20 dark:text-white" />
+                    </label>
+                  </div>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <label className="grid gap-2 text-sm font-black text-slate-700 dark:text-white/70">
+                      Teléfono opcional
+                      <input value={leadForm.phone ?? ''} onChange={(event) => updateLeadField('phone', event.target.value)} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 outline-none transition focus:border-ip-accent dark:border-white/10 dark:bg-black/20 dark:text-white" />
+                    </label>
+                    <label className="grid gap-2 text-sm font-black text-slate-700 dark:text-white/70">
+                      Tipo de interés
+                      <select value={leadForm.interestType ?? 'general'} onChange={(event) => updateLeadField('interestType', event.target.value as PublicCaptureLeadInput['interestType'])} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 outline-none transition focus:border-ip-accent dark:border-white/10 dark:bg-black/20 dark:text-white">
+                        <option value="request_info">Solicitar información</option>
+                        <option value="book_visit">Reservar visita</option>
+                        <option value="investment">Inversión</option>
+                        <option value="general">Consulta general</option>
+                      </select>
+                    </label>
+                  </div>
+                  <label className="grid gap-2 text-sm font-black text-slate-700 dark:text-white/70">
+                    Mensaje opcional
+                    <textarea value={leadForm.message ?? ''} onChange={(event) => updateLeadField('message', event.target.value)} rows={4} maxLength={1000} className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-950 outline-none transition focus:border-ip-accent dark:border-white/10 dark:bg-black/20 dark:text-white" />
+                  </label>
+                  <label className="flex items-start gap-3 rounded-xl bg-slate-50 p-4 text-sm font-semibold leading-6 text-slate-600 dark:bg-white/5 dark:text-white/55">
+                    <input type="checkbox" checked={leadForm.consent} onChange={(event) => updateLeadField('consent', event.target.checked)} required className="mt-1 h-4 w-4 rounded border-slate-300 text-ip-accent" />
+                    <span>Acepto que Immersphere Pro gestione esta solicitud y que el equipo responsable pueda contactarme.</span>
+                  </label>
+                  {leadMessage ? (
+                    <p className={`rounded-xl px-4 py-3 text-sm font-black ${leadStatus === 'success' ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200' : 'bg-red-50 text-red-700 ring-1 ring-red-200'}`}>
+                      {leadMessage}
+                    </p>
+                  ) : null}
+                  <button type="submit" disabled={leadStatus === 'submitting'} className="rounded-full bg-ip-accent px-6 py-3 text-sm font-black text-white transition hover:bg-ip-accent-hover disabled:cursor-not-allowed disabled:opacity-60">
+                    {leadStatus === 'submitting' ? 'Enviando...' : primaryCta}
+                  </button>
+                </form>
               </div>
             </section>
           </>

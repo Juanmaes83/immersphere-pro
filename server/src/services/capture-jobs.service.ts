@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import QRCode from 'qrcode';
 import { prisma } from '../index.js';
 import { AppError } from '../middleware/errorHandler.js';
@@ -21,6 +22,8 @@ const CAPTURE_JOB_STATUSES = [
 ] as const;
 
 const INPUT_ASSET_STATUSES = ['pending', 'received', 'approved', 'rejected', 'needs_review', 'replaced'] as const;
+const INPUT_ASSET_TYPES = ['photo', 'video', 'panorama', 'floorplan', 'splat_external', 'document', 'other'] as const;
+const INPUT_ASSET_QUALITY_STATUSES = ['pending', 'sufficient', 'needs_review', 'missing'] as const;
 const OUTPUT_ASSET_STATUSES = ['planned', 'in_progress', 'ready', 'in_review', 'approved', 'published', 'archived'] as const;
 const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 const RISK_LEVELS = ['low', 'medium', 'high', 'blocked'] as const;
@@ -54,6 +57,7 @@ type Db = typeof prisma & {
   captureOutputAsset: any;
   captureAiProcessingRun: any;
   captureHotspot: any;
+  captureLead: any;
 };
 
 const COMMERCIAL_BRIEF_TONES = ['professional', 'premium', 'direct', 'inspirational', 'technical'] as const;
@@ -61,6 +65,7 @@ const COMMERCIAL_BRIEF_CTA_GOALS = ['contact', 'book_visit', 'request_info', 'do
 const CAPTURE_HOTSPOT_STATUSES = ['draft', 'approved', 'published', 'archived'] as const;
 const CAPTURE_HOTSPOT_TYPES = ['info', 'cta', 'navigation', 'feature', 'warning'] as const;
 const CAPTURE_HOTSPOT_PRIORITIES = ['low', 'medium', 'high'] as const;
+const CAPTURE_LEAD_INTEREST_TYPES = ['request_info', 'book_visit', 'investment', 'general'] as const;
 
 export interface CaptureCommercialBriefInput {
   propertyType?: string;
@@ -115,16 +120,22 @@ export interface CaptureJobInput {
 
 export interface CaptureInputAssetInput {
   type: string;
+  zone?: string;
+  assetType?: string;
   filename?: string;
   url: string;
   publicId?: string;
   source?: string;
   format?: string;
+  mimeType?: string;
   size?: number;
+  sizeBytes?: number;
   status?: string;
+  captureQualityStatus?: string;
   rightsStatus?: string;
   qualityScore?: number | null;
   notes?: string;
+  sortOrder?: number;
 }
 
 export interface CaptureOutputAssetInput {
@@ -139,6 +150,21 @@ export interface CaptureOutputAssetInput {
   qrUrl?: string;
   analyticsEnabled?: boolean;
   notes?: string;
+}
+
+export interface PublicCaptureLeadInput {
+  name: string;
+  email: string;
+  phone?: string;
+  message?: string;
+  interestType?: string;
+  consent: boolean;
+  honeypot?: string;
+}
+
+export interface PublicCaptureLeadMeta {
+  userAgent?: string;
+  ip?: string;
 }
 
 export interface CaptureHotspotInput {
@@ -164,6 +190,24 @@ function assertValue(value: string | undefined, allowed: readonly string[], labe
 
 function cleanString(value: string | undefined | null, fallback = ''): string {
   return typeof value === 'string' ? value.trim() : fallback;
+}
+
+function truncateString(value: string, maxLength: number): string {
+  return value.length > maxLength ? value.slice(0, maxLength) : value;
+}
+
+function normalizeEmail(value: string): string {
+  return cleanString(value).toLowerCase();
+}
+
+function isValidEmail(value: string): boolean {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function hashIp(value: string | undefined): string {
+  const ip = cleanString(value);
+  if (!ip) return '';
+  return crypto.createHash('sha256').update(ip).digest('hex');
 }
 
 function cleanStringArray(value: unknown): string[] {
@@ -215,6 +259,16 @@ function normalizeHotspotType(value: string | undefined): string {
 function normalizeHotspotPriority(value: string | undefined): string {
   const clean = cleanString(value, 'medium');
   return CAPTURE_HOTSPOT_PRIORITIES.includes(clean as any) ? clean : 'medium';
+}
+
+function normalizeInputAssetType(value: string | undefined): string {
+  const clean = cleanString(value, 'other');
+  return INPUT_ASSET_TYPES.includes(clean as any) ? clean : 'other';
+}
+
+function normalizeInputAssetQualityStatus(value: string | undefined): string {
+  const clean = cleanString(value, 'pending');
+  return INPUT_ASSET_QUALITY_STATUSES.includes(clean as any) ? clean : 'pending';
 }
 
 function normalizePublicFlag(status: string, isPublic: boolean | undefined): boolean {
@@ -536,16 +590,22 @@ export async function createCaptureInputAsset(captureJobId: string, tenantId: st
     data: {
       captureJobId,
       type: cleanString(input.type),
+      zone: truncateString(cleanString(input.zone), 120),
+      assetType: normalizeInputAssetType(input.assetType || input.type),
       filename: cleanString(input.filename),
       url: cleanString(input.url),
       publicId: cleanString(input.publicId),
       source: cleanString(input.source, 'manual'),
       format: cleanString(input.format),
+      mimeType: truncateString(cleanString(input.mimeType || input.format), 120),
       size: input.size ?? 0,
+      sizeBytes: input.sizeBytes ?? input.size ?? 0,
       status: input.status ?? 'received',
+      captureQualityStatus: normalizeInputAssetQualityStatus(input.captureQualityStatus),
       rightsStatus: cleanString(input.rightsStatus, 'unknown'),
       qualityScore: input.qualityScore ?? null,
-      notes: cleanString(input.notes)
+      notes: truncateString(cleanString(input.notes), 1000),
+      sortOrder: Math.max(0, Math.round(input.sortOrder ?? 0))
     }
   });
 }
@@ -559,16 +619,22 @@ export async function updateCaptureInputAsset(captureJobId: string, assetId: str
     where: { id: assetId },
     data: {
       ...(input.type !== undefined ? { type: cleanString(input.type) } : {}),
+      ...(input.zone !== undefined ? { zone: truncateString(cleanString(input.zone), 120) } : {}),
+      ...(input.assetType !== undefined ? { assetType: normalizeInputAssetType(input.assetType) } : {}),
       ...(input.filename !== undefined ? { filename: cleanString(input.filename) } : {}),
       ...(input.url !== undefined ? { url: cleanString(input.url) } : {}),
       ...(input.publicId !== undefined ? { publicId: cleanString(input.publicId) } : {}),
       ...(input.source !== undefined ? { source: cleanString(input.source, 'manual') } : {}),
       ...(input.format !== undefined ? { format: cleanString(input.format) } : {}),
+      ...(input.mimeType !== undefined ? { mimeType: truncateString(cleanString(input.mimeType), 120) } : {}),
       ...(input.size !== undefined ? { size: input.size } : {}),
+      ...(input.sizeBytes !== undefined ? { sizeBytes: input.sizeBytes } : {}),
       ...(input.status !== undefined ? { status: input.status } : {}),
+      ...(input.captureQualityStatus !== undefined ? { captureQualityStatus: normalizeInputAssetQualityStatus(input.captureQualityStatus) } : {}),
       ...(input.rightsStatus !== undefined ? { rightsStatus: cleanString(input.rightsStatus, 'unknown') } : {}),
       ...(input.qualityScore !== undefined ? { qualityScore: input.qualityScore } : {}),
-      ...(input.notes !== undefined ? { notes: cleanString(input.notes) } : {})
+      ...(input.notes !== undefined ? { notes: truncateString(cleanString(input.notes), 1000) } : {}),
+      ...(input.sortOrder !== undefined ? { sortOrder: Math.max(0, Math.round(input.sortOrder)) } : {})
     }
   });
 }
@@ -889,5 +955,77 @@ export async function getPublicCaptureJob(captureJobId: string) {
       isPremium3d: isPremium3dOutputType(asset.type),
       embeddable: isPremium3dOutputType(asset.type) && canEmbedPremium3dUrl(asset.publishedUrl || asset.url)
     }))
+  };
+}
+
+export async function createPublicCaptureLead(
+  captureJobId: string,
+  input: PublicCaptureLeadInput,
+  meta: PublicCaptureLeadMeta = {}
+) {
+  const job = await getDb().captureJob.findUnique({
+    where: { id: captureJobId },
+    select: { id: true, tenantId: true, status: true }
+  });
+
+  if (!job || !['published', 'connected_to_crm'].includes(job.status)) {
+    throw new AppError(404, 'CaptureJob publico no encontrado.');
+  }
+
+  if (cleanString(input.honeypot)) {
+    throw new AppError(400, 'Solicitud no valida.');
+  }
+
+  if (!input.consent) {
+    throw new AppError(400, 'Debes aceptar el consentimiento de contacto.');
+  }
+
+  const name = truncateString(cleanString(input.name), 120);
+  const email = truncateString(normalizeEmail(input.email), 160);
+  const phone = truncateString(cleanString(input.phone), 40);
+  const message = truncateString(cleanString(input.message), 1000);
+  const requestedInterestType = cleanString(input.interestType, 'general');
+  const interestType = CAPTURE_LEAD_INTEREST_TYPES.includes(requestedInterestType as (typeof CAPTURE_LEAD_INTEREST_TYPES)[number])
+    ? requestedInterestType
+    : 'general';
+
+  if (name.length < 2) throw new AppError(400, 'Nombre requerido.');
+  if (!isValidEmail(email)) throw new AppError(400, 'Email no valido.');
+  if (phone && phone.length < 3) throw new AppError(400, 'Telefono no valido.');
+
+  const duplicateWindowStart = new Date(Date.now() - 10 * 60 * 1000);
+  const recentLead = await getDb().captureLead.findFirst({
+    where: {
+      captureJobId: job.id,
+      email,
+      createdAt: { gte: duplicateWindowStart }
+    },
+    select: { id: true }
+  });
+
+  if (recentLead) {
+    throw new AppError(429, 'Ya hemos recibido una solicitud reciente con este email.');
+  }
+
+  await getDb().captureLead.create({
+    data: {
+      captureJobId: job.id,
+      tenantId: job.tenantId,
+      name,
+      email,
+      phone,
+      message,
+      interestType,
+      source: 'capture_public',
+      status: 'new',
+      userAgent: truncateString(cleanString(meta.userAgent), 300),
+      ipHash: hashIp(meta.ip),
+      consent: true
+    }
+  });
+
+  return {
+    success: true,
+    message: 'Solicitud recibida. Te contactaremos pronto.'
   };
 }

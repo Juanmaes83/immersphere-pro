@@ -11,6 +11,7 @@ import {
   createCaptureJobController,
   createCaptureJobHotspotsFromAiController,
   createCaptureOutputAssetController,
+  createPublicCaptureLeadController,
   deleteCaptureHotspotController,
   deleteCaptureInputAssetController,
   deleteCaptureOutputAssetController,
@@ -97,6 +98,7 @@ const uploadCaptureFile: RequestHandler = (request, response, next) => {
 };
 
 captureJobsRoutes.get('/public/:captureJobId', getPublicCaptureJobController);
+captureJobsRoutes.post('/public/:captureJobId/leads', createPublicCaptureLeadController);
 
 captureJobsRoutes.get('/', requireAuth, listCaptureJobsController);
 captureJobsRoutes.post('/', requireAuth, createCaptureJobController);

@@ -104,6 +104,32 @@ Modelo persistente para convertir sugerencias IA o entradas manuales en hotspots
 ```
 
 No representa coordenadas 3D reales. `x/y` son relativos al contenedor visual del viewer y se limitan a 0-100.
+
+### CaptureLead
+
+Modelo publico para solicitudes recibidas desde la landing `/capture/:id`.
+
+| Campo | Uso |
+| --- | --- |
+| `captureJobId` | CaptureJob publicado que origina la solicitud. |
+| `tenantId` | Tenant propietario, tomado desde el CaptureJob. |
+| `name` | Nombre visible introducido por el usuario. |
+| `email` | Email normalizado en minusculas. |
+| `phone` | Telefono opcional. |
+| `message` | Mensaje opcional, maximo 1000 caracteres en backend. |
+| `interestType` | request_info, book_visit, investment o general. |
+| `source` | Origen, por defecto `capture_public`. |
+| `status` | Estado operativo inicial, por defecto `new`. |
+| `userAgent` | User-agent truncado para depuracion basica. |
+| `ipHash` | Hash de IP si existe; no se guarda IP en claro. |
+| `consent` | Consentimiento obligatorio del usuario. |
+
+Reglas:
+
+- Solo se crea para CaptureJobs `published` o `connected_to_crm`.
+- No requiere login.
+- No se devuelve al publico `tenantId`, IDs internos ni datos privados.
+- Anti-spam inicial: honeypot y bloqueo de solicitudes repetidas por email/CaptureJob durante 10 minutos.
 | `qrUrl` | URL del QR generado o asset asociado. |
 | `analyticsEnabled` | Indica si el activo tiene seguimiento de visitas, clics o eventos. |
 | `notes` | Notas de entrega, limitaciones o mejoras pendientes. |

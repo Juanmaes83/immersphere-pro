@@ -71,16 +71,22 @@ export interface CaptureInputAsset {
   id: string;
   captureJobId: string;
   type: string;
+  zone: string;
+  assetType: 'photo' | 'video' | 'panorama' | 'floorplan' | 'splat_external' | 'document' | 'other';
   filename: string;
   url: string;
   publicId: string;
   source: string;
   format: string;
+  mimeType: string;
   size: number;
+  sizeBytes: number;
   status: string;
+  captureQualityStatus: 'pending' | 'sufficient' | 'needs_review' | 'missing';
   rightsStatus: string;
   qualityScore: number | null;
   notes: string;
+  sortOrder: number;
   createdAt: string;
   updatedAt: string;
 }
@@ -325,4 +331,19 @@ export interface PublicCaptureJob {
     isPremium3d?: boolean;
     embeddable?: boolean;
   }>;
+}
+
+export interface PublicCaptureLeadInput {
+  name: string;
+  email: string;
+  phone?: string;
+  message?: string;
+  interestType?: 'request_info' | 'book_visit' | 'investment' | 'general';
+  consent: boolean;
+  honeypot?: string;
+}
+
+export interface PublicCaptureLeadResponse {
+  success: true;
+  message: string;
 }
