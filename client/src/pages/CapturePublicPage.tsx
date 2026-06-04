@@ -9,10 +9,27 @@ import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import type { PublicCaptureJob, PublicCaptureLeadInput, PublicCaptureLeadResponse } from '@/types/api';
 
 const NATIVE_SPLAT_TYPES = ['native_splat', 'gaussian_splat_native', 'spark_splat_viewer', 'splat_native'];
-const PREMIUM_3D_PRIORITY = ['native_point_cloud', 'ply_viewer', ...NATIVE_SPLAT_TYPES, 'gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
+const SELF_HOSTED_SPLAT_TYPES = ['supersplat_self_hosted'];
+const PREMIUM_3D_PRIORITY = [
+  'native_point_cloud', 'ply_viewer',
+  ...NATIVE_SPLAT_TYPES,
+  // 25D.1: supersplat_self_hosted sits after experimental native viewers
+  // and before legacy external-iframe types
+  'supersplat_self_hosted',
+  'gaussian_splat', 'splat_viewer', 'supersplat',
+  'spark_viewer', 'external_3d_viewer'
+];
 const NATIVE_POINT_CLOUD_TYPES = ['native_point_cloud', 'ply_viewer'];
 const ENABLE_NATIVE_3D_VIEWER = import.meta.env.VITE_ENABLE_NATIVE_3D_VIEWER === 'true';
 const ENABLE_NATIVE_SPLAT_VIEWER = import.meta.env.VITE_ENABLE_NATIVE_SPLAT_VIEWER === 'true';
+
+/**
+ * 25D.1 — SuperSplat Viewer self-hosted
+ * Base URL of the deployed supersplat-viewer static app.
+ * Example: https://viewer-immersphere.vercel.app
+ * Leave empty to disable self-hosted path (safe fallback, never throws).
+ */
+const SUPERSPLAT_VIEWER_BASE = (import.meta.env.VITE_SUPERSPLAT_VIEWER_URL ?? '').trim();
 
 function statusLabel(value: string): string {
   return value.replace(/_/g, ' ');
@@ -42,6 +59,40 @@ function toEmbedUrl(rawUrl: string, type: string): string {
   return rawUrl;
 }
 
+/**
+ * 25D.1 — Builds the iframe src for a supersplat_self_hosted output asset.
+ *
+ * Final URL: {SUPERSPLAT_VIEWER_BASE}?content={assetUrl}&noui[&budget=N][&poster=URL][&webgl][&fullload]
+ *
+ * Returns empty string if VITE_SUPERSPLAT_VIEWER_URL is not configured or
+ * if assetUrl is not a safe HTTP(S) URL — never throws.
+ */
+function toSelfHostedSuperSplatUrl(
+  assetUrl: string,
+  options?: {
+    budget?: number;
+    poster?: string;
+    webgl?: boolean;
+    fullload?: boolean;
+  }
+): string {
+  if (!SUPERSPLAT_VIEWER_BASE || !isSafeHttpUrl(SUPERSPLAT_VIEWER_BASE)) return '';
+  if (!assetUrl || !isSafeHttpUrl(assetUrl)) return '';
+  try {
+    const url = new URL(SUPERSPLAT_VIEWER_BASE);
+    url.searchParams.set('content', assetUrl);
+    // noui hides SuperSplat's own UI chrome, keeping only the canvas
+    url.searchParams.set('noui', '');
+    if (options?.budget != null) url.searchParams.set('budget', String(options.budget));
+    if (options?.poster && isSafeHttpUrl(options.poster)) url.searchParams.set('poster', options.poster);
+    if (options?.webgl) url.searchParams.set('webgl', '');
+    if (options?.fullload) url.searchParams.set('fullload', '');
+    return url.toString();
+  } catch {
+    return '';
+  }
+}
+
 function scrollToViewer(): void {
   document.getElementById('capture-viewer')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
 }
@@ -61,6 +112,7 @@ function inferInterestType(value: string): PublicCaptureLeadInput['interestType'
 function getProviderLabel(type: string): string {
   if (NATIVE_SPLAT_TYPES.includes(type)) return 'Viewer propio SparkJS';
   if (NATIVE_POINT_CLOUD_TYPES.includes(type)) return 'Viewer propio PLY';
+  if (SELF_HOSTED_SPLAT_TYPES.includes(type)) return 'SuperSplat self-hosted';
   if (type === 'supersplat' || type === 'splat_viewer' || type === 'gaussian_splat') return '3D / Gaussian / Splat';
   if (type === 'spark_viewer') return 'Spark viewer';
   if (type === 'external_3d_viewer') return 'Viewer 3D externo';
@@ -331,6 +383,21 @@ export default function CapturePublicPage(): JSX.Element {
     isSafeHttpUrl(primaryUrl) &&
     isNativeSplatUrl(primaryUrl)
   );
+  /**
+   * 25D.1 — SuperSplat self-hosted path.
+   * Does NOT rely on premiumOutput.embeddable (which checks EMBEDDABLE_3D_HOSTS).
+   * The iframe src is the viewer URL, not the asset URL directly.
+   * Requires: VITE_SUPERSPLAT_VIEWER_URL configured + asset type = supersplat_self_hosted.
+   */
+  const selfHostedViewerUrl = (
+    SUPERSPLAT_VIEWER_BASE &&
+    isSafeHttpUrl(SUPERSPLAT_VIEWER_BASE) &&
+    premiumOutput &&
+    SELF_HOSTED_SPLAT_TYPES.includes(premiumOutput.type) &&
+    primaryUrl &&
+    isSafeHttpUrl(primaryUrl)
+  ) ? toSelfHostedSuperSplatUrl(primaryUrl) : '';
+  const canRenderSelfHostedPrimary = Boolean(selfHostedViewerUrl);
   const hasPublic3d = Boolean(premiumOutput);
   const providerLabel = premiumOutput ? getProviderLabel(premiumOutput.type) : null;
   const metaDescription = shortDescription || heroDescription || job.clientName;
@@ -354,6 +421,20 @@ export default function CapturePublicPage(): JSX.Element {
       onHotspotClick={setActiveHotspotId}
       mode="view"
     />
+  ) : canRenderSelfHostedPrimary ? (
+    // 25D.1 — SuperSplat self-hosted iframe.
+    // src = viewer URL with ?content=assetUrl&noui.
+    // Hotspots overlay_2d continue working via CaptureViewerShell (above this element).
+    <div className="h-full w-full bg-black">
+      <iframe
+        src={selfHostedViewerUrl}
+        title="Experiencia 3D inmersiva — SuperSplat"
+        className="h-full w-full border-0"
+        allow="fullscreen; xr-spatial-tracking"
+        allowFullScreen
+        loading="lazy"
+      />
+    </div>
   ) : (
     <div className="h-full w-full bg-black">
       <iframe
@@ -497,7 +578,7 @@ export default function CapturePublicPage(): JSX.Element {
                 </div>
               ) : null}
 
-              {canRenderNativeSplatPrimary || canRenderNativePrimary || canEmbedPrimary ? (
+              {canRenderNativeSplatPrimary || canRenderNativePrimary || canRenderSelfHostedPrimary || canEmbedPrimary ? (
                 renderEmbeddedViewer()
               ) : (
                 <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 bg-slate-900 px-5 py-10 text-center">
@@ -663,7 +744,7 @@ export default function CapturePublicPage(): JSX.Element {
         ) : null}
       </main>
 
-      {isImmersiveMode && (canRenderNativeSplatPrimary || canRenderNativePrimary || canEmbedPrimary) ? renderEmbeddedViewer(true) : null}
+      {isImmersiveMode && (canRenderNativeSplatPrimary || canRenderNativePrimary || canRenderSelfHostedPrimary || canEmbedPrimary) ? renderEmbeddedViewer(true) : null}
     </>
   );
 }

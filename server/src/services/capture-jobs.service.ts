@@ -35,6 +35,9 @@ const PREMIUM_3D_OUTPUT_TYPES = [
   'splat_native',
   'splat_viewer',
   'supersplat',
+  // 25D.1: self-hosted SuperSplat Viewer. Asset URL is passed as ?content= param.
+  // embeddable is not set via canEmbedPremium3dUrl; the client handles the viewer URL construction.
+  'supersplat_self_hosted',
   'spark_viewer',
   'external_3d_viewer',
   'native_point_cloud',
@@ -47,6 +50,8 @@ const PREMIUM_3D_PRIORITY = [
   'gaussian_splat_native',
   'spark_splat_viewer',
   'splat_native',
+  // 25D.1: supersplat_self_hosted sits after experimental native viewers, before legacy iframe types
+  'supersplat_self_hosted',
   'gaussian_splat',
   'splat_viewer',
   'supersplat',

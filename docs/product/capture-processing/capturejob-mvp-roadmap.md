@@ -277,3 +277,25 @@ Se mantiene fuera:
 - alertas operativas;
 - workers separados por proceso;
 - cancelacion dura de llamadas Anthropic ya iniciadas.
+
+## Paso 25D.1 - SuperSplat Viewer self-hosted
+
+| Punto | Definicion |
+| --- | --- |
+| Objetivo | Añadir soporte para outputAssets de tipo `supersplat_self_hosted` en `/capture/:id`, usando una instancia propia de supersplat-viewer (MIT, playcanvas) en lugar de `superspl.at` externo. |
+| Que se implementa | Tipo `supersplat_self_hosted` en `PREMIUM_3D_OUTPUT_TYPES` y `PREMIUM_3D_PRIORITY`. Función `toSelfHostedSuperSplatUrl`. Rama `canRenderSelfHostedPrimary` en `CapturePublicPage`. Variable `VITE_SUPERSPLAT_VIEWER_URL`. |
+| Que no se implementa | splat-transform. SOG automático. R2/CORS. PostMessage bridge. Hotspots native_3d en SuperSplat. White-label. |
+| Riesgo | Bajo. El flujo existente (ASAS, supersplat externo, SparkJS, PLY) no se modifica. Si `VITE_SUPERSPLAT_VIEWER_URL` no está configurada, la rama está inactiva. |
+| Prioridad | Alta como preparación de infraestructura. |
+| Esfuerzo | 1 día. |
+| Criterio de exito | Un outputAsset de tipo `supersplat_self_hosted` con URL pública carga correctamente en `/capture/:id` con el viewer self-hosted, con hotspots overlay_2d y modo inmersivo funcionando. |
+
+## Paso 25D.2 - Despliegue viewer + CORS (pendiente)
+
+| Punto | Definicion |
+| --- | --- |
+| Objetivo | Desplegar supersplat-viewer como app estática y validar con un asset real. |
+| Que se implementa | Build y deploy de `playcanvas/supersplat-viewer` a Vercel/Cloudflare Pages. Configuración de CORS en R2 para el origen del viewer. Test con `.compressed.ply` o `.sog`. Configurar `VITE_SUPERSPLAT_VIEWER_URL` en entorno de producción. |
+| Que no se implementa | splat-transform. Generación automática de SOG. |
+| Prioridad | Alta cuando 25D.1 esté en producción. |
+| Esfuerzo | 1-2 días. |

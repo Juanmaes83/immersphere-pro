@@ -63,6 +63,65 @@ Se añade una base experimental para renderizar Gaussian/Splat con SparkJS sin r
 
 El picking aproximado no debe venderse como posicion exacta. Es una ayuda operativa para evaluar viabilidad hasta tener validacion con assets reales y rendimiento medido.
 
+## Paso 25D.1 — SuperSplat Viewer self-hosted
+
+Se añade soporte para un nuevo tipo de outputAsset: `supersplat_self_hosted`.
+
+**Objetivo:** sustituir o complementar el iframe externo `superspl.at` con una instancia propia del viewer (playcanvas/supersplat-viewer, MIT), sin romper el flujo existente.
+
+**Tipo:**
+
+`CaptureOutputAsset.type = 'supersplat_self_hosted'`
+
+- Se añade a `PREMIUM_3D_OUTPUT_TYPES` y `PREMIUM_3D_PRIORITY` en el backend.
+- Prioridad: después de viewers nativos experimentales (SparkJS/PLY), antes de tipos legacy de iframe externo.
+- `isPremium3d: true` — el asset aparece en la landing pública.
+- `embeddable: false` — el check de `EMBEDDABLE_3D_HOSTS` no aplica porque el iframe no apunta al asset directamente sino al viewer self-hosted.
+
+**Variable de entorno:**
+
+```
+VITE_SUPERSPLAT_VIEWER_URL=https://viewer-immersphere.vercel.app
+```
+
+Definida en `client/.env.example`. Si no está configurada, la rama `supersplat_self_hosted` no se activa; el viewer externo existente sigue funcionando.
+
+**Construcción de URL del iframe:**
+
+```
+{VITE_SUPERSPLAT_VIEWER_URL}?content={assetUrl}&noui
+```
+
+Ejemplo:
+```
+https://viewer-immersphere.vercel.app/?content=https://cdn.immersphere.pro/jobs/abc/scene.sog&noui
+```
+
+La función `toSelfHostedSuperSplatUrl(assetUrl, options?)` en `CapturePublicPage.tsx` gestiona la construcción. Soporta parámetros futuros: `budget`, `poster`, `webgl`, `fullload`.
+
+**Hotspots:** Los hotspots `overlay_2d` siguen funcionando sobre el iframe mediante `CaptureViewerShell`. No hay cambio en la lógica de posicionamiento 2D. Los hotspots `native_3d` no están disponibles dentro de SuperSplat self-hosted en esta fase.
+
+**Lo que NO se implementa en 25D.1:**
+
+- `splat-transform` ni generación de SOG automática.
+- Configuración de R2/CORS (se hace al desplegar el viewer).
+- PostMessage bridge para eventos de cámara del viewer.
+- Hotspots `native_3d` dentro del iframe SuperSplat.
+- White-label via `settings=` URL.
+
+**Archivos modificados:**
+
+- `client/src/pages/CapturePublicPage.tsx` — tipo, función `toSelfHostedSuperSplatUrl`, `canRenderSelfHostedPrimary`, rama iframe, labels
+- `server/src/services/capture-jobs.service.ts` — `PREMIUM_3D_OUTPUT_TYPES`, `PREMIUM_3D_PRIORITY`
+- `client/.env.example` — documentación de `VITE_SUPERSPLAT_VIEWER_URL`
+
+**Siguiente fase (25D.2):**
+
+1. Desplegar `supersplat-viewer` como app estática en Vercel.
+2. Probar con asset `.compressed.ply` o `.sog` en almacenamiento público.
+3. Configurar CORS en R2 para el origen del viewer.
+4. Integrar `splat-transform` en el worker de procesado.
+
 ### CaptureInputAsset
 
 Registra material recibido:

@@ -245,3 +245,15 @@ La cancelacion de `running` es best-effort: si la llamada al proveedor ya empezo
 - Un output publicado debe tener revision QA previa.
 - Un QR no debe considerarse listo si no existe URL publicada o destino definido.
 - Los jobs de lab deben estar marcados con riesgo y no mezclarse con produccion.
+
+## Paso 25D.1 — Tipo supersplat_self_hosted
+
+`CaptureOutputAsset.type = 'supersplat_self_hosted'` se añade como tipo premium de outputAsset.
+
+- `type` (String): `'supersplat_self_hosted'`
+- `url` / `publishedUrl`: URL del asset Gaussian Splat (`.ply`, `.compressed.ply`, `.sog`, `.splat`, `.spz`). Debe ser una URL pública y segura en almacenamiento propio (R2, S3, CDN).
+- `viewerReady`, `mobileReady`: se validan igual que el resto de outputs premium.
+- `isPremium3d`: `true` (calculado por el backend).
+- `embeddable`: `false` (el check `canEmbedPremium3dUrl` no aplica; el cliente gestiona la URL del viewer directamente).
+
+El iframe en `/capture/:id` apunta a `{VITE_SUPERSPLAT_VIEWER_URL}?content={asset.url}&noui`, no al asset directamente. El asset nunca se expone como URL embebida directa, solo como parámetro `content=` del viewer.
