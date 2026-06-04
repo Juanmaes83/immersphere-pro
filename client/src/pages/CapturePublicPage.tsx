@@ -553,7 +553,7 @@ export default function CapturePublicPage(): JSX.Element {
           </section>
         ) : null}
 
-        <section id="capture-viewer" className={isMobileLandscape ? 'mt-0' : 'mx-auto max-w-6xl px-5 py-8 md:py-12'}>
+        <section id="capture-viewer" className={isMobileLandscape ? 'mt-0' : 'mx-auto max-w-7xl px-5 py-8 md:py-12 lg:px-6'}>
           {premiumOutput ? (
             <div className={isMobileLandscape ? '' : 'overflow-hidden rounded-ip-card bg-slate-950 text-white shadow-2xl ring-1 ring-slate-800 dark:bg-black dark:ring-white/10'}>
               {!isMobileLandscape ? (

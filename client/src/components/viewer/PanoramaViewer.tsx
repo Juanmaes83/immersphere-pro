@@ -350,7 +350,7 @@ export default function PanoramaViewer({
   }
 
   return (
-    <div className="relative min-h-[520px] overflow-hidden rounded-[1.5rem] bg-slate-950">
+    <div className="relative h-full min-h-[520px] overflow-hidden rounded-[1.5rem] bg-slate-950">
       {/* Pulse animation for premium hotspots — very subtle breath, not gaming */}
       <style>{`
         @keyframes hs-breathe {

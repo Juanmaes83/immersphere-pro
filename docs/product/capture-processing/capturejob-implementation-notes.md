@@ -122,6 +122,27 @@ La función `toSelfHostedSuperSplatUrl(assetUrl, options?)` en `CapturePublicPag
 3. Configurar CORS en R2 para el origen del viewer.
 4. Integrar `splat-transform` en el worker de procesado.
 
+## Paso 26B - Rediseño premium del visor desktop
+
+Se ajusta el layout desktop del visor publico sin cambiar motor, datos ni backend.
+
+- `/capture/:id`: `CaptureViewerShell` deja de limitar el frame desktop con `aspect-[16/10]` y pasa a usar altura real de viewport con limites razonables (`70dvh`, minimo 560px, maximo 860px). La landing amplia el contenedor del visor a `max-w-7xl`.
+- `/property/:id`: `PropertyDetailPage` da altura desktop real a `UniversalViewer`, compacta levemente el sidebar comercial y permite que el visor ocupe mas pantalla.
+- `UniversalViewer`: la seccion principal pasa a layout `flex` con grid interna `flex-1`; el area visual y los renderers principales aceptan `h-full`; el panel lateral tiene scroll propio en desktop.
+- Mobile portrait, mobile landscape y modo fullscreen/inmersivo conservan sus ramas existentes.
+- SuperSplat self-hosted, SuperSplat externo, Spark/Luma, ASAS, QR, ficha publica, hotspots y lead capture no cambian de flujo.
+- Rutas de control: ASAS `/capture/a5924f50-7e7b-4173-95d3-23dae72e5cae` y properties `94f8929a-d156-421e-9802-dffd6cb69c21`, `2fe0f03b-5631-4d21-8337-cf526428834c`.
+
+## Paso 26C - Desktop immersive viewer para Property
+
+`/property/:id` activa un modo desktop viewer-first controlado desde `PropertyDetailPage`:
+
+- En viewport desktop se monta un unico `UniversalViewer` a sangre (`100dvh`) antes de la ficha comercial.
+- El header interno pasa a topbar flotante con `Volver`, navegacion de estancias, Tour, Cinematic, fullscreen, herramientas e `Info`.
+- La informacion de estancia deja de ocupar una columna fija en desktop inmersivo y se muestra como drawer derecho flotante de unos 320px.
+- El boton `Volver` usa historial del navegador y cae a `/dashboard` si no hay historial util.
+- Mobile conserva el montaje anterior del visor dentro de la ficha; ASAS y `/capture/:id` no cambian.
+
 ### CaptureInputAsset
 
 Registra material recibido:

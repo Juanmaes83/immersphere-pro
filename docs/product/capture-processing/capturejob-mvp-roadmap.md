@@ -298,4 +298,24 @@ Se mantiene fuera:
 | Que se implementa | Build y deploy de `playcanvas/supersplat-viewer` a Vercel/Cloudflare Pages. Configuración de CORS en R2 para el origen del viewer. Test con `.compressed.ply` o `.sog`. Configurar `VITE_SUPERSPLAT_VIEWER_URL` en entorno de producción. |
 | Que no se implementa | splat-transform. Generación automática de SOG. |
 | Prioridad | Alta cuando 25D.1 esté en producción. |
+
+## Paso 26B - Visor desktop premium
+
+| Punto | Definicion |
+| --- | --- |
+| Objetivo | Hacer que el visor desktop sea la pieza dominante de la experiencia publica, sin alterar motores ni datos. |
+| Que se implementa | Altura real de viewport para `/capture/:id`, contenedor mas ancho, `UniversalViewer` con layout `flex` y altura heredable, visor de `/property/:id` mas alto y sidebar compacto con scroll propio. |
+| Que no se implementa | No se reemplaza SuperSplat. No se modifica ASAS, mobile landscape, hotspots, lead capture, QR, print, backend ni Prisma. |
+| Riesgo | Bajo-medio: el cambio toca layout desktop compartido por panoramas, gaussian splats e iframes; se limita con clases responsive y QA visual. |
+| Criterio de exito | En desktop, `/capture/:id` y `/property/:id` muestran un visor claramente mas grande, sin perder controles, hotspots ni CTAs. Mobile conserva el comportamiento del Paso 16D. |
 | Esfuerzo | 1-2 días. |
+
+## Paso 26C - Property desktop immersive
+
+| Punto | Definicion |
+| --- | --- |
+| Objetivo | Convertir `/property/:id` desktop en una experiencia viewer-first a sangre, sin tocar backend ni `/capture/:id`. |
+| Que se implementa | `UniversalViewer` recibe una variante `desktopImmersive`; `PropertyDetailPage` monta solo un viewer segun viewport; topbar flotante con Volver/Info; drawer de informacion flotante. |
+| Que no se implementa | No se cambia ASAS, SuperSplat, R2, Prisma, mobile landscape ni rutas API. |
+| Riesgo | Medio: el viewer property comparte renderers de panorama/gaussian y controles de tour; se aisla con prop explicita y media query desktop. |
+| Criterio de exito | Desktop property abre con viewer casi a pantalla completa, sin sidebar fija; Info no roba ancho permanente; hotspots y controles siguen accesibles. |

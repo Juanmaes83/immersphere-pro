@@ -800,6 +800,9 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   const [showShareModal, setShowShareModal] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
   const [waVisible, setWaVisible] = useState(false);
+  const [isDesktopImmersiveViewport, setIsDesktopImmersiveViewport] = useState(() =>
+    window.matchMedia('(min-width: 1024px)').matches
+  );
 
   // ── Address / geocoding editor (auth only) ────────────────────────────────
   const [editingAddress, setEditingAddress] = useState(false);
@@ -832,6 +835,16 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   useEffect(() => {
     const t = setTimeout(() => { setWaVisible(true); }, 4000);
     return () => { clearTimeout(t); };
+  }, []);
+
+  useEffect(() => {
+    const query = window.matchMedia('(min-width: 1024px)');
+    const handleChange = (event: MediaQueryListEvent): void => {
+      setIsDesktopImmersiveViewport(event.matches);
+    };
+    setIsDesktopImmersiveViewport(query.matches);
+    query.addEventListener('change', handleChange);
+    return () => query.removeEventListener('change', handleChange);
   }, []);
 
   /** Fire-and-forget analytics event for share interactions. */
@@ -1047,6 +1060,13 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   // AR is available on Pro, Agency and Enterprise plans (not Starter).
   const AR_PLANS = new Set(['PROFESSIONAL', 'AGENCY', 'ENTERPRISE']);
   const arEnabled = AR_PLANS.has(property.tenantPlan ?? '');
+  const handleViewerBack = (): void => {
+    if (window.history.length > 1) {
+      window.history.back();
+      return;
+    }
+    navigate('/dashboard');
+  };
 
   // ── Embed mode: render ONLY the 3D viewer, no ficha ─────────────────────────
   if (embed) {
@@ -1128,7 +1148,29 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
         {/* S3.1: canonical for client-side nav; middleware also injects this for crawlers */}
         <link rel="canonical" href={ogUrl} />
       </Helmet>
-      <section className="mx-auto max-w-7xl px-5 py-10">
+      {isDesktopImmersiveViewport ? (
+      <section className="bg-slate-950">
+        {accessLevel === 'readonly' ? <ReadonlyBanner daysLeft={daysUntilBlock} /> : null}
+        <UniversalViewer
+          propertyId={property.id}
+          spaces={property.spaces}
+          primaryColor={primaryColor}
+          removeBranding={property.removeBranding}
+          language={lang}
+          propertyTitle={property.title}
+          agencyName={property.tenantLogoText || property.tenantName || 'Agencia inmobiliaria'}
+          agencyLogoUrl={property.tenantLogoUrl || undefined}
+          floorplanUrl={property.floorplanUrl || undefined}
+          arEnabled={arEnabled}
+          desktopImmersive
+          onBack={handleViewerBack}
+          onAnalyticsEvent={handleAnalyticsEvent}
+          disableLeadCapture={isLeadDisabled}
+        />
+      </section>
+      ) : null}
+
+      <section className="mx-auto max-w-7xl px-5 py-10 lg:py-8">
         {!embed ? (
           <Link
             to="/gallery"
@@ -1142,7 +1184,7 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
         <div className="overflow-hidden rounded-[2rem] bg-white shadow-sm ring-1 ring-slate-200/70">
           <PropertyHero property={property} primaryColor={primaryColor} />
 
-          <div className="grid grid-cols-1 gap-8 p-7 md:p-10 lg:grid-cols-[1fr_360px]">
+          <div className="grid grid-cols-1 gap-8 p-7 md:p-10 lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[minmax(0,1fr)_320px]">
             <div>
               <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                 <DetailStat label={t(lang, 'stat_price')} value={formatCurrency(property.price)} />
@@ -1181,21 +1223,25 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                 </span>
               </div>
               {accessLevel === 'readonly' ? <ReadonlyBanner daysLeft={daysUntilBlock} /> : null}
-              <UniversalViewer
-                propertyId={property.id}
-                spaces={property.spaces}
-                primaryColor={primaryColor}
-                removeBranding={property.removeBranding}
-                language={lang}
-                propertyTitle={property.title}
-                agencyName={property.tenantLogoText || property.tenantName || 'Agencia inmobiliaria'}
-                agencyLogoUrl={property.tenantLogoUrl || undefined}
-                floorplanUrl={property.floorplanUrl || undefined}
-                arEnabled={arEnabled}
-                className="mt-3"
-                onAnalyticsEvent={handleAnalyticsEvent}
-                disableLeadCapture={isLeadDisabled}
-              />
+              {!isDesktopImmersiveViewport ? (
+              <div>
+                <UniversalViewer
+                  propertyId={property.id}
+                  spaces={property.spaces}
+                  primaryColor={primaryColor}
+                  removeBranding={property.removeBranding}
+                  language={lang}
+                  propertyTitle={property.title}
+                  agencyName={property.tenantLogoText || property.tenantName || 'Agencia inmobiliaria'}
+                  agencyLogoUrl={property.tenantLogoUrl || undefined}
+                  floorplanUrl={property.floorplanUrl || undefined}
+                  arEnabled={arEnabled}
+                  className="mt-3"
+                  onAnalyticsEvent={handleAnalyticsEvent}
+                  disableLeadCapture={isLeadDisabled}
+                />
+              </div>
+              ) : null}
 
               {/* ── Map + address editor ── */}
               {property.latitude && property.longitude ? (

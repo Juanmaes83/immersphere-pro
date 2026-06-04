@@ -341,8 +341,8 @@ export default function GaussianSplatViewer({
   }
 
   return (
-    <div className="overflow-hidden rounded-[1.5rem] bg-slate-950 text-white">
-      <div className="flex flex-col lg:flex-row">
+    <div className="h-full overflow-hidden rounded-[1.5rem] bg-slate-950 text-white">
+      <div className="flex h-full flex-col lg:flex-row">
 
         {/* ══════════════════════════════════════════════════════
             VIEWER — siempre primero, siempre visible
@@ -351,7 +351,7 @@ export default function GaussianSplatViewer({
         ══════════════════════════════════════════════════════ */}
         <div
           ref={viewerPanelRef}
-          className="relative order-1 min-h-[56vh] w-full overflow-hidden bg-slate-950 lg:min-h-[600px] lg:flex-1"
+          className="relative order-1 min-h-[56vh] w-full overflow-hidden bg-slate-950 lg:min-h-0 lg:flex-1"
           onPointerDown={() => { dismissOnboarding(); }}
         >
           {/* Canvas 3D */}

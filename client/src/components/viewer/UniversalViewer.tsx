@@ -1,5 +1,6 @@
 ﻿import { Component, lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
 import type { ErrorInfo, ReactNode } from 'react';
+import { ArrowLeft, Info, X } from 'lucide-react';
 import DollhouseViewer from '@/components/viewer/DollhouseViewer';
 import FloorplanViewer from '@/components/viewer/FloorplanViewer';
 const GaussianSplatViewer = lazy(() => import('@/components/viewer/GaussianSplatViewer'));
@@ -195,7 +196,9 @@ export default function UniversalViewer({
   floorplanUrl,
   arEnabled = false,
   onAnalyticsEvent,
-  disableLeadCapture = false
+  disableLeadCapture = false,
+  desktopImmersive = false,
+  onBack
 }: UniversalViewerProps): JSX.Element {
   const sortedSpaces = useMemo(() => sortSpaces(spaces), [spaces]);
   const firstSpaceId = sortedSpaces[0]?.id ?? '';
@@ -229,6 +232,7 @@ export default function UniversalViewer({
   const [isMeasuring,   setIsMeasuring]   = useState(false);
   const [showDollhouse, setShowDollhouse] = useState(false);
   const [showTools,     setShowTools]     = useState(false); // advanced tools menu (···)
+  const [infoPanelOpen, setInfoPanelOpen] = useState(false);
 
   // ── Branded loading screen ───────────────────────────────────────────────────
   const [showBrandedLoading, setShowBrandedLoading] = useState(true);
@@ -821,6 +825,7 @@ export default function UniversalViewer({
     }
 
     setActiveHotspot(hotspot);
+    if (desktopImmersive) setInfoPanelOpen(true);
   }
 
   function handleLeadCtaOpen(): void {
@@ -897,13 +902,28 @@ export default function UniversalViewer({
   const _isDrift  = tPhase !== 'idle' && !prefersReducedMotion && _cinIntent === 'hotspot';
   const _driftX   = _isDrift ? driftRef.current.x : 0;
   const _driftY   = _isDrift ? driftRef.current.y : 0;
+  const shellClass = desktopImmersive
+    ? `relative flex flex-col overflow-hidden rounded-[1.6rem] bg-slate-950 text-white lg:h-[100dvh] lg:min-h-[720px] lg:rounded-none ${className} ${isFullscreen ? 'fixed inset-0 z-[9999] rounded-none' : ''}`
+    : `relative flex flex-col overflow-hidden rounded-[1.6rem] bg-slate-950 text-white ${className} ${isFullscreen ? 'fixed inset-0 z-[9999] rounded-none' : ''}`;
+  const headerClass = desktopImmersive
+    ? 'flex flex-col gap-4 border-b border-white/10 p-5 lg:absolute lg:left-4 lg:right-4 lg:top-4 lg:z-40 lg:flex-row lg:items-center lg:justify-between lg:rounded-2xl lg:border lg:border-white/10 lg:bg-slate-950/65 lg:p-2 lg:pl-3 lg:shadow-2xl lg:backdrop-blur-xl'
+    : 'flex flex-col gap-4 border-b border-white/10 p-5 lg:flex-row lg:items-center lg:justify-between';
+  const mainGridClass = desktopImmersive
+    ? 'grid min-h-0 flex-1 grid-cols-1 lg:block'
+    : 'grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[minmax(0,1fr)_320px] xl:grid-cols-[minmax(0,1fr)_300px]';
+  const viewerAreaClass = desktopImmersive
+    ? 'relative min-h-[560px] p-5 lg:h-full lg:min-h-0 lg:p-0'
+    : 'relative min-h-[560px] p-5 lg:min-h-0';
+  const asideClass = desktopImmersive
+    ? `border-t border-white/10 bg-white/[0.04] p-5 lg:absolute lg:bottom-4 lg:right-4 lg:top-[5.5rem] lg:z-50 lg:w-[320px] lg:overflow-y-auto lg:rounded-2xl lg:border lg:border-white/10 lg:bg-slate-950/82 lg:shadow-2xl lg:backdrop-blur-xl lg:transition-all lg:duration-200 ${infoPanelOpen ? 'lg:pointer-events-auto lg:translate-x-0 lg:opacity-100' : 'lg:pointer-events-none lg:translate-x-6 lg:opacity-0'}`
+    : 'border-t border-white/10 bg-white/[0.04] p-5 lg:overflow-y-auto lg:border-l lg:border-t-0';
 
   // ── Render ───────────────────────────────────────────────────────────────────
 
   return (
     <section
       ref={viewerRef}
-      className={`relative overflow-hidden rounded-[1.6rem] bg-slate-950 text-white ${className} ${isFullscreen ? 'fixed inset-0 z-[9999] rounded-none' : ''}`}
+      className={shellClass}
       onPointerDown={() => {
         if (!audioEnabled) setAudioEnabled(true);
         if (storyVisible) {
@@ -992,23 +1012,33 @@ export default function UniversalViewer({
       ) : null}
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
-      <div className="flex flex-col gap-4 border-b border-white/10 p-5 lg:flex-row lg:items-center lg:justify-between">
-        <div>
+      <div className={headerClass}>
+        <div className={desktopImmersive ? 'flex min-w-0 items-center gap-3' : ''}>
+          {desktopImmersive ? (
+            <button
+              type="button"
+              onClick={onBack}
+              className="hidden shrink-0 items-center gap-2 rounded-full border border-white/10 bg-black/25 px-3 py-2 text-xs font-black text-white/75 transition hover:bg-white/10 hover:text-white lg:inline-flex"
+            >
+              <ArrowLeft className="h-4 w-4" /> Volver
+            </button>
+          ) : null}
+          <div className="min-w-0">
           {/* Tour counter always visible — it's UX, not branding */}
           {isCinematic ? (
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">
+            <p className={`${desktopImmersive ? 'text-[10px]' : 'text-sm'} font-black uppercase tracking-[0.22em] text-violet-300`}>
               {cinematicPaused ? t(language, 'cinematic_paused_label') : t(language, 'cinematic_live')} · {currentSpaceIdx + 1} / {sortedSpaces.length}
             </p>
           ) : isGuidedTour ? (
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">
+            <p className={`${desktopImmersive ? 'text-[10px]' : 'text-sm'} font-black uppercase tracking-[0.22em] text-violet-300`}>
               {t(language, 'guided_tour')} · {guidedTourIdx + 1} / {sortedSpaces.length}
             </p>
           ) : !removeBranding ? (
-            <p className="text-sm font-black uppercase tracking-[0.22em] text-violet-300">
+            <p className={`${desktopImmersive ? 'text-[10px]' : 'text-sm'} font-black uppercase tracking-[0.22em] text-violet-300`}>
               {t(language, 'immersive_tour')}
             </p>
           ) : null}
-          <h2 className="mt-2 text-3xl font-black">{activeSpace.name}</h2>
+          <h2 className={`${desktopImmersive ? 'truncate text-lg lg:max-w-[220px]' : 'mt-2 text-3xl'} font-black`}>{activeSpace.name}</h2>
 
           {/* ── Spatial breadcrumb trail — visible from 2nd space visited ── */}
           {visitHistory.length >= 2 ? (
@@ -1043,7 +1073,7 @@ export default function UniversalViewer({
           ) : null}
 
           {!removeBranding ? (
-            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/55">
+            <p className={`${desktopImmersive ? 'hidden' : 'mt-2'} max-w-2xl text-sm leading-6 text-white/55`}>
               {activeAsset.type === 'panorama_360'
                 ? t(language, 'panorama_360')
                 : activeAsset.type === 'gaussian_splat'
@@ -1051,6 +1081,7 @@ export default function UniversalViewer({
                   : t(language, 'model_3d')}
             </p>
           ) : null}
+          </div>
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -1168,6 +1199,20 @@ export default function UniversalViewer({
             </button>
           ) : null}
 
+          {desktopImmersive ? (
+            <button
+              type="button"
+              onClick={() => setInfoPanelOpen((value) => !value)}
+              className={`hidden items-center gap-2 rounded-full px-4 py-2 text-sm font-black transition lg:inline-flex ${
+                infoPanelOpen
+                  ? 'bg-white text-slate-950'
+                  : 'bg-white/10 text-white/70 hover:bg-white/15'
+              }`}
+            >
+              <Info className="h-4 w-4" /> Info
+            </button>
+          ) : null}
+
           {/* ··· Advanced tools — not for visitors, not for the demo pitch */}
           <div className="relative">
             <button
@@ -1233,11 +1278,11 @@ export default function UniversalViewer({
       </div>
 
       {/* ── Main content ───────────────────────────────────────────────────── */}
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px]">
+      <div className={mainGridClass}>
 
         {/* Viewer area */}
         <div
-          className="relative p-5"
+          className={viewerAreaClass}
           onPointerDown={() => {
             // Pause cinematic on any direct viewer interaction (drag, tap on panorama)
             if (isCinematic && !cinematicPaused) setCinematicPaused(true);
@@ -1245,7 +1290,7 @@ export default function UniversalViewer({
         >
           {/* Cinematic transition overlay — fades to black between spaces, stays visible until idle */}
           <div
-            className="pointer-events-none absolute inset-0 z-50 flex items-center justify-center rounded-[1.5rem] bg-slate-950"
+            className={`pointer-events-none absolute inset-0 z-50 flex items-center justify-center bg-slate-950 ${desktopImmersive ? 'lg:rounded-none' : 'rounded-[1.5rem]'}`}
             style={{
               opacity: tPhase !== 'idle' ? 1 : 0,
               transition: prefersReducedMotion
@@ -1270,6 +1315,7 @@ export default function UniversalViewer({
           </div>
           {/* Micro-scale wrapper — subtle parallax on desktop only, not on mobile/reduced-motion */}
           <div
+            className="h-full"
             style={!prefersReducedMotion ? {
               // _scaleOut: 1.042 for hotspot/nav intent, 1.018 for regular transitions.
               // During 'in' phase the element starts at whatever _scaleOut was (CSS holds last value)
@@ -1438,7 +1484,7 @@ export default function UniversalViewer({
 
           {/* ── Cinematic end screen — CTA final ──────────────────────────── */}
           {showCinematicEnd ? (
-            <div className="pointer-events-auto absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 rounded-[1.5rem] bg-slate-950/92 px-8 text-center backdrop-blur-sm">
+            <div className={`pointer-events-auto absolute inset-0 z-30 flex flex-col items-center justify-center gap-5 bg-slate-950/92 px-8 text-center backdrop-blur-sm ${desktopImmersive ? 'lg:rounded-none' : 'rounded-[1.5rem]'}`}>
               <div className="h-px w-8 rounded-full" style={{ backgroundColor: primaryColor }} />
               <h3 className="max-w-[260px] text-2xl font-black leading-snug text-white">
                 {propertyTitle ?? activeSpace.name}
@@ -1552,7 +1598,20 @@ export default function UniversalViewer({
         </div>
 
         {/* ── Aside panel ──────────────────────────────────────────────────── */}
-        <aside className="border-t border-white/10 bg-white/[0.04] p-5 lg:border-l lg:border-t-0">
+        <aside className={asideClass}>
+          {desktopImmersive ? (
+            <div className="mb-4 hidden items-center justify-between border-b border-white/10 pb-3 lg:flex">
+              <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">Info</p>
+              <button
+                type="button"
+                onClick={() => setInfoPanelOpen(false)}
+                className="rounded-full p-2 text-white/45 transition hover:bg-white/10 hover:text-white"
+                aria-label="Cerrar info"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+          ) : null}
 
           {/* CINEMATIC PANEL — shown when cinematic tour active and no hotspot open */}
           {isCinematic && !activeHotspot ? (

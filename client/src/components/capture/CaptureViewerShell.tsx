@@ -91,7 +91,7 @@ export default function CaptureViewerShell({
     ? 'relative min-h-0 flex-1 overflow-hidden bg-black'
     : isMobileLike
       ? 'relative h-[60dvh] min-h-[420px] w-full overflow-hidden bg-black'
-      : 'relative aspect-[16/10] min-h-[320px] overflow-hidden bg-black';
+      : 'relative h-[70dvh] min-h-[560px] max-h-[860px] overflow-hidden bg-black';
 
   return (
     <section className={shellClass} aria-label="Experiencia 3D inmersiva">

@@ -137,6 +137,10 @@ export interface UniversalViewerProps {
   onAnalyticsEvent: (event: ViewerEvent) => void;
   /** Si true, oculta el modal de lead capture (grace period readonly/blocked). */
   disableLeadCapture?: boolean;
+  /** Enables the desktop viewer-first layout for public property pages. */
+  desktopImmersive?: boolean;
+  /** Optional back action used by desktop immersive viewer chrome. */
+  onBack?: () => void;
 }
 
 
