@@ -864,3 +864,38 @@ La entrega cliente queda centralizada en `/capture-jobs` para CaptureJobs public
 - Los estados de calidad son controlados: `pending`, `sufficient`, `needs_review`, `missing`.
 
 Privacidad: los input assets siguen siendo privados y no forman parte del payload publico de `/capture/:id`.
+
+## Paso 22 - Demo publica premium en /ayuda
+
+Objetivo: convertir `/ayuda` en una pagina que explique y venda el flujo CaptureJob completo con una demo real validada.
+
+Demo ASAS:
+
+- Landing publica: `/capture/a5924f50-7e7b-4173-95d3-23dae72e5cae`
+- Modo presentacion: `/capture/a5924f50-7e7b-4173-95d3-23dae72e5cae?present=1`
+- Ficha imprimible: `/capture/a5924f50-7e7b-4173-95d3-23dae72e5cae?print=1`
+
+Que demuestra:
+
+- Landing comercial premium generada desde CaptureJob.
+- Viewer 3D SuperSplat embebido dentro de la capa Immersphere.
+- Hotspots 2D propios sobre viewer externo.
+- Mobile landscape viewer-first y modo inmersivo.
+- IA aplicada a copy, estructura, checklist y hotspots con aprobacion humana.
+- Lead capture publico asociado al CaptureJob.
+- QR, enlace compartible, presentacion y ficha imprimible.
+- Upload guiado privado por zona/tipo/estado para mejorar QA e IA.
+
+Diferencia de producto:
+
+- Demo tecnica: valida una integracion o capacidad concreta.
+- Demo comercial ASAS: valida el producto vendible end to end.
+
+Limitaciones mostradas en `/ayuda`:
+
+- El Splat 3D pertenece al proveedor externo SuperSplat y se embebe como iframe.
+- Los hotspots son capa comercial propia, no coordenadas nativas del `.splat`.
+- La camara/zoom inicial depende del proveedor externo.
+- Input assets, leads, costes, notas internas y datos de tenant no se exponen en la demo publica.
+
+Proximos pasos: analitica de conversion, sincronizacion CRM, white label por tenant y viewer propio o API compatible para control nativo de camara/hotspots.

@@ -171,3 +171,21 @@ El MVP incorpora captura guiada de material por zona:
 - IA alimentada con metadatos resumidos, no con binarios.
 
 Queda fuera de este paso: OCR, descarga automatica de assets, modelo de hotspots nuevo y automatizacion multiworker.
+
+## Paso 22 - Demo publica premium en /ayuda
+
+`/ayuda` incorpora ASAS como demo comercial validada:
+
+- enlace principal `/capture/a5924f50-7e7b-4173-95d3-23dae72e5cae`;
+- modo presentacion con `?present=1`;
+- ficha imprimible con `?print=1`;
+- explicacion de landing premium, viewer 3D, hotspots, mobile landscape, IA aplicada, lead capture, QR y upload guiado;
+- timeline del flujo completo desde CaptureJob hasta lead;
+- limitaciones controladas para no prometer hotspots nativos dentro del `.splat` ni control de camara del proveedor externo.
+
+La pagina diferencia:
+
+- demos tecnicas: prueban integraciones concretas;
+- demo comercial ASAS: prueba una entrega vendible end to end.
+
+Siguientes pasos: analitica, CRM, white label y viewer propio/API compatible para control nativo.

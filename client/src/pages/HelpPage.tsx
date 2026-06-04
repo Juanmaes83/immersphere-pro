@@ -369,6 +369,43 @@ const DASHBOARD_TOOLS: BuyerToolEntry[] = [
   },
 ];
 
+const ASAS_CAPTURE_ID = 'a5924f50-7e7b-4173-95d3-23dae72e5cae';
+const ASAS_DEMO_URL = `/capture/${ASAS_CAPTURE_ID}`;
+const ASAS_PRESENT_URL = `${ASAS_DEMO_URL}?present=1`;
+const ASAS_PRINT_URL = `${ASAS_DEMO_URL}?print=1`;
+
+const ASAS_DEMO_PROVES = [
+  ['Landing comercial premium', 'Hero, CTA, beneficios, confianza y cierre de conversión.'],
+  ['Viewer 3D inmersivo', 'SuperSplat embebido dentro de Immersphere.'],
+  ['Hotspots sobre viewer', 'Capa propia de Immersphere, sin modificar el Splat externo.'],
+  ['Móvil horizontal optimizado', 'Viewer-first y modo inmersivo.'],
+  ['IA aplicada al CaptureJob', 'Copy, estructura, hotspots y checklist aplicados con aprobación humana.'],
+  ['Captación de leads', 'Formulario público asociado al CaptureJob.'],
+  ['Entrega cliente', 'QR, enlace compartible, modo presentación y ficha imprimible.'],
+  ['Upload guiado', 'Material por zona/tipo/estado para mejorar QA e IA.'],
+] as const;
+
+const ASAS_VALIDATED_FLOW = [
+  'Registrar CaptureJob',
+  'Completar briefing comercial',
+  'Registrar viewer 3D / output',
+  'Procesar con IA',
+  'Aplicar copy y checklist',
+  'Crear/publicar hotspots',
+  'Publicar landing premium',
+  'Compartir por QR/enlace',
+  'Capturar lead',
+  'Mejorar QA con input assets',
+] as const;
+
+const ASAS_LIMITATIONS = [
+  'El Splat 3D pertenece al proveedor externo SuperSplat y se embebe como viewer.',
+  'Los hotspots visibles son una capa comercial propia de Immersphere, no coordenadas nativas dentro del archivo .splat.',
+  'La cámara/zoom inicial del Splat depende del proveedor externo.',
+  'Los input assets se usan como metadata privada para QA/IA, no se exponen públicamente.',
+  'La demo no muestra datos privados del CaptureJob.',
+] as const;
+
 const CAPTURE_TOOLS_SECONDARY: Array<{
   name: string; type: string; url: string; desc: string; disclaimer: string;
 }> = [
@@ -1014,6 +1051,81 @@ export default function HelpPage(): JSX.Element {
                 comprobacion de iframe, fallback externo y publicacion final en CaptureJob. No implica generacion automatica
                 ni subida abierta de archivos 3D en esta fase.
               </p>
+            </div>
+          </section>
+
+          <section id="demo-asas" className="mt-8 overflow-hidden rounded-[1.8rem] bg-slate-950 text-white ring-1 ring-violet-500/25">
+            <div className="grid gap-0 lg:grid-cols-[1.05fr_0.95fr]">
+              <div className="p-6 md:p-8">
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-violet-300">Demo comercial completa</p>
+                <h3 className="mt-3 text-3xl font-black tracking-tight md:text-4xl">Demo comercial validada: ASAS</h3>
+                <p className="mt-4 max-w-2xl text-sm leading-7 text-slate-300">
+                  Un CaptureJob convertido en entrega comercial completa: viewer 3D, IA aplicada, hotspots, landing, lead capture, QR y upload guiado.
+                </p>
+
+                <div className="mt-6 rounded-[1.4rem] border border-white/10 bg-white/5 p-5">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span className="rounded-full bg-emerald-500 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-white">Validada</span>
+                    <span className="rounded-full bg-violet-500/20 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-violet-100 ring-1 ring-violet-300/30">Landing comercial 3D</span>
+                    <span className="rounded-full bg-slate-800 px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] text-slate-300">SuperSplat + Immersphere</span>
+                  </div>
+                  <h4 className="mt-4 text-xl font-black">ASAS - Demo inmobiliaria 3D</h4>
+                  <p className="mt-3 text-sm leading-7 text-slate-300">
+                    Flujo validado: CaptureJob {'->'} IA {'->'} contenido aplicado {'->'} hotspots {'->'} landing {'->'} leads. La demo muestra el producto comercial completo, no solo una prueba técnica de integración.
+                  </p>
+                  <div className="mt-5 flex flex-col gap-3 sm:flex-row sm:flex-wrap">
+                    <Link to={ASAS_DEMO_URL} className="inline-flex items-center justify-center rounded-full bg-white px-5 py-3 text-sm font-black text-slate-950 transition hover:bg-violet-100">
+                      Ver demo pública
+                    </Link>
+                    <Link to={ASAS_PRESENT_URL} className="inline-flex items-center justify-center rounded-full border border-white/15 px-5 py-3 text-sm font-black text-white transition hover:bg-white/10">
+                      Ver modo presentación
+                    </Link>
+                    <Link to={ASAS_PRINT_URL} className="inline-flex items-center justify-center rounded-full border border-white/15 px-5 py-3 text-sm font-black text-white transition hover:bg-white/10">
+                      Ver ficha imprimible
+                    </Link>
+                  </div>
+                </div>
+              </div>
+
+              <div className="border-t border-white/10 bg-white/[0.03] p-6 md:p-8 lg:border-l lg:border-t-0">
+                <p className="text-xs font-black uppercase tracking-[0.18em] text-slate-400">Qué demuestra esta demo</p>
+                <div className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+                  {ASAS_DEMO_PROVES.map(([title, detail]) => (
+                    <div key={title} className="rounded-xl bg-white/5 px-4 py-3 ring-1 ring-white/10">
+                      <p className="text-sm font-black text-white">{title}</p>
+                      <p className="mt-1 text-xs leading-5 text-slate-400">{detail}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-white/10 p-6 md:p-8">
+              <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+                <div id="asas-flow">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-violet-300">Flujo completo validado</p>
+                  <div className="mt-5 grid gap-3 sm:grid-cols-2">
+                    {ASAS_VALIDATED_FLOW.map((step, index) => (
+                      <div key={step} className="flex items-start gap-3 rounded-xl bg-slate-900 px-4 py-3 ring-1 ring-white/10">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-500 text-xs font-black text-white">{index + 1}</span>
+                        <p className="pt-1 text-sm font-black text-slate-200">{step}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div id="asas-limitations" className="rounded-[1.4rem] border border-amber-500/25 bg-amber-500/10 p-5">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-amber-200">Limitaciones controladas</p>
+                  <ul className="mt-4 space-y-3">
+                    {ASAS_LIMITATIONS.map((item) => (
+                      <li key={item} className="flex gap-3 text-xs leading-6 text-amber-50/80">
+                        <span className="mt-2 h-1.5 w-1.5 shrink-0 rounded-full bg-amber-300" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
             </div>
           </section>
 
@@ -1973,15 +2085,34 @@ export default function HelpPage(): JSX.Element {
       {/* ── CTA FINAL ───────────────────────────────────────────── */}
       <section className="bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 px-5 py-24 text-center text-white md:py-32">
         <p className="text-xs font-black uppercase tracking-[0.22em]" style={colorStyle}>
-          Empieza hoy
+          CaptureJob comercial
         </p>
         <h2 className="mt-4 text-4xl font-black tracking-tight md:text-5xl">
-          Tu primer tour en 5 minutos
+          Convierte un viewer 3D en una entrega comercial medible
         </h2>
-        <p className="mx-auto mt-4 max-w-md text-lg text-white/55">
-          Plan Starter gratuito. Sin tarjeta. Sin compromiso.
+        <p className="mx-auto mt-4 max-w-2xl text-lg text-white/55">
+          Immersphere Pro permite transformar material visual, splats o experiencias 3D en landings compartibles con IA, hotspots, QR, formulario y control de entrega.
         </p>
         <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
+          <Link
+            to={ASAS_DEMO_URL}
+            className="rounded-full bg-white px-10 py-4 text-base font-black text-slate-950 shadow-lg transition hover:bg-violet-100"
+          >
+            Ver demo ASAS
+          </Link>
+          <Link
+            to="/capture-jobs"
+            className="rounded-full px-10 py-4 text-base font-black text-white shadow-lg transition hover:opacity-90"
+            style={bgStyle}
+          >
+            Crear CaptureJob
+          </Link>
+          <Link
+            to="/capture-jobs"
+            className="rounded-full border border-white/20 px-8 py-4 text-sm font-black text-white/70 transition hover:border-white/40 hover:text-white"
+          >
+            Ir a CaptureJobs
+          </Link>
           {isAuthenticated ? (
             <Link
               to="/properties"
