@@ -16,6 +16,7 @@ import {
   deleteCaptureInputAssetController,
   deleteCaptureOutputAssetController,
   generateCaptureJobQrController,
+  getCaptureAiUsageController,
   getCaptureJobAiRunController,
   getCaptureJobController,
   getPublicCaptureJobController,
@@ -102,6 +103,7 @@ captureJobsRoutes.post('/public/:captureJobId/leads', createPublicCaptureLeadCon
 
 captureJobsRoutes.get('/', requireAuth, listCaptureJobsController);
 captureJobsRoutes.post('/', requireAuth, createCaptureJobController);
+captureJobsRoutes.get('/ai/usage', requireAuth, getCaptureAiUsageController);
 captureJobsRoutes.get('/:captureJobId', requireAuth, getCaptureJobController);
 captureJobsRoutes.put('/:captureJobId', requireAuth, updateCaptureJobController);
 captureJobsRoutes.delete('/:captureJobId', requireAuth, archiveCaptureJobController);

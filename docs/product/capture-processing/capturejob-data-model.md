@@ -163,6 +163,18 @@ ProcessingJob puede vivir como subestado o bloque operativo dentro de CaptureJob
 - `failureReason`: motivo si falla.
 - `notes`: observaciones tecnicas o comerciales.
 
+## Control de uso IA
+
+En Paso 23 no se crea un modelo nuevo. El uso IA se deriva de `CaptureAiProcessingRun`:
+
+- `tenantId`: agrupa consumo por tenant.
+- `status`: se cuentan `running`, `completed` y `failed` para evitar reintentos ilimitados.
+- `tokensInput` y `tokensOutput`: alimentan la estimacion de coste cuando el proveedor devuelve usage.
+- `model`: permite auditar que tier/modelo se uso en cada run.
+- `createdAt`: define la ventana diaria en UTC.
+
+El plan se resuelve desde `Subscription.plan` si existe, despues `Tenant.plan`, y finalmente un limite por defecto. La estimacion de coste usa variables de entorno, no datos de facturacion persistidos.
+
 ## Reglas funcionales iniciales
 
 - Un CaptureJob puede existir sin `propertyId`, pero no sin titulo, cliente o fuente.

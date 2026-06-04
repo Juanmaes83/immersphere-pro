@@ -5,6 +5,7 @@ import { AppError } from '../middleware/errorHandler.js';
 import { storeUploadFile } from '../services/cloudinary.service.js';
 import { checkTenantStorageQuota } from '../services/quota.service.js';
 import {
+  getCaptureAiUsageSummary,
   getCaptureAiProcessingRun,
   listCaptureAiProcessingRuns,
   processCaptureJobWithAi
@@ -367,6 +368,16 @@ export async function processCaptureJobAiController(request: Request, response: 
     const { tenantId, userId } = requireTenantUser(request);
     const data = await processCaptureJobWithAi(request.params.captureJobId, tenantId, userId);
     response.status(202).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function getCaptureAiUsageController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const { tenantId } = requireTenantUser(request);
+    const data = await getCaptureAiUsageSummary(tenantId);
+    response.status(200).json({ success: true, data });
   } catch (error) {
     next(error);
   }

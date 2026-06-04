@@ -299,6 +299,33 @@ export interface CaptureAiProcessingRun {
   updatedAt: string;
 }
 
+export interface CaptureAiUsageResponse {
+  daily: {
+    date: string;
+    limit: number;
+    used: number;
+    remaining: number;
+    warningThreshold: number;
+    isLimited: boolean;
+    isNearLimit: boolean;
+  };
+  cost: {
+    estimatedTodayUsd: number | null;
+    tokensInputToday: number;
+    tokensOutputToday: number;
+  };
+  plan: {
+    name: string;
+    source: 'subscription_plan' | 'tenant_plan' | 'default_limit';
+  };
+  model: {
+    tier: 'cheap' | 'balanced' | 'premium';
+    id: string;
+    source: 'ANTHROPIC_MODEL' | 'CAPTURE_AI_MODEL_TIER';
+  };
+  disabled: boolean;
+}
+
 export interface PublicCaptureJob {
   id: string;
   title: string;

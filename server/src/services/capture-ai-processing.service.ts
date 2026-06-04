@@ -15,9 +15,39 @@ const CAPTURE_AI_RESULT_TOOL_NAME = 'submit_capture_ai_processing_result';
 
 type CaptureAiModelTier = keyof typeof CAPTURE_AI_MODEL_BY_TIER;
 
+type CaptureAiUsagePlanSource = 'subscription_plan' | 'tenant_plan' | 'default_limit';
+
+interface CaptureAiUsageSummary {
+  daily: {
+    date: string;
+    limit: number;
+    used: number;
+    remaining: number;
+    warningThreshold: number;
+    isLimited: boolean;
+    isNearLimit: boolean;
+  };
+  cost: {
+    estimatedTodayUsd: number | null;
+    tokensInputToday: number;
+    tokensOutputToday: number;
+  };
+  plan: {
+    name: string;
+    source: CaptureAiUsagePlanSource;
+  };
+  model: {
+    tier: CaptureAiModelTier;
+    id: string;
+    source: 'ANTHROPIC_MODEL' | 'CAPTURE_AI_MODEL_TIER';
+  };
+  disabled: boolean;
+}
+
 type Db = typeof prisma & {
   captureJob: any;
   captureAiProcessingRun: any;
+  tenant: any;
 };
 
 type CaptureJobWithAssets = {
@@ -342,6 +372,116 @@ export function resolveCaptureAiModel(): string {
 
   const tier = env.CAPTURE_AI_MODEL_TIER as CaptureAiModelTier;
   return CAPTURE_AI_MODEL_BY_TIER[tier] ?? CAPTURE_AI_MODEL_BY_TIER.cheap;
+}
+
+function resolveCaptureAiModelMeta(): CaptureAiUsageSummary['model'] {
+  const explicitModel = env.ANTHROPIC_MODEL.trim();
+  const tier = env.CAPTURE_AI_MODEL_TIER as CaptureAiModelTier;
+  return {
+    tier,
+    id: explicitModel || (CAPTURE_AI_MODEL_BY_TIER[tier] ?? CAPTURE_AI_MODEL_BY_TIER.cheap),
+    source: explicitModel ? 'ANTHROPIC_MODEL' : 'CAPTURE_AI_MODEL_TIER'
+  };
+}
+
+function getUtcDayWindow(now = new Date()): { date: string; start: Date; end: Date } {
+  const date = now.toISOString().slice(0, 10);
+  const start = new Date(`${date}T00:00:00.000Z`);
+  const end = new Date(start);
+  end.setUTCDate(end.getUTCDate() + 1);
+  return { date, start, end };
+}
+
+function normalizePlanName(value: unknown): string {
+  return typeof value === 'string' && value.trim() ? value.trim().toUpperCase() : 'DEFAULT';
+}
+
+function limitForPlan(planName: string): number {
+  const normalized = normalizePlanName(planName);
+  if (normalized.includes('ENTERPRISE')) return env.CAPTURE_AI_DAILY_RUN_LIMIT_ENTERPRISE;
+  if (normalized.includes('PRO') || normalized.includes('PROFESSIONAL')) return env.CAPTURE_AI_DAILY_RUN_LIMIT_PRO;
+  if (normalized.includes('STARTER')) return env.CAPTURE_AI_DAILY_RUN_LIMIT_STARTER;
+  return env.CAPTURE_AI_DEFAULT_DAILY_RUN_LIMIT;
+}
+
+async function resolveTenantAiPlan(tenantId: string): Promise<{ name: string; source: CaptureAiUsagePlanSource; limit: number }> {
+  const tenant = await getDb().tenant.findUnique({
+    where: { id: tenantId },
+    select: {
+      plan: true,
+      subscription: { select: { plan: true, status: true } }
+    }
+  });
+  const subscriptionPlan = normalizePlanName(tenant?.subscription?.plan);
+  if (tenant?.subscription && subscriptionPlan !== 'DEFAULT') {
+    return { name: subscriptionPlan, source: 'subscription_plan', limit: limitForPlan(subscriptionPlan) };
+  }
+  const tenantPlan = normalizePlanName(tenant?.plan);
+  if (tenant && tenantPlan !== 'DEFAULT') {
+    return { name: tenantPlan, source: 'tenant_plan', limit: limitForPlan(tenantPlan) };
+  }
+  return { name: 'default', source: 'default_limit', limit: env.CAPTURE_AI_DEFAULT_DAILY_RUN_LIMIT };
+}
+
+function estimateCostUsd(tokensInput: number, tokensOutput: number): number | null {
+  if (tokensInput <= 0 && tokensOutput <= 0) return null;
+  const inputCost = (tokensInput / 1_000_000) * env.CAPTURE_AI_COST_INPUT_PER_MILLION_USD;
+  const outputCost = (tokensOutput / 1_000_000) * env.CAPTURE_AI_COST_OUTPUT_PER_MILLION_USD;
+  return Number((inputCost + outputCost).toFixed(6));
+}
+
+export async function getCaptureAiUsageSummary(tenantId: string): Promise<CaptureAiUsageSummary> {
+  const { date, start, end } = getUtcDayWindow();
+  const plan = await resolveTenantAiPlan(tenantId);
+  const where = {
+    tenantId,
+    createdAt: { gte: start, lt: end },
+    status: { in: ['running', 'completed', 'failed'] }
+  };
+  const [used, tokenTotals] = await Promise.all([
+    getDb().captureAiProcessingRun.count({ where }),
+    getDb().captureAiProcessingRun.aggregate({
+      where,
+      _sum: { tokensInput: true, tokensOutput: true }
+    })
+  ]);
+  const tokensInputToday = tokenTotals._sum.tokensInput ?? 0;
+  const tokensOutputToday = tokenTotals._sum.tokensOutput ?? 0;
+  const remaining = Math.max(plan.limit - used, 0);
+  const usageRatio = plan.limit > 0 ? used / plan.limit : 1;
+  return {
+    daily: {
+      date,
+      limit: plan.limit,
+      used,
+      remaining,
+      warningThreshold: env.CAPTURE_AI_USAGE_WARNING_THRESHOLD,
+      isLimited: used >= plan.limit,
+      isNearLimit: usageRatio >= env.CAPTURE_AI_USAGE_WARNING_THRESHOLD && used < plan.limit
+    },
+    cost: {
+      estimatedTodayUsd: estimateCostUsd(tokensInputToday, tokensOutputToday),
+      tokensInputToday,
+      tokensOutputToday
+    },
+    plan: {
+      name: plan.name,
+      source: plan.source
+    },
+    model: resolveCaptureAiModelMeta(),
+    disabled: env.CAPTURE_AI_DISABLE_PROCESSING
+  };
+}
+
+async function assertCanStartCaptureAiRun(tenantId: string): Promise<void> {
+  if (env.CAPTURE_AI_DISABLE_PROCESSING) {
+    throw new AppError(503, 'El procesamiento IA esta temporalmente desactivado.');
+  }
+
+  const usage = await getCaptureAiUsageSummary(tenantId);
+  if (usage.daily.isLimited) {
+    throw new AppError(429, 'Has alcanzado el limite diario de procesamiento IA. Vuelve manana o amplia tu plan.');
+  }
 }
 
 function truncateText(value: string | undefined | null, maxLength: number): string {
@@ -1096,6 +1236,7 @@ ${truncateText(rawText, 5000)}`
 }
 
 async function completeCaptureAiProcessingRun(runId: string, inputSummary: unknown, model: string): Promise<void> {
+  let usage: { input_tokens?: number; output_tokens?: number } | null = null;
   try {
     if (!env.ANTHROPIC_API_KEY) {
       throw new AppError(503, 'ANTHROPIC_API_KEY no configurada');
@@ -1110,6 +1251,7 @@ async function completeCaptureAiProcessingRun(runId: string, inputSummary: unkno
       tools: [captureAiResultTool],
       messages: [{ role: 'user', content: buildUserPrompt(inputSummary) }]
     });
+    usage = response.usage ?? null;
     const toolInput = extractToolResult(response);
     const rawText = toolInput ? JSON.stringify(toolInput) : extractTextResult(response);
 
@@ -1131,8 +1273,8 @@ async function completeCaptureAiProcessingRun(runId: string, inputSummary: unkno
       data: {
         status: 'completed',
         result,
-        tokensInput: response.usage.input_tokens,
-        tokensOutput: response.usage.output_tokens,
+        tokensInput: usage?.input_tokens ?? response.usage.input_tokens,
+        tokensOutput: usage?.output_tokens ?? response.usage.output_tokens,
         error: null
       }
     });
@@ -1149,7 +1291,14 @@ async function completeCaptureAiProcessingRun(runId: string, inputSummary: unkno
     }
     await getDb().captureAiProcessingRun.update({
       where: { id: runId },
-      data: { status: 'failed', error: truncateText(message, 1000) }
+      data: {
+        status: 'failed',
+        error: truncateText(message, 1000),
+        ...(usage ? {
+          tokensInput: usage.input_tokens ?? null,
+          tokensOutput: usage.output_tokens ?? null
+        } : {})
+      }
     });
   }
 }
@@ -1161,6 +1310,7 @@ export async function processCaptureJobWithAi(captureJobId: string, tenantId: st
     orderBy: { createdAt: 'desc' }
   });
   if (existingRunning) throw new AppError(409, 'Ya hay un procesamiento IA en curso para este CaptureJob.');
+  await assertCanStartCaptureAiRun(tenantId);
 
   const inputSummary = buildInputSummary(job);
   const model = resolveCaptureAiModel();

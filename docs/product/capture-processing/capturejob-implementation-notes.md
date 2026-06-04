@@ -899,3 +899,27 @@ Limitaciones mostradas en `/ayuda`:
 - Input assets, leads, costes, notas internas y datos de tenant no se exponen en la demo publica.
 
 Proximos pasos: analitica de conversion, sincronizacion CRM, white label por tenant y viewer propio o API compatible para control nativo de camara/hotspots.
+
+## Paso 23 - Control de uso y costes IA
+
+El procesamiento IA de CaptureJob queda protegido por limites diarios por tenant y resumen operativo de coste:
+
+- Endpoint privado: `GET /api/capture-jobs/ai/usage`.
+- No se anade tabla nueva: el uso se calcula desde `CaptureAiProcessingRun`.
+- Se cuentan runs `running`, `completed` y `failed` creados en el dia UTC.
+- El backend bloquea `POST /api/capture-jobs/:captureJobId/ai/process` antes de crear run si el tenant ha agotado el limite.
+- La UI privada `/capture-jobs` muestra uso diario, restante, tokens input/output, coste estimado y modelo configurado.
+- `/capture/:id` no expone uso, costes, tokens ni datos internos.
+
+Configuracion por entorno:
+
+- `CAPTURE_AI_DAILY_RUN_LIMIT_STARTER`, default 5.
+- `CAPTURE_AI_DAILY_RUN_LIMIT_PRO`, default 30.
+- `CAPTURE_AI_DAILY_RUN_LIMIT_ENTERPRISE`, default 150.
+- `CAPTURE_AI_DEFAULT_DAILY_RUN_LIMIT`, default 10.
+- `CAPTURE_AI_COST_INPUT_PER_MILLION_USD`, default 1.
+- `CAPTURE_AI_COST_OUTPUT_PER_MILLION_USD`, default 5.
+- `CAPTURE_AI_USAGE_WARNING_THRESHOLD`, default 0.8.
+- `CAPTURE_AI_DISABLE_PROCESSING`, default false.
+
+La estimacion de coste no es facturacion. Sirve para control interno mientras no exista billing completo, alertas automaticas o exportacion de uso.

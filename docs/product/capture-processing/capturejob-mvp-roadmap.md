@@ -189,3 +189,30 @@ La pagina diferencia:
 - demo comercial ASAS: prueba una entrega vendible end to end.
 
 Siguientes pasos: analitica, CRM, white label y viewer propio/API compatible para control nativo.
+
+## Paso 23 - Control de uso y costes IA
+
+El MVP incorpora una barrera operativa de coste para CaptureJob AI:
+
+- limites diarios por tenant segun plan;
+- bloqueo backend antes de crear runs si el limite esta agotado;
+- switch de emergencia `CAPTURE_AI_DISABLE_PROCESSING`;
+- endpoint privado de uso para `/capture-jobs`;
+- resumen de tokens y coste estimado del dia;
+- aviso visual cuando el tenant se acerca al limite.
+
+Defaults actuales:
+
+- Starter: 5 runs IA/dia.
+- Pro/Professional: 30 runs IA/dia.
+- Enterprise: 150 runs IA/dia.
+- Plan desconocido: 10 runs IA/dia.
+
+Queda fuera de este paso:
+
+- facturacion por uso;
+- Stripe metered billing;
+- alertas por email/Slack;
+- panel historico mensual;
+- exportacion CSV;
+- presupuestos por usuario o proyecto.

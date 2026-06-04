@@ -1,6 +1,14 @@
 import "dotenv/config";
 import { z } from "zod";
 
+const booleanEnv = z.preprocess((value) => {
+  if (typeof value !== "string") return value;
+  const normalized = value.trim().toLowerCase();
+  if (["true", "1", "yes", "on"].includes(normalized)) return true;
+  if (["false", "0", "no", "off", ""].includes(normalized)) return false;
+  return value;
+}, z.boolean());
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().int().positive().default(4000),
@@ -29,7 +37,15 @@ const envSchema = z.object({
   ANTHROPIC_MODEL: z.string().default(""),
   CAPTURE_AI_MODEL_TIER: z.enum(["cheap", "balanced", "premium"]).default("cheap"),
   AI_PROCESSING_MAX_ASSETS: z.coerce.number().int().positive().default(10),
-  AI_PROCESSING_MAX_RUNS: z.coerce.number().int().positive().default(10)
+  AI_PROCESSING_MAX_RUNS: z.coerce.number().int().positive().default(10),
+  CAPTURE_AI_DAILY_RUN_LIMIT_STARTER: z.coerce.number().int().nonnegative().default(5),
+  CAPTURE_AI_DAILY_RUN_LIMIT_PRO: z.coerce.number().int().nonnegative().default(30),
+  CAPTURE_AI_DAILY_RUN_LIMIT_ENTERPRISE: z.coerce.number().int().nonnegative().default(150),
+  CAPTURE_AI_DEFAULT_DAILY_RUN_LIMIT: z.coerce.number().int().nonnegative().default(10),
+  CAPTURE_AI_COST_INPUT_PER_MILLION_USD: z.coerce.number().nonnegative().default(1),
+  CAPTURE_AI_COST_OUTPUT_PER_MILLION_USD: z.coerce.number().nonnegative().default(5),
+  CAPTURE_AI_USAGE_WARNING_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
+  CAPTURE_AI_DISABLE_PROCESSING: booleanEnv.default(false)
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

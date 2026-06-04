@@ -5,7 +5,7 @@ import { Link } from 'react-router-dom';
 import { Upload, QrCode, ExternalLink, Archive, RefreshCw, Copy, BrainCircuit, Smartphone, Printer, Download } from 'lucide-react';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { usePropertyStore } from '@/store/propertyStore';
-import type { CaptureAiProcessingResult, CaptureAiProcessingRun, CaptureCommercialBrief, CaptureHotspot, CaptureInputAsset, CaptureJob, CaptureOutputAsset } from '@/types/api';
+import type { CaptureAiProcessingResult, CaptureAiProcessingRun, CaptureAiUsageResponse, CaptureCommercialBrief, CaptureHotspot, CaptureInputAsset, CaptureJob, CaptureOutputAsset } from '@/types/api';
 
 const STATUSES = [
   'draft',
@@ -423,6 +423,19 @@ function formatRunDate(value: string): string {
   }).format(new Date(value));
 }
 
+function formatNumber(value: number): string {
+  return new Intl.NumberFormat('es-ES').format(value);
+}
+
+function formatEstimatedUsd(value: number | null): string {
+  if (value === null) return 'Sin tokens registrados';
+  return new Intl.NumberFormat('es-ES', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 4
+  }).format(value);
+}
+
 function stringifyAiSection(value: unknown): string {
   return JSON.stringify(value, null, 2);
 }
@@ -691,12 +704,15 @@ export default function CaptureJobsPage(): JSX.Element {
   const [error, setError] = useState<string | null>(null);
   const [guideTypeOverride, setGuideTypeOverride] = useState<CaptureGuideType | ''>('');
   const [aiRuns, setAiRuns] = useState<CaptureAiProcessingRun[]>([]);
+  const [aiUsage, setAiUsage] = useState<CaptureAiUsageResponse | null>(null);
+  const [aiUsageLoading, setAiUsageLoading] = useState(false);
   const [aiProcessing, setAiProcessing] = useState(false);
   const [aiRunsOpen, setAiRunsOpen] = useState(false);
 
   useEffect(() => {
     void fetchProperties({ limit: 100 });
     void loadJobs();
+    void loadAiUsage(true);
   }, [fetchProperties]);
 
   const metrics = useMemo(() => {
@@ -762,8 +778,23 @@ export default function CaptureJobsPage(): JSX.Element {
     try {
       const data = await unwrapApiResponse<CaptureAiProcessingRun[]>(api.get(`/capture-jobs/${captureJobId}/ai/runs`));
       setAiRuns(Array.isArray(data) ? data : []);
+      if (!data.some((run) => run.status === 'running')) {
+        void loadAiUsage(true);
+      }
     } catch (err) {
       if (!silent) setError(getApiErrorMessage(err));
+    }
+  }
+
+  async function loadAiUsage(silent = false): Promise<void> {
+    if (!silent) setAiUsageLoading(true);
+    try {
+      const data = await unwrapApiResponse<CaptureAiUsageResponse>(api.get('/capture-jobs/ai/usage'));
+      setAiUsage(data);
+    } catch (err) {
+      if (!silent) setError(getApiErrorMessage(err));
+    } finally {
+      if (!silent) setAiUsageLoading(false);
     }
   }
 
@@ -843,6 +874,14 @@ export default function CaptureJobsPage(): JSX.Element {
 
   async function processWithAi(): Promise<void> {
     if (!selectedJob || hasRunningAiRun) return;
+    if (aiUsage?.disabled) {
+      setError('El procesamiento IA esta temporalmente desactivado.');
+      return;
+    }
+    if (aiUsage?.daily.isLimited) {
+      setError('Has alcanzado el limite diario de procesamiento IA. Vuelve manana o amplia tu plan.');
+      return;
+    }
     setAiProcessing(true);
     setError(null);
     setMessage(null);
@@ -851,6 +890,7 @@ export default function CaptureJobsPage(): JSX.Element {
       setAiRuns((current) => [run, ...current.filter((item) => item.id !== run.id)]);
       setMessage('Procesamiento IA iniciado. Actualizando resultado...');
       await loadAiRuns(selectedJob.id);
+      await loadAiUsage(true);
     } catch (err) {
       if (isClientTimeout(err)) {
         setMessage('El procesamiento sigue en curso. Actualizando resultado...');
@@ -858,6 +898,7 @@ export default function CaptureJobsPage(): JSX.Element {
         setError(getApiErrorMessage(err));
       }
       await loadAiRuns(selectedJob.id);
+      await loadAiUsage(true);
     } finally {
       setAiProcessing(false);
     }
@@ -1697,14 +1738,14 @@ export default function CaptureJobsPage(): JSX.Element {
                         <button
                           type="button"
                           onClick={() => { void processWithAi(); }}
-                          disabled={aiProcessing || hasRunningAiRun}
+                          disabled={aiProcessing || hasRunningAiRun || Boolean(aiUsage?.disabled) || Boolean(aiUsage?.daily.isLimited)}
                           className="inline-flex items-center justify-center gap-2 rounded-full bg-sky-600 px-4 py-2 text-xs font-black text-white hover:bg-sky-500 disabled:opacity-50"
                         >
-                          <BrainCircuit className="h-4 w-4" /> {aiProcessing || hasRunningAiRun ? 'Procesando...' : 'Procesar con IA'}
+                          <BrainCircuit className="h-4 w-4" /> {aiUsage?.disabled ? 'IA desactivada' : aiUsage?.daily.isLimited ? 'Limite alcanzado' : aiProcessing || hasRunningAiRun ? 'Procesando...' : 'Procesar con IA'}
                         </button>
                         <button
                           type="button"
-                          onClick={() => { if (selectedJob) void loadAiRuns(selectedJob.id); }}
+                          onClick={() => { if (selectedJob) void Promise.all([loadAiRuns(selectedJob.id), loadAiUsage()]); }}
                           className="inline-flex items-center justify-center gap-2 rounded-full border border-sky-200 bg-white px-4 py-2 text-xs font-black text-sky-700 hover:bg-sky-50 dark:border-sky-900/50 dark:bg-slate-950 dark:text-sky-300 dark:hover:bg-sky-950/30"
                         >
                           <RefreshCw className="h-4 w-4" /> Actualizar resultado
@@ -1727,6 +1768,57 @@ export default function CaptureJobsPage(): JSX.Element {
                       <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
                         Resultado limitado por falta de material/contexto.
                       </p>
+                    ) : null}
+
+                    {aiUsage ? (
+                      <div className="mt-4 rounded-lg bg-white p-3 ring-1 ring-sky-100 dark:bg-slate-950 dark:ring-sky-900/40">
+                        <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                          <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Uso IA hoy</p>
+                            <p className="mt-1 text-sm font-black text-slate-900 dark:text-white">
+                              {formatNumber(aiUsage.daily.used)} / {formatNumber(aiUsage.daily.limit)} procesamientos
+                            </p>
+                            <p className="mt-1 text-xs font-bold text-slate-500 dark:text-white/50">
+                              Restantes: {formatNumber(aiUsage.daily.remaining)} · Plan: {aiUsage.plan.name} · Modelo: {aiUsage.model.tier} ({aiUsage.model.id})
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => { void loadAiUsage(); }}
+                            disabled={aiUsageLoading}
+                            className="inline-flex items-center justify-center gap-2 rounded-full border border-sky-200 px-3 py-2 text-[10px] font-black text-sky-700 hover:bg-sky-50 disabled:opacity-50 dark:border-sky-900/50 dark:text-sky-300 dark:hover:bg-sky-950/30"
+                          >
+                            <RefreshCw className="h-3.5 w-3.5" /> Actualizar uso
+                          </button>
+                        </div>
+                        <div className="mt-3 grid gap-2 sm:grid-cols-3">
+                          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500 dark:bg-white/5 dark:text-white/50">
+                            Coste estimado: <span className="font-black text-slate-800 dark:text-white">{formatEstimatedUsd(aiUsage.cost.estimatedTodayUsd)}</span>
+                          </p>
+                          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500 dark:bg-white/5 dark:text-white/50">
+                            Input tokens: <span className="font-black text-slate-800 dark:text-white">{formatNumber(aiUsage.cost.tokensInputToday)}</span>
+                          </p>
+                          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs font-bold text-slate-500 dark:bg-white/5 dark:text-white/50">
+                            Output tokens: <span className="font-black text-slate-800 dark:text-white">{formatNumber(aiUsage.cost.tokensOutputToday)}</span>
+                          </p>
+                        </div>
+                        {aiUsage.disabled ? (
+                          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300">
+                            El procesamiento IA esta temporalmente desactivado por configuracion.
+                          </p>
+                        ) : aiUsage.daily.isLimited ? (
+                          <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-700 dark:bg-red-950/30 dark:text-red-300">
+                            Limite diario alcanzado. No se crearan nuevos runs hasta el proximo dia UTC.
+                          </p>
+                        ) : aiUsage.daily.isNearLimit ? (
+                          <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                            Aviso: el tenant esta cerca del limite diario de IA.
+                          </p>
+                        ) : null}
+                        <p className="mt-2 text-[10px] font-bold text-slate-400">
+                          Coste estimado con precios configurados por entorno. El dia se calcula en UTC.
+                        </p>
+                      </div>
                     ) : null}
 
                     {!latestRun ? (
