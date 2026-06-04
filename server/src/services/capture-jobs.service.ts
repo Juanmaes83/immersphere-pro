@@ -32,9 +32,13 @@ const PREMIUM_3D_OUTPUT_TYPES = [
   'splat_viewer',
   'supersplat',
   'spark_viewer',
-  'external_3d_viewer'
+  'external_3d_viewer',
+  'native_point_cloud',
+  'ply_viewer'
 ] as const;
 const PREMIUM_3D_PRIORITY = [
+  'native_point_cloud',
+  'ply_viewer',
   'gaussian_splat',
   'splat_viewer',
   'supersplat',
@@ -228,9 +232,59 @@ function clampPercent(value: unknown): number | null {
   return Math.max(0, Math.min(100, Math.round(parsed)));
 }
 
+function finiteNumber(value: unknown): number | null {
+  const parsed = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function finiteVector(value: unknown): { x: number; y: number; z: number } | null {
+  const record = toRecord(value);
+  const x = finiteNumber(record.x);
+  const y = finiteNumber(record.y);
+  const z = finiteNumber(record.z);
+  if (x === null || y === null || z === null) return null;
+  return { x, y, z };
+}
+
+function finiteTuple(value: unknown): [number, number, number] | null {
+  if (!Array.isArray(value) || value.length < 3) return null;
+  const x = finiteNumber(value[0]);
+  const y = finiteNumber(value[1]);
+  const z = finiteNumber(value[2]);
+  if (x === null || y === null || z === null) return null;
+  return [x, y, z];
+}
+
 function getSafePosition(value: unknown): unknown {
   const position = toRecord(value);
   if (Object.keys(position).length === 0) return null;
+  const mode = cleanString(position.mode, 'overlay_2d');
+
+  if (mode === 'native_3d') {
+    const x = finiteNumber(position.x);
+    const y = finiteNumber(position.y);
+    const z = finiteNumber(position.z);
+    if (x === null || y === null || z === null) return null;
+    const normal = finiteVector(position.normal);
+    const camera = toRecord(position.camera);
+    const cameraPosition = finiteTuple(camera.position);
+    const cameraTarget = finiteTuple(camera.target);
+    return {
+      mode: 'native_3d',
+      x,
+      y,
+      z,
+      ...(normal ? { normal } : {}),
+      ...((cameraPosition || cameraTarget) ? {
+        camera: {
+          ...(cameraPosition ? { position: cameraPosition } : {}),
+          ...(cameraTarget ? { target: cameraTarget } : {})
+        }
+      } : {})
+    };
+  }
+
+  if (mode !== 'overlay_2d') return null;
   const x = clampPercent(position.x);
   const y = clampPercent(position.y);
   if (x === null || y === null) return null;

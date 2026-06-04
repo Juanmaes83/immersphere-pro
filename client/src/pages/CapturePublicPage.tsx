@@ -3,10 +3,13 @@ import { Helmet } from 'react-helmet-async';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowDown, CheckCircle2, Copy, ExternalLink, Printer, Share2, ShieldCheck } from 'lucide-react';
 import CaptureViewerShell from '@/components/capture/CaptureViewerShell';
+import NativePointCloudViewer from '@/components/capture/NativePointCloudViewer';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import type { PublicCaptureJob, PublicCaptureLeadInput, PublicCaptureLeadResponse } from '@/types/api';
 
-const PREMIUM_3D_PRIORITY = ['gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
+const PREMIUM_3D_PRIORITY = ['native_point_cloud', 'ply_viewer', 'gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
+const NATIVE_POINT_CLOUD_TYPES = ['native_point_cloud', 'ply_viewer'];
+const ENABLE_NATIVE_3D_VIEWER = import.meta.env.VITE_ENABLE_NATIVE_3D_VIEWER === 'true';
 
 function statusLabel(value: string): string {
   return value.replace(/_/g, ' ');
@@ -53,10 +56,19 @@ function inferInterestType(value: string): PublicCaptureLeadInput['interestType'
 }
 
 function getProviderLabel(type: string): string {
+  if (NATIVE_POINT_CLOUD_TYPES.includes(type)) return 'Viewer propio PLY';
   if (type === 'supersplat' || type === 'splat_viewer' || type === 'gaussian_splat') return '3D / Gaussian / Splat';
   if (type === 'spark_viewer') return 'Spark viewer';
   if (type === 'external_3d_viewer') return 'Viewer 3D externo';
   return statusLabel(type);
+}
+
+function isPlyUrl(rawUrl: string): boolean {
+  try {
+    return new URL(rawUrl).pathname.toLowerCase().endsWith('.ply');
+  } catch {
+    return rawUrl.toLowerCase().split('?')[0].endsWith('.ply');
+  }
 }
 
 function CaptureBadge({ children, tone = 'neutral' }: { children: string; tone?: 'neutral' | 'success' | 'accent' }): JSX.Element {
@@ -288,6 +300,14 @@ export default function CapturePublicPage(): JSX.Element {
     primaryUrl &&
     isSafeHttpUrl(primaryUrl)
   );
+  const canRenderNativePrimary = Boolean(
+    ENABLE_NATIVE_3D_VIEWER &&
+    premiumOutput &&
+    NATIVE_POINT_CLOUD_TYPES.includes(premiumOutput.type) &&
+    primaryUrl &&
+    isSafeHttpUrl(primaryUrl) &&
+    isPlyUrl(primaryUrl)
+  );
   const hasPublic3d = Boolean(premiumOutput);
   const providerLabel = premiumOutput ? getProviderLabel(premiumOutput.type) : null;
   const metaDescription = shortDescription || heroDescription || job.clientName;
@@ -295,7 +315,15 @@ export default function CapturePublicPage(): JSX.Element {
   const printUrl = `${publicUrl}?print=1`;
   const showSecondarySections = !isMobileLandscape;
 
-  const embeddedViewer = (
+  const embeddedViewer = canRenderNativePrimary ? (
+    <NativePointCloudViewer
+      assetUrl={primaryUrl}
+      hotspots={job.hotspots}
+      activeHotspotId={activeHotspotId}
+      onHotspotClick={setActiveHotspotId}
+      mode="view"
+    />
+  ) : (
     <div className="h-full w-full bg-black">
       <iframe
         src={toEmbedUrl(primaryUrl, premiumOutput?.type ?? '')}
@@ -438,7 +466,7 @@ export default function CapturePublicPage(): JSX.Element {
                 </div>
               ) : null}
 
-              {canEmbedPrimary ? (
+              {canRenderNativePrimary || canEmbedPrimary ? (
                 renderEmbeddedViewer()
               ) : (
                 <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 bg-slate-900 px-5 py-10 text-center">
@@ -604,7 +632,7 @@ export default function CapturePublicPage(): JSX.Element {
         ) : null}
       </main>
 
-      {isImmersiveMode && canEmbedPrimary ? renderEmbeddedViewer(true) : null}
+      {isImmersiveMode && (canRenderNativePrimary || canEmbedPrimary) ? renderEmbeddedViewer(true) : null}
     </>
   );
 }

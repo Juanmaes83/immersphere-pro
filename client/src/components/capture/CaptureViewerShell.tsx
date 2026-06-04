@@ -14,8 +14,9 @@ function statusLabel(value: string): string {
   return value.replace(/_/g, ' ');
 }
 
-function getPercentPosition(position: Record<string, unknown> | null, key: string): number | null {
-  const value = position?.[key];
+function getPercentPosition(position: unknown, key: string): number | null {
+  if (!position || typeof position !== 'object') return null;
+  const value = (position as Record<string, unknown>)[key];
   if (typeof value !== 'number' || !Number.isFinite(value)) return null;
   return Math.max(0, Math.min(100, value));
 }
@@ -73,6 +74,7 @@ export default function CaptureViewerShell({
   onExitImmersive
 }: CaptureViewerShellProps): JSX.Element {
   const activeHotspot = hotspots.find((hotspot) => hotspot.id === activeHotspotId) ?? null;
+  const overlayHotspots = hotspots.filter((hotspot) => hotspot.position?.mode !== 'native_3d');
   const isViewportShell = isImmersive || isMobileLandscape;
 
   const shellClass = !showControls && !isViewportShell
@@ -157,7 +159,7 @@ export default function CaptureViewerShell({
         <div className="h-full w-full">{viewer}</div>
         {hotspots.length > 0 ? (
           <div className="pointer-events-none absolute inset-0">
-            {hotspots.map((hotspot, index) => {
+            {overlayHotspots.map((hotspot, index) => {
               const position = getHotspotPosition(hotspot, index);
               const left = isMobileLike ? position.mobileX : position.x;
               const top = isMobileLike ? position.mobileY : position.y;

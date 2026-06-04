@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from 'react';
+﻿import { useEffect, useMemo, useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { Upload, QrCode, ExternalLink, Archive, RefreshCw, Copy, BrainCircuit, Smartphone, Printer, Download } from 'lucide-react';
+import NativePointCloudViewer from '@/components/capture/NativePointCloudViewer';
+import type { NativePointPickData } from '@/components/capture/NativePointCloudViewer';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { usePropertyStore } from '@/store/propertyStore';
 import type { CaptureAiProcessingResult, CaptureAiProcessingRun, CaptureAiUsageResponse, CaptureCommercialBrief, CaptureHotspot, CaptureInputAsset, CaptureJob, CaptureOutputAsset } from '@/types/api';
@@ -35,24 +37,28 @@ const OUTPUT_TYPES = [
   'pdf',
   'link',
   'gaussian_splat',
+  'native_point_cloud',
+  'ply_viewer',
   'splat_viewer',
   'supersplat',
   'spark_viewer',
   'external_3d_viewer'
 ];
-const PREMIUM_3D_OUTPUT_TYPES = ['gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
-const PREMIUM_3D_PRIORITY = ['gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
+const PREMIUM_3D_OUTPUT_TYPES = ['gaussian_splat', 'native_point_cloud', 'ply_viewer', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
+const NATIVE_POINT_CLOUD_TYPES = ['native_point_cloud', 'ply_viewer'];
+const PREMIUM_3D_PRIORITY = ['native_point_cloud', 'ply_viewer', 'gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
 const EMBEDDABLE_3D_HOSTS = ['superspl.at', 'sparkjs.dev', 'playcanvas.com', 'luma.ai', 'lumalabs.ai', 'immersphere.io', 'immersphere-pro.vercel.app'];
+const ENABLE_NATIVE_3D_VIEWER = import.meta.env.VITE_ENABLE_NATIVE_3D_VIEWER === 'true';
 const CAPTURE_GUIDE_TYPES = ['3d', 'tour_360', 'video', 'photos', 'document', 'general'] as const;
 const INPUT_ZONES = [
   'Entrada / acceso',
-  'Salón',
+  'SalÃ³n',
   'Cocina',
   'Dormitorio principal',
   'Dormitorios secundarios',
-  'Baños',
+  'BaÃ±os',
   'Terraza / exterior',
-  'Plano / documentación',
+  'Plano / documentaciÃ³n',
   'Viewer 3D / Splat externo',
   'Otros'
 ] as const;
@@ -204,8 +210,31 @@ function isPremium3dOutput(type: string): boolean {
   return PREMIUM_3D_OUTPUT_TYPES.includes(type);
 }
 
+function isNativePointCloudOutput(assetOrType: CaptureOutputAsset | string | null | undefined): boolean {
+  const type = typeof assetOrType === 'string' ? assetOrType : assetOrType?.type ?? '';
+  return NATIVE_POINT_CLOUD_TYPES.includes(type);
+}
+
 function getOutputUrl(asset: CaptureOutputAsset): string {
   return asset.publishedUrl || asset.url;
+}
+
+function isPlyUrl(rawUrl: string): boolean {
+  try {
+    return new URL(rawUrl).pathname.toLowerCase().endsWith('.ply');
+  } catch {
+    return rawUrl.toLowerCase().split('?')[0].endsWith('.ply');
+  }
+}
+
+function canUseNativePointCloudViewer(asset: CaptureOutputAsset | null): boolean {
+  return Boolean(
+    ENABLE_NATIVE_3D_VIEWER &&
+    asset &&
+    isNativePointCloudOutput(asset) &&
+    getOutputUrl(asset) &&
+    isPlyUrl(getOutputUrl(asset))
+  );
 }
 
 function isPublicCaptureStatus(status: string): boolean {
@@ -233,6 +262,7 @@ function getProviderLabel(assetOrType: CaptureOutputAsset | string, rawUrl = '')
   const type = typeof assetOrType === 'string' ? assetOrType : assetOrType.type;
   const url = typeof assetOrType === 'string' ? rawUrl : getOutputUrl(assetOrType);
   const normalizedUrl = url.toLowerCase();
+  if (type === 'native_point_cloud' || type === 'ply_viewer') return 'Viewer propio PLY';
   if (type === 'supersplat' || normalizedUrl.includes('superspl.at')) return 'SuperSplat';
   if (type === 'spark_viewer' || normalizedUrl.includes('spark')) return 'Spark';
   if (normalizedUrl.includes('luma.ai') || normalizedUrl.includes('lumalabs.ai')) return 'Luma';
@@ -277,7 +307,7 @@ function get3dWarnings(asset: CaptureOutputAsset | null): string[] {
   const url = getOutputUrl(asset);
   if (!url) warnings.push('Falta URL del viewer.');
   if (asset.status === 'published' && !asset.viewerReady) warnings.push('Publicado sin validar desktop.');
-  if (asset.status === 'published' && !asset.mobileReady) warnings.push('Publicado sin validar móvil.');
+  if (asset.status === 'published' && !asset.mobileReady) warnings.push('Publicado sin validar mÃ³vil.');
   if (isPremium3dOutput(asset.type) && !url) warnings.push('Revisar fallback externo.');
   return warnings;
 }
@@ -286,7 +316,7 @@ function getCaptureGuideLabel(type: CaptureGuideType): string {
   const labels: Record<CaptureGuideType, string> = {
     '3d': '3D / Gaussian / Splat',
     tour_360: 'Tour 360',
-    video: 'Vídeo comercial',
+    video: 'VÃ­deo comercial',
     photos: 'Fotos inmobiliarias / showroom',
     document: 'Plano / documento',
     general: 'General'
@@ -316,23 +346,23 @@ function getCaptureChecklist(type: CaptureGuideType): string[] {
   const checklists: Record<CaptureGuideType, string[]> = {
     '3d': [
       'Recorrido completo del espacio.',
-      'Iluminación estable.',
+      'IluminaciÃ³n estable.',
       'Sin movimientos bruscos.',
       'Sin personas cruzando si no son necesarias.',
       'Captura de todas las estancias principales.',
-      'Zonas de transición incluidas.',
+      'Zonas de transiciÃ³n incluidas.',
       'Exterior/fachada si aplica.',
-      'Prueba de rendimiento móvil pendiente/realizada.',
+      'Prueba de rendimiento mÃ³vil pendiente/realizada.',
       'Viewer externo previsto.'
     ],
     tour_360: [
       'Panoramas por estancia.',
-      'Puntos de navegación definidos.',
+      'Puntos de navegaciÃ³n definidos.',
       'Entrada/salida o inicio claro.',
       'Estancias nombradas.',
       'Calidad de imagen suficiente.',
       'Sin stitching roto evidente.',
-      'Orientación inicial revisada.'
+      'OrientaciÃ³n inicial revisada.'
     ],
     video: [
       'Plano de apertura.',
@@ -341,13 +371,13 @@ function getCaptureChecklist(type: CaptureGuideType): string[] {
       'Plano final/CTA.',
       'Formato horizontal si es web.',
       'Formato vertical si es redes.',
-      'Duración objetivo definida.'
+      'DuraciÃ³n objetivo definida.'
     ],
     photos: [
       'Fachada/entrada.',
       'Espacio principal.',
       'Detalles diferenciales.',
-      'Iluminación homogénea.',
+      'IluminaciÃ³n homogÃ©nea.',
       'Fotos horizontales.',
       'Fotos verticales si redes.',
       'Sin elementos no deseados.'
@@ -355,14 +385,14 @@ function getCaptureChecklist(type: CaptureGuideType): string[] {
     document: [
       'Archivo legible.',
       'Formato PDF/imagen.',
-      'Escala o orientación clara.',
+      'Escala o orientaciÃ³n clara.',
       'Nombre de zonas si aplica.'
     ],
     general: [
       'Material base recibido.',
       'Objetivo de entrega definido.',
-      'Calidad mínima revisada.',
-      'Faltantes anotados en próxima acción.',
+      'Calidad mÃ­nima revisada.',
+      'Faltantes anotados en prÃ³xima acciÃ³n.',
       'Output previsto antes de publicar.'
     ]
   };
@@ -371,12 +401,12 @@ function getCaptureChecklist(type: CaptureGuideType): string[] {
 
 function getCaptureGuideText(type: CaptureGuideType): string {
   const texts: Record<CaptureGuideType, string> = {
-    '3d': 'Captura recorridos continuos, con luz estable y cubriendo todas las zonas. Evita movimientos bruscos, cambios fuertes de exposición y espacios incompletos. Valida el resultado en desktop y móvil antes de publicar.',
-    tour_360: 'Captura un punto por estancia principal y añade puntos de transición. Revisa orientación inicial, continuidad y calidad de imagen.',
-    video: 'Graba apertura, recorrido, detalles y cierre. Define si el destino será web horizontal o redes vertical.',
+    '3d': 'Captura recorridos continuos, con luz estable y cubriendo todas las zonas. Evita movimientos bruscos, cambios fuertes de exposiciÃ³n y espacios incompletos. Valida el resultado en desktop y mÃ³vil antes de publicar.',
+    tour_360: 'Captura un punto por estancia principal y aÃ±ade puntos de transiciÃ³n. Revisa orientaciÃ³n inicial, continuidad y calidad de imagen.',
+    video: 'Graba apertura, recorrido, detalles y cierre. Define si el destino serÃ¡ web horizontal o redes vertical.',
     photos: 'Prioriza luz, orden, amplitud y detalles diferenciales. Evita objetos personales o elementos que resten valor.',
-    document: 'Asegura que el archivo sea legible, tenga orientación clara y permita identificar zonas, escala o referencias importantes.',
-    general: 'Reúne material suficiente para entender el espacio, define el entregable esperado y deja anotado cualquier faltante antes de producir.'
+    document: 'Asegura que el archivo sea legible, tenga orientaciÃ³n clara y permita identificar zonas, escala o referencias importantes.',
+    general: 'ReÃºne material suficiente para entender el espacio, define el entregable esperado y deja anotado cualquier faltante antes de producir.'
   };
   return texts[type];
 }
@@ -388,7 +418,7 @@ function getMaterialState(job: CaptureJob): { label: string; tone: 'danger' | 'w
     return { label: 'Material incompleto', tone: 'danger', detail: 'No hay material de entrada registrado.' };
   }
   if (!hasOutputInProgress) {
-    return { label: 'Material pendiente de revisar', tone: 'warning', detail: 'Hay material, pero aún no hay output generado.' };
+    return { label: 'Material pendiente de revisar', tone: 'warning', detail: 'Hay material, pero aÃºn no hay output generado.' };
   }
   return { label: 'Material suficiente', tone: 'success', detail: 'Hay material base y al menos un output listo o publicado.' };
 }
@@ -399,11 +429,11 @@ function getCaptureGuideWarnings(job: CaptureJob, type: CaptureGuideType, primar
   const hasAnyOutput = (job.outputAssets ?? []).length > 0;
   const hasPublishedOutput = (job.outputAssets ?? []).some((asset) => asset.status === 'published');
   if (inputCount === 0) warnings.push('No hay material de entrada registrado.');
-  if (inputCount > 0 && !hasAnyOutput) warnings.push('Hay material, pero aún no hay output generado.');
+  if (inputCount > 0 && !hasAnyOutput) warnings.push('Hay material, pero aÃºn no hay output generado.');
   if (hasPublishedOutput) warnings.push('El CaptureJob tiene output publicado, revisa QA antes de compartir.');
-  if (type === '3d' && primary3d && !primary3d.mobileReady) warnings.push('Para 3D/Gaussian, valida móvil antes de marcar entrega como lista.');
-  if (type === 'tour_360') warnings.push('Para tour 360, revisa navegación y puntos de transición.');
-  if (type === 'video') warnings.push('Para vídeo, define formato vertical/horizontal antes de producir.');
+  if (type === '3d' && primary3d && !primary3d.mobileReady) warnings.push('Para 3D/Gaussian, valida mÃ³vil antes de marcar entrega como lista.');
+  if (type === 'tour_360') warnings.push('Para tour 360, revisa navegaciÃ³n y puntos de transiciÃ³n.');
+  if (type === 'video') warnings.push('Para vÃ­deo, define formato vertical/horizontal antes de producir.');
   return warnings;
 }
 
@@ -501,8 +531,9 @@ function hasVideoScriptContent(result: CaptureAiProcessingResult): boolean {
   ]);
 }
 
-function getPositionNumber(position: Record<string, unknown> | null, key: string): string {
-  const value = position?.[key];
+function getPositionNumber(position: unknown, key: string): string {
+  if (!position || typeof position !== 'object') return '';
+  const value = (position as Record<string, unknown>)[key];
   return typeof value === 'number' && Number.isFinite(value) ? String(value) : '';
 }
 
@@ -559,27 +590,28 @@ function isClientTimeout(error: unknown): boolean {
 function getAiRunErrorMessage(error: string): string {
   const normalized = error.toLowerCase();
   if (normalized.includes('tool_use_missing')) {
-    return 'La IA no devolvió la herramienta esperada. Reintenta el procesamiento.';
+    return 'La IA no devolviÃ³ la herramienta esperada. Reintenta el procesamiento.';
   }
   if (normalized.includes('tool_input_schema_invalid') || normalized.includes('zod_validation_failed')) {
-    return 'La respuesta IA no pasó la validación de estructura. Reintenta el procesamiento.';
+    return 'La respuesta IA no pasÃ³ la validaciÃ³n de estructura. Reintenta el procesamiento.';
   }
   if (normalized.includes('json_parse_failed')) {
-    return 'La IA respondió con JSON inválido. Reintenta el procesamiento.';
+    return 'La IA respondiÃ³ con JSON invÃ¡lido. Reintenta el procesamiento.';
   }
   if (normalized.includes('model_not_available')) {
-    return 'El modelo configurado no está disponible. Revisa la configuración IA.';
+    return 'El modelo configurado no estÃ¡ disponible. Revisa la configuraciÃ³n IA.';
   }
   if (normalized.includes('anthropic_api_error')) {
-    return 'Error de proveedor IA. Reintenta más tarde.';
+    return 'Error de proveedor IA. Reintenta mÃ¡s tarde.';
   }
   if (normalized.includes('json parse failed') || normalized.includes('json schema failed') || normalized.includes('tool')) {
-    return 'La IA respondió con formato inválido. Reintenta el procesamiento.';
+    return 'La IA respondiÃ³ con formato invÃ¡lido. Reintenta el procesamiento.';
   }
   return error;
 }
 
 function getSuggestedFormat(type: string): string {
+  if (type === 'native_point_cloud' || type === 'ply_viewer') return 'ply';
   if (type === 'gaussian_splat') return 'gaussian';
   if (type === 'supersplat' || type === 'splat_viewer') return 'splat';
   if (type === 'spark_viewer') return 'external_url';
@@ -648,8 +680,8 @@ function statusLabel(value: string): string {
 function inputAssetTypeLabel(value: string): string {
   const labels: Record<string, string> = {
     photo: 'Foto',
-    video: 'Vídeo',
-    panorama: 'Panorámica / 360',
+    video: 'VÃ­deo',
+    panorama: 'PanorÃ¡mica / 360',
     floorplan: 'Plano',
     splat_external: 'Splat externo',
     document: 'Documento',
@@ -689,7 +721,7 @@ function getGlobalMaterialSummary(job: CaptureJob): { label: string; detail: str
   const statuses = INPUT_ZONES.map((zone) => getZoneStatus(assets, zone));
   const coveredZones = statuses.filter((item) => item.status === 'sufficient').length;
   const pendingZones = statuses.filter((item) => item.status !== 'sufficient').length;
-  if (assets.length === 0) return { label: 'Material incompleto', detail: 'Añade al menos una imagen/panorama por estancia principal para mejorar QA e IA.', pendingZones, coveredZones };
+  if (assets.length === 0) return { label: 'Material incompleto', detail: 'AÃ±ade al menos una imagen/panorama por estancia principal para mejorar QA e IA.', pendingZones, coveredZones };
   if (statuses.some((item) => item.status === 'needs_review' || item.status === 'pending')) return { label: 'Material pendiente de revisar', detail: 'Marca como suficiente el material validado por zona.', pendingZones, coveredZones };
   return { label: 'Material suficiente', detail: 'Hay cobertura suficiente en las zonas principales registradas.', pendingZones, coveredZones };
 }
@@ -715,6 +747,8 @@ export default function CaptureJobsPage(): JSX.Element {
   const [commercialBriefForm, setCommercialBriefForm] = useState<CommercialBriefForm>(emptyCommercialBriefForm);
   const [hotspotForm, setHotspotForm] = useState<HotspotForm>(emptyHotspotForm);
   const [editingHotspotId, setEditingHotspotId] = useState<string | null>(null);
+  const [selectedNativeHotspotId, setSelectedNativeHotspotId] = useState<string | null>(null);
+  const [nativePointDraft, setNativePointDraft] = useState<NativePointPickData | null>(null);
   const [filters, setFilters] = useState({ status: '', priority: '', riskLevel: '', q: '' });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -786,6 +820,8 @@ export default function CaptureJobsPage(): JSX.Element {
       setCommercialBriefForm(toCommercialBriefForm(data));
       setHotspotForm(emptyHotspotForm);
       setEditingHotspotId(null);
+      setSelectedNativeHotspotId(null);
+      setNativePointDraft(null);
       setGuideTypeOverride('');
       await loadAiRuns(id);
     } catch (err) {
@@ -825,6 +861,8 @@ export default function CaptureJobsPage(): JSX.Element {
     setCommercialBriefForm(emptyCommercialBriefForm);
     setHotspotForm(emptyHotspotForm);
     setEditingHotspotId(null);
+    setSelectedNativeHotspotId(null);
+    setNativePointDraft(null);
     setGuideTypeOverride('');
     setAiRuns([]);
     setAiRunsOpen(false);
@@ -867,7 +905,7 @@ export default function CaptureJobsPage(): JSX.Element {
   }
 
   async function copyLandingUrl(captureJobId: string): Promise<void> {
-    await copyToClipboard(getCaptureLandingUrl(captureJobId), 'Landing pública copiada.');
+    await copyToClipboard(getCaptureLandingUrl(captureJobId), 'Landing pÃºblica copiada.');
   }
 
   async function copyViewerUrl(url: string): Promise<void> {
@@ -981,7 +1019,7 @@ export default function CaptureJobsPage(): JSX.Element {
 
   async function applyAiContent(runId: string): Promise<void> {
     if (!selectedJob) return;
-    if (selectedJob.appliedAiContent && !window.confirm('Esto reemplazará el contenido aplicado anterior. ¿Continuar?')) return;
+    if (selectedJob.appliedAiContent && !window.confirm('Esto reemplazarÃ¡ el contenido aplicado anterior. Â¿Continuar?')) return;
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -1082,6 +1120,22 @@ export default function CaptureJobsPage(): JSX.Element {
     } finally {
       setSaving(false);
     }
+  }
+
+  async function saveNativeHotspotPosition(): Promise<void> {
+    if (!selectedJob || !nativePointDraft || !selectedNativeHotspotId) return;
+    const hotspot = visibleHotspots.find((item) => item.id === selectedNativeHotspotId);
+    if (!hotspot) return;
+    await patchHotspot(hotspot, { position: nativePointDraft });
+    setNativePointDraft(null);
+  }
+
+  async function resetHotspotToOverlayAuto(): Promise<void> {
+    if (!selectedJob || !selectedNativeHotspotId) return;
+    const hotspot = visibleHotspots.find((item) => item.id === selectedNativeHotspotId);
+    if (!hotspot) return;
+    await patchHotspot(hotspot, { position: null });
+    setNativePointDraft(null);
   }
 
   async function archiveHotspot(hotspot: CaptureHotspot): Promise<void> {
@@ -1268,16 +1322,16 @@ export default function CaptureJobsPage(): JSX.Element {
   return (
     <main className="mx-auto max-w-7xl px-5 py-10">
       <Helmet>
-        <title>Capture Jobs · Immersphere Pro</title>
+        <title>Capture Jobs Â· Immersphere Pro</title>
         <meta name="robots" content="noindex" />
       </Helmet>
 
       <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
         <div>
-          <p className="text-xs font-black uppercase tracking-[0.22em] text-ip-accent">Operación visual</p>
+          <p className="text-xs font-black uppercase tracking-[0.22em] text-ip-accent">OperaciÃ³n visual</p>
           <h1 className="mt-1 text-3xl font-black tracking-tight text-slate-950 dark:text-white">Capture Jobs</h1>
           <p className="mt-2 max-w-2xl text-sm font-semibold text-slate-500 dark:text-white/45">
-            Gestiona material recibido, QA, outputs, URL pública y conexión básica con propiedades o leads.
+            Gestiona material recibido, QA, outputs, URL pÃºblica y conexiÃ³n bÃ¡sica con propiedades o leads.
           </p>
         </div>
         <div className="flex gap-2">
@@ -1309,7 +1363,7 @@ export default function CaptureJobsPage(): JSX.Element {
           <div>
             <input value={filters.q} onChange={(e) => setFilters((current) => ({ ...current, q: e.target.value }))} placeholder="Buscar" className="w-full rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-white/5" />
             <p className="mt-1 text-[11px] font-bold leading-4 text-slate-400 dark:text-white/35">
-              Puedes buscar por cliente, proyecto, ID, URL pública, QR u output 3D.
+              Puedes buscar por cliente, proyecto, ID, URL pÃºblica, QR u output 3D.
             </p>
           </div>
           <select value={filters.status} onChange={(e) => setFilters((current) => ({ ...current, status: e.target.value }))} className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-white/5">
@@ -1343,10 +1397,10 @@ export default function CaptureJobsPage(): JSX.Element {
                   <th className="px-4 py-3">Estado</th>
                   <th className="px-4 py-3">Prioridad</th>
                   <th className="px-4 py-3">Riesgo</th>
-                  <th className="px-4 py-3">Próxima acción</th>
+                  <th className="px-4 py-3">PrÃ³xima acciÃ³n</th>
                   <th className="px-4 py-3">Assets</th>
                   <th className="px-4 py-3">3D</th>
-                  <th className="px-4 py-3">Público</th>
+                  <th className="px-4 py-3">PÃºblico</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 dark:divide-white/10">
@@ -1358,14 +1412,14 @@ export default function CaptureJobsPage(): JSX.Element {
                   <tr key={job.id} className={`cursor-pointer hover:bg-slate-50 dark:hover:bg-white/5 ${selectedJob?.id === job.id ? 'bg-violet-50/70 dark:bg-violet-950/20' : ''}`} onClick={() => { void loadJob(job.id); }}>
                     <td className="px-4 py-3">
                       <p className="font-black text-slate-950 dark:text-white">{job.title}</p>
-                      <p className="text-xs font-semibold text-slate-500 dark:text-white/40">{job.clientName} · {job.projectType}</p>
+                      <p className="text-xs font-semibold text-slate-500 dark:text-white/40">{job.clientName} Â· {job.projectType}</p>
                       {job.property ? <p className="mt-1 text-xs font-bold text-ip-accent">{job.property.title}</p> : null}
                     </td>
                     <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-black ring-1 ${badgeClass(job.status)}`}>{statusLabel(job.status)}</span></td>
                     <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-black ring-1 ${badgeClass(job.priority)}`}>{job.priority}</span></td>
                     <td className="px-4 py-3"><span className={`rounded-full px-2.5 py-1 text-xs font-black ring-1 ${badgeClass(job.riskLevel)}`}>{job.riskLevel}</span></td>
                     <td className="max-w-[240px] px-4 py-3 text-xs font-semibold text-slate-500 dark:text-white/50">{job.nextAction || '-'}</td>
-                    <td className="px-4 py-3 text-xs font-black text-slate-600 dark:text-white/60">{job._count?.inputAssets ?? job.inputAssets?.length ?? 0} in · {job._count?.outputAssets ?? job.outputAssets?.length ?? 0} out</td>
+                    <td className="px-4 py-3 text-xs font-black text-slate-600 dark:text-white/60">{job._count?.inputAssets ?? job.inputAssets?.length ?? 0} in Â· {job._count?.outputAssets ?? job.outputAssets?.length ?? 0} out</td>
                     <td className="px-4 py-3">
                       {(() => {
                         const primary3d = getPrimaryPremium3dOutput(job);
@@ -1388,7 +1442,7 @@ export default function CaptureJobsPage(): JSX.Element {
                         </Link>
                       ) : (
                         <span className="max-w-[140px] text-[10px] font-bold leading-4 text-amber-600 dark:text-amber-300">
-                          Publica el CaptureJob para activar la entrega pública.
+                          Publica el CaptureJob para activar la entrega pÃºblica.
                         </span>
                       )}
                     </td>
@@ -1415,7 +1469,7 @@ export default function CaptureJobsPage(): JSX.Element {
 
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="sm:col-span-2">
-                <FieldLabel>Título</FieldLabel>
+                <FieldLabel>TÃ­tulo</FieldLabel>
                 <input required value={form.title} onChange={(e) => updateForm('title', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-white/5" />
               </div>
               <div>
@@ -1480,7 +1534,7 @@ export default function CaptureJobsPage(): JSX.Element {
                 <input value={form.assignedTo} onChange={(e) => updateForm('assignedTo', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-white/5" />
               </div>
               <div className="sm:col-span-2">
-                <FieldLabel>Próxima acción</FieldLabel>
+                <FieldLabel>PrÃ³xima acciÃ³n</FieldLabel>
                 <input value={form.nextAction} onChange={(e) => updateForm('nextAction', e.target.value)} className="mt-1 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-white/5" />
               </div>
               <div className="sm:col-span-2">
@@ -1508,17 +1562,17 @@ export default function CaptureJobsPage(): JSX.Element {
               {selectedJob && isPublicCaptureStatus(selectedJob.status) ? (
                 <>
                   <Link to={getCaptureLandingPath(selectedJob.id)} className="inline-flex items-center gap-2 rounded-full bg-ip-accent px-4 py-2 text-sm font-black text-white hover:bg-ip-accent-hover">
-                    Ver landing pública <ExternalLink className="h-4 w-4" />
+                    Ver landing pÃºblica <ExternalLink className="h-4 w-4" />
                   </Link>
                   <button type="button" onClick={() => { void copyLandingUrl(selectedJob.id); }} className="inline-flex items-center gap-2 rounded-full border border-slate-200 px-4 py-2 text-sm font-black text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
-                    <Copy className="h-4 w-4" /> Copiar landing pública
+                    <Copy className="h-4 w-4" /> Copiar landing pÃºblica
                   </button>
                 </>
               ) : null}
             </div>
             {selectedJob && !isPublicCaptureStatus(selectedJob.status) ? (
               <p className="rounded-xl bg-amber-50 px-4 py-3 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-                Publica el CaptureJob para activar la entrega pública.
+                Publica el CaptureJob para activar la entrega pÃºblica.
               </p>
             ) : null}
           </form>
@@ -1540,10 +1594,10 @@ export default function CaptureJobsPage(): JSX.Element {
                       <ExternalLink className="h-3.5 w-3.5" /> Abrir landing
                     </Link>
                     <a href={getCaptureLandingUrl(selectedJob.id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-white px-3 py-2 text-xs font-black text-emerald-700 hover:bg-emerald-50 dark:border-emerald-900/50 dark:bg-slate-950 dark:text-emerald-300">
-                      <Smartphone className="h-3.5 w-3.5" /> Abrir en móvil
+                      <Smartphone className="h-3.5 w-3.5" /> Abrir en mÃ³vil
                     </a>
                     <a href={getCapturePresentationUrl(selectedJob.id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-violet-200 bg-white px-3 py-2 text-xs font-black text-violet-700 hover:bg-violet-50 dark:border-violet-900/50 dark:bg-slate-950 dark:text-violet-300">
-                      <ExternalLink className="h-3.5 w-3.5" /> Modo presentación
+                      <ExternalLink className="h-3.5 w-3.5" /> Modo presentaciÃ³n
                     </a>
                     <a href={getCapturePrintUrl(selectedJob.id)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:bg-slate-950 dark:text-white/70">
                       <Printer className="h-3.5 w-3.5" /> Ficha imprimible
@@ -1552,7 +1606,7 @@ export default function CaptureJobsPage(): JSX.Element {
                 </div>
                 <div className="w-full rounded-xl bg-white p-3 ring-1 ring-emerald-100 dark:bg-slate-950 dark:ring-emerald-900/50 lg:w-48">
                   {selectedJob.qrUrl ? (
-                    <img src={selectedJob.qrUrl} alt="QR de la landing pública" className="mx-auto h-36 w-36 rounded-lg bg-white object-contain" />
+                    <img src={selectedJob.qrUrl} alt="QR de la landing pÃºblica" className="mx-auto h-36 w-36 rounded-lg bg-white object-contain" />
                   ) : (
                     <div className="flex h-36 w-full items-center justify-center rounded-lg border border-dashed border-emerald-200 text-center text-xs font-black text-emerald-700 dark:border-emerald-900/50 dark:text-emerald-300">
                       QR pendiente
@@ -1585,7 +1639,7 @@ export default function CaptureJobsPage(): JSX.Element {
                       <div>
                         <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">Pipeline manual 3D</p>
                         <h3 className="mt-1 text-base font-black text-slate-950 dark:text-white">
-                          {primary3d ? 'Output 3D principal automático' : 'Sin output 3D principal'}
+                          {primary3d ? 'Output 3D principal automÃ¡tico' : 'Sin output 3D principal'}
                         </h3>
                       </div>
                       {primary3d ? (
@@ -1604,14 +1658,14 @@ export default function CaptureJobsPage(): JSX.Element {
                           <p>Iframe: <span className="font-black text-slate-900 dark:text-white">{canEmbedOutput(primary3d) ? 'Embebible' : 'Usar fallback externo'}</span></p>
                         </div>
                         <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
-                          Este será el output 3D principal según prioridad automática. No se modifica ni archiva ningún otro output.
+                          Este serÃ¡ el output 3D principal segÃºn prioridad automÃ¡tica. No se modifica ni archiva ningÃºn otro output.
                         </p>
                         <div className="mt-3 grid gap-2 sm:grid-cols-2">
                           {[
-                            ['URL válida', Boolean(getOutputUrl(primary3d))],
+                            ['URL vÃ¡lida', Boolean(getOutputUrl(primary3d))],
                             ['Provider definido', Boolean(getProviderLabel(primary3d))],
                             ['Desktop probado', primary3d.viewerReady],
-                            ['Móvil probado', primary3d.mobileReady],
+                            ['MÃ³vil probado', primary3d.mobileReady],
                             ['Iframe o fallback confirmado', canEmbedOutput(primary3d) || Boolean(getOutputUrl(primary3d))],
                             ['Status published', primary3d.status === 'published'],
                           ].map(([label, ok]) => (
@@ -1675,7 +1729,7 @@ export default function CaptureJobsPage(): JSX.Element {
                       <div className="grid gap-2 sm:grid-cols-2">
                         {getCaptureChecklist(guideType).map((item) => (
                           <div key={item} className="flex items-start gap-2 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-600 dark:bg-slate-950 dark:text-white/60">
-                            <span className="mt-0.5 text-slate-400">□</span>
+                            <span className="mt-0.5 text-slate-400">â–¡</span>
                             <span>{item}</span>
                           </div>
                         ))}
@@ -1691,7 +1745,7 @@ export default function CaptureJobsPage(): JSX.Element {
                             {(selectedJob.inputAssets?.length ?? 0) > 0 ? `${selectedJob.inputAssets?.length ?? 0} registrados` : '0 registrados'}
                           </p>
                           {inputSummary.length > 0 ? (
-                            <p className="mt-1 text-[10px] font-bold text-slate-400">{inputSummary.join(' · ')}</p>
+                            <p className="mt-1 text-[10px] font-bold text-slate-400">{inputSummary.join(' Â· ')}</p>
                           ) : null}
                         </div>
                         {primary3d ? (
@@ -1699,7 +1753,7 @@ export default function CaptureJobsPage(): JSX.Element {
                             <p className="text-[10px] font-black uppercase tracking-[0.12em] text-violet-500">Output 3D detectado</p>
                             <p className="mt-1 text-xs font-bold text-slate-600 dark:text-white/60">Provider: {getProviderLabel(primary3d)}</p>
                             <p className="mt-1 text-[10px] font-bold text-slate-400">
-                              {primary3d.viewerReady ? 'Desktop OK' : 'Desktop pendiente'} · {primary3d.mobileReady ? 'Mobile OK' : 'Mobile pendiente'} · {getOutputUrl(primary3d) ? 'Fallback externo OK' : 'Fallback pendiente'}
+                              {primary3d.viewerReady ? 'Desktop OK' : 'Desktop pendiente'} Â· {primary3d.mobileReady ? 'Mobile OK' : 'Mobile pendiente'} Â· {getOutputUrl(primary3d) ? 'Fallback externo OK' : 'Fallback pendiente'}
                             </p>
                           </div>
                         ) : null}
@@ -1723,7 +1777,7 @@ export default function CaptureJobsPage(): JSX.Element {
                     <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">Briefing comercial</p>
                     <h3 className="mt-1 text-base font-black text-slate-950 dark:text-white">Contexto para mejorar la IA</h3>
                     <p className="mt-1 text-xs font-bold leading-5 text-slate-500 dark:text-white/50">
-                      Cuanto más completo sea el briefing, mejor serán los hotspots, copy y guion generados.
+                      Cuanto mÃ¡s completo sea el briefing, mejor serÃ¡n los hotspots, copy y guion generados.
                     </p>
                   </div>
                   <div className="shrink-0 text-left sm:text-right">
@@ -1738,26 +1792,26 @@ export default function CaptureJobsPage(): JSX.Element {
 
                 <div className="mt-4 grid gap-3 sm:grid-cols-2">
                   <input value={commercialBriefForm.propertyType} onChange={(e) => updateCommercialBrief('propertyType', e.target.value)} placeholder="Tipo de inmueble / activo" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                  <input value={commercialBriefForm.location} onChange={(e) => updateCommercialBrief('location', e.target.value)} placeholder="Ubicación" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                  <input value={commercialBriefForm.surface} onChange={(e) => updateCommercialBrief('surface', e.target.value)} placeholder="Superficie / tamaño" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.location} onChange={(e) => updateCommercialBrief('location', e.target.value)} placeholder="UbicaciÃ³n" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.surface} onChange={(e) => updateCommercialBrief('surface', e.target.value)} placeholder="Superficie / tamaÃ±o" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
                   <input value={commercialBriefForm.rooms} onChange={(e) => updateCommercialBrief('rooms', e.target.value)} placeholder="Habitaciones / zonas clave" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                  <input value={commercialBriefForm.bathrooms} onChange={(e) => updateCommercialBrief('bathrooms', e.target.value)} placeholder="Baños / equipamiento" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.bathrooms} onChange={(e) => updateCommercialBrief('bathrooms', e.target.value)} placeholder="BaÃ±os / equipamiento" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
                   <input value={commercialBriefForm.priceRange} onChange={(e) => updateCommercialBrief('priceRange', e.target.value)} placeholder="Rango de precio / valor comercial" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                  <input value={commercialBriefForm.targetAudience} onChange={(e) => updateCommercialBrief('targetAudience', e.target.value)} placeholder="Público objetivo" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <input value={commercialBriefForm.targetAudience} onChange={(e) => updateCommercialBrief('targetAudience', e.target.value)} placeholder="PÃºblico objetivo" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
                   <input value={commercialBriefForm.salesObjective} onChange={(e) => updateCommercialBrief('salesObjective', e.target.value)} placeholder="Objetivo comercial" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                  <textarea value={listToText(commercialBriefForm.keyBenefits)} onChange={(e) => updateCommercialBrief('keyBenefits', textToList(e.target.value))} rows={3} placeholder="Beneficios clave, uno por línea" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                  <textarea value={listToText(commercialBriefForm.differentiators)} onChange={(e) => updateCommercialBrief('differentiators', textToList(e.target.value))} rows={3} placeholder="Diferenciales, uno por línea" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <textarea value={listToText(commercialBriefForm.keyBenefits)} onChange={(e) => updateCommercialBrief('keyBenefits', textToList(e.target.value))} rows={3} placeholder="Beneficios clave, uno por lÃ­nea" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
+                  <textarea value={listToText(commercialBriefForm.differentiators)} onChange={(e) => updateCommercialBrief('differentiators', textToList(e.target.value))} rows={3} placeholder="Diferenciales, uno por lÃ­nea" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
                   <select value={commercialBriefForm.tone} onChange={(e) => updateCommercialBrief('tone', e.target.value as CommercialBriefForm['tone'])} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
                     <option value="professional">Profesional</option>
                     <option value="premium">Premium</option>
                     <option value="direct">Directo</option>
                     <option value="inspirational">Inspiracional</option>
-                    <option value="technical">Técnico</option>
+                    <option value="technical">TÃ©cnico</option>
                   </select>
                   <select value={commercialBriefForm.ctaGoal} onChange={(e) => updateCommercialBrief('ctaGoal', e.target.value as CommercialBriefForm['ctaGoal'])} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
                     <option value="contact">Contacto</option>
                     <option value="book_visit">Reservar visita</option>
-                    <option value="request_info">Solicitar información</option>
+                    <option value="request_info">Solicitar informaciÃ³n</option>
                     <option value="download">Descarga</option>
                     <option value="call">Llamada</option>
                   </select>
@@ -1772,7 +1826,7 @@ export default function CaptureJobsPage(): JSX.Element {
                   <button type="button" onClick={() => setCommercialBriefForm(emptyCommercialBriefForm)} disabled={saving} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5">
                     Limpiar campos
                   </button>
-                  <p className="text-xs font-bold text-slate-400">Usar briefing en IA: se aplica automáticamente al reprocesar.</p>
+                  <p className="text-xs font-bold text-slate-400">Usar briefing en IA: se aplica automÃ¡ticamente al reprocesar.</p>
                 </div>
               </div>
 
@@ -1816,7 +1870,7 @@ export default function CaptureJobsPage(): JSX.Element {
                         InputAssets: <span className="font-black text-slate-800 dark:text-white">{selectedJob.inputAssets?.length ?? 0}</span>
                       </p>
                       <p className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
-                        Output 3D detectado: <span className="font-black text-slate-800 dark:text-white">{getPrimaryPremium3dOutput(selectedJob) ? 'sí' : 'no'}</span>
+                        Output 3D detectado: <span className="font-black text-slate-800 dark:text-white">{getPrimaryPremium3dOutput(selectedJob) ? 'sÃ­' : 'no'}</span>
                       </p>
                     </div>
                     {contextLimited ? (
@@ -1834,7 +1888,7 @@ export default function CaptureJobsPage(): JSX.Element {
                               {formatNumber(aiUsage.daily.used)} / {formatNumber(aiUsage.daily.limit)} procesamientos
                             </p>
                             <p className="mt-1 text-xs font-bold text-slate-500 dark:text-white/50">
-                              Restantes: {formatNumber(aiUsage.daily.remaining)} · Plan: {aiUsage.plan.name} · Modelo: {aiUsage.model.tier} ({aiUsage.model.id})
+                              Restantes: {formatNumber(aiUsage.daily.remaining)} Â· Plan: {aiUsage.plan.name} Â· Modelo: {aiUsage.model.tier} ({aiUsage.model.id})
                             </p>
                           </div>
                           <button
@@ -1941,7 +1995,7 @@ export default function CaptureJobsPage(): JSX.Element {
                               Crear hotspots borrador
                             </button>
                             <button type="button" onClick={() => { void applyAiContent(latestRun.id); }} disabled={saving} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5">
-                              Crear checklist de producción
+                              Crear checklist de producciÃ³n
                             </button>
                           </div>
                         ) : null}
@@ -1966,7 +2020,7 @@ export default function CaptureJobsPage(): JSX.Element {
                               <div className="mt-2 grid gap-2 sm:grid-cols-2">
                                 {result.experienceStructure.sections.slice(0, 4).map((section) => (
                                   <p key={`${section.title}-${section.objective}`} className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-white/5 dark:text-white/50">
-                                    <span className="font-black text-slate-700 dark:text-white/70">{section.title}</span> · {section.objective}
+                                    <span className="font-black text-slate-700 dark:text-white/70">{section.title}</span> Â· {section.objective}
                                   </p>
                                 ))}
                               </div>
@@ -1983,7 +2037,7 @@ export default function CaptureJobsPage(): JSX.Element {
                                 <div className="mt-2 space-y-2">
                                   {result.suggestedHotspots.slice(0, 4).map((hotspot) => (
                                     <p key={`${hotspot.label}-${hotspot.roomOrZone}`} className="text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
-                                      <span className="font-black text-slate-800 dark:text-white">{hotspot.label}</span> · {hotspot.roomOrZone} · {hotspot.priority}
+                                      <span className="font-black text-slate-800 dark:text-white">{hotspot.label}</span> Â· {hotspot.roomOrZone} Â· {hotspot.priority}
                                     </p>
                                   ))}
                                 </div>
@@ -2001,7 +2055,7 @@ export default function CaptureJobsPage(): JSX.Element {
                                     {result.commercialCopy.shortDescription ? <p className="text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{result.commercialCopy.shortDescription}</p> : null}
                                     {result.commercialCopy.longDescription ? <p className="text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{result.commercialCopy.longDescription}</p> : null}
                                     {result.commercialCopy.salesAngle ? <p className="text-xs font-bold text-sky-700 dark:text-sky-300">{result.commercialCopy.salesAngle}</p> : null}
-                                    {result.commercialCopy.targetAudience ? <p className="text-[10px] font-bold text-slate-400">Público: {result.commercialCopy.targetAudience}</p> : null}
+                                    {result.commercialCopy.targetAudience ? <p className="text-[10px] font-bold text-slate-400">PÃºblico: {result.commercialCopy.targetAudience}</p> : null}
                                     {result.commercialCopy.propertyHighlights.length > 0 ? (
                                       <div className="flex flex-wrap gap-1">
                                         {result.commercialCopy.propertyHighlights.slice(0, 4).map((highlight) => (
@@ -2009,7 +2063,7 @@ export default function CaptureJobsPage(): JSX.Element {
                                         ))}
                                       </div>
                                     ) : null}
-                                    {result.commercialCopy.ctaSuggestions.length > 0 ? <p className="text-[10px] font-black text-sky-700 dark:text-sky-300">CTA: {result.commercialCopy.ctaSuggestions.slice(0, 3).join(' · ')}</p> : null}
+                                    {result.commercialCopy.ctaSuggestions.length > 0 ? <p className="text-[10px] font-black text-sky-700 dark:text-sky-300">CTA: {result.commercialCopy.ctaSuggestions.slice(0, 3).join(' Â· ')}</p> : null}
                                   </div>
                                 ) : (
                                   <p className="mt-2 text-xs font-bold text-slate-400">Sin contenido generado. Reprocesa tras completar briefing/material.</p>
@@ -2018,7 +2072,7 @@ export default function CaptureJobsPage(): JSX.Element {
 
                               <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
                                 <div className="flex items-center justify-between gap-2">
-                                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Guion de vídeo</p>
+                                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Guion de vÃ­deo</p>
                                   <button type="button" onClick={() => { void copyAiSection('Guion', result.videoScript); }} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
                                     <Copy className="h-3 w-3" /> Copiar
                                   </button>
@@ -2029,12 +2083,12 @@ export default function CaptureJobsPage(): JSX.Element {
                                     {result.videoScript.voiceover ? <p className="text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{result.videoScript.voiceover}</p> : null}
                                     {result.videoScript.sceneList.slice(0, 3).map((scene) => (
                                       <p key={`${scene.scene}-${scene.duration}`} className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-white/5 dark:text-white/50">
-                                        <span className="font-black text-slate-700 dark:text-white/70">{scene.scene}</span> · {scene.visual} · {scene.duration}
+                                        <span className="font-black text-slate-700 dark:text-white/70">{scene.scene}</span> Â· {scene.visual} Â· {scene.duration}
                                       </p>
                                     ))}
                                     {result.videoScript.closingCTA ? <p className="text-xs font-bold text-sky-700 dark:text-sky-300">{result.videoScript.closingCTA}</p> : null}
                                     <p className="text-[10px] font-bold text-slate-400">
-                                      Formatos: {result.videoScript.formatRecommendations.horizontal || 'horizontal pendiente'} · {result.videoScript.formatRecommendations.vertical || 'vertical pendiente'}
+                                      Formatos: {result.videoScript.formatRecommendations.horizontal || 'horizontal pendiente'} Â· {result.videoScript.formatRecommendations.vertical || 'vertical pendiente'}
                                     </p>
                                   </div>
                                 ) : (
@@ -2044,15 +2098,15 @@ export default function CaptureJobsPage(): JSX.Element {
 
                               <div className="rounded-lg bg-white p-3 dark:bg-slate-950">
                                 <div className="flex items-center justify-between gap-2">
-                                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Próximas acciones</p>
-                                  <button type="button" onClick={() => { void copyAiSection('Próximas acciones', result.nextActions); }} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
+                                  <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">PrÃ³ximas acciones</p>
+                                  <button type="button" onClick={() => { void copyAiSection('PrÃ³ximas acciones', result.nextActions); }} className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black text-slate-600 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
                                     <Copy className="h-3 w-3" /> Copiar
                                   </button>
                                 </div>
                                 <div className="mt-2 space-y-2">
                                   {result.nextActions.length === 0 ? <p className="text-xs font-bold text-slate-400">Sin contenido generado. Reprocesa tras completar briefing/material.</p> : result.nextActions.slice(0, 5).map((action) => (
                                     <p key={`${action.action}-${action.ownerSuggestion}`} className="text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
-                                      <span className="font-black text-slate-800 dark:text-white">{action.priority}</span> · {action.action}
+                                      <span className="font-black text-slate-800 dark:text-white">{action.priority}</span> Â· {action.action}
                                       {action.reason ? <span className="block text-[10px] text-slate-400">{action.reason}</span> : null}
                                     </p>
                                   ))}
@@ -2066,7 +2120,7 @@ export default function CaptureJobsPage(): JSX.Element {
                                 <div className="mt-2 space-y-2">
                                   {result.missingMaterial.length === 0 ? <p className="text-xs font-bold text-slate-400">Sin faltantes destacados.</p> : result.missingMaterial.slice(0, 4).map((item) => (
                                     <p key={`${item.item}-${item.reason}`} className="rounded-lg bg-amber-50 px-2 py-1 text-[10px] font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
-                                      {item.severity} · {item.item}: {item.recommendation}
+                                      {item.severity} Â· {item.item}: {item.recommendation}
                                     </p>
                                   ))}
                                 </div>
@@ -2075,19 +2129,19 @@ export default function CaptureJobsPage(): JSX.Element {
                                 <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">QA recomendado</p>
                                 <p className="mt-2 text-xs font-black text-slate-800 dark:text-white">Readiness: {statusLabel(result.qaRecommendations.publicationReadiness)}</p>
                                 <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
-                                  Desktop: {result.qaRecommendations.desktop.slice(0, 2).join(' · ') || 'Sin contenido generado. Reprocesa tras completar briefing/material.'}
+                                  Desktop: {result.qaRecommendations.desktop.slice(0, 2).join(' Â· ') || 'Sin contenido generado. Reprocesa tras completar briefing/material.'}
                                 </p>
                                 <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
-                                  Mobile: {result.qaRecommendations.mobile.slice(0, 2).join(' · ') || 'Sin contenido generado. Reprocesa tras completar briefing/material.'}
+                                  Mobile: {result.qaRecommendations.mobile.slice(0, 2).join(' Â· ') || 'Sin contenido generado. Reprocesa tras completar briefing/material.'}
                                 </p>
                                 {result.qaRecommendations.performance.length > 0 ? (
                                   <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
-                                    Performance: {result.qaRecommendations.performance.slice(0, 2).join(' · ')}
+                                    Performance: {result.qaRecommendations.performance.slice(0, 2).join(' Â· ')}
                                   </p>
                                 ) : null}
                                 {result.qaRecommendations.viewer.length > 0 ? (
                                   <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">
-                                    Viewer: {result.qaRecommendations.viewer.slice(0, 2).join(' · ')}
+                                    Viewer: {result.qaRecommendations.viewer.slice(0, 2).join(' Â· ')}
                                   </p>
                                 ) : null}
                                 {result.confidence.explanation ? (
@@ -2107,7 +2161,7 @@ export default function CaptureJobsPage(): JSX.Element {
                               <div className="mt-2 space-y-1">
                                 {aiRuns.slice(1).map((run) => (
                                   <p key={run.id} className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
-                                    {formatRunDate(run.createdAt)} Â· {getAiRunStatusLabel(run.status)} Â· intentos {run.attempts}/{run.maxAttempts} Â· {run.model || 'modelo no registrado'} {run.result ? `Â· confidence ${run.result.confidence.score}/100` : ''}
+                                    {formatRunDate(run.createdAt)} Ã‚Â· {getAiRunStatusLabel(run.status)} Ã‚Â· intentos {run.attempts}/{run.maxAttempts} Ã‚Â· {run.model || 'modelo no registrado'} {run.result ? `Ã‚Â· confidence ${run.result.confidence.score}/100` : ''}
                                   </p>
                                 ))}
                               </div>
@@ -2147,11 +2201,11 @@ export default function CaptureJobsPage(): JSX.Element {
                     ) : null}
                     {selectedJob.appliedAiContent.nextActions?.length ? (
                       <div className="lg:col-span-2">
-                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Checklist de producción</p>
+                        <p className="text-[10px] font-black uppercase tracking-[0.12em] text-slate-400">Checklist de producciÃ³n</p>
                         <div className="mt-2 grid gap-2 sm:grid-cols-2">
                           {selectedJob.appliedAiContent.nextActions.slice(0, 6).map((action) => (
                             <p key={`${action.action}-${action.priority}`} className="rounded-lg bg-slate-50 px-2 py-1 text-[10px] font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
-                              <span className="font-black text-slate-700 dark:text-white/70">{action.priority}</span> · {action.action}
+                              <span className="font-black text-slate-700 dark:text-white/70">{action.priority}</span> Â· {action.action}
                             </p>
                           ))}
                         </div>
@@ -2159,7 +2213,7 @@ export default function CaptureJobsPage(): JSX.Element {
                     ) : null}
                   </div>
                 ) : (
-                  <p className="mt-3 text-sm font-semibold text-slate-400">Aplica un run IA completado para guardar copy operativo. Nada se publica automáticamente.</p>
+                  <p className="mt-3 text-sm font-semibold text-slate-400">Aplica un run IA completado para guardar copy operativo. Nada se publica automÃ¡ticamente.</p>
                 )}
               </div>
 
@@ -2169,13 +2223,13 @@ export default function CaptureJobsPage(): JSX.Element {
                     <p className="text-xs font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">Hotspots</p>
                     <h3 className="mt-1 text-base font-black text-slate-950 dark:text-white">{visibleHotspots.length} hotspots operativos</h3>
                   </div>
-                  <p className="text-xs font-bold text-slate-400">Publicar = status published + público activo.</p>
+                  <p className="text-xs font-bold text-slate-400">Publicar = status published + pÃºblico activo.</p>
                 </div>
 
                 <div className="mt-4 grid gap-2 sm:grid-cols-2">
                   <input value={hotspotForm.label} onChange={(e) => updateHotspotForm('label', e.target.value)} placeholder="Label" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
                   <input value={hotspotForm.roomOrZone} onChange={(e) => updateHotspotForm('roomOrZone', e.target.value)} placeholder="Zona" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
-                  <textarea value={hotspotForm.description} onChange={(e) => updateHotspotForm('description', e.target.value)} rows={2} placeholder="Descripción" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900 sm:col-span-2" />
+                  <textarea value={hotspotForm.description} onChange={(e) => updateHotspotForm('description', e.target.value)} rows={2} placeholder="DescripciÃ³n" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900 sm:col-span-2" />
                   <select value={hotspotForm.hotspotType} onChange={(e) => updateHotspotForm('hotspotType', e.target.value as HotspotForm['hotspotType'])} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
                     {['info', 'cta', 'navigation', 'feature', 'warning'].map((type) => <option key={type} value={type}>{statusLabel(type)}</option>)}
                   </select>
@@ -2210,7 +2264,7 @@ export default function CaptureJobsPage(): JSX.Element {
                   </button>
                   {editingHotspotId ? (
                     <button type="button" onClick={() => { setEditingHotspotId(null); setHotspotForm(emptyHotspotForm); }} disabled={saving} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 hover:bg-slate-50 disabled:opacity-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5">
-                      Cancelar edición
+                      Cancelar ediciÃ³n
                     </button>
                   ) : null}
                 </div>
@@ -2223,12 +2277,16 @@ export default function CaptureJobsPage(): JSX.Element {
                           <div className="flex flex-wrap items-center gap-2">
                             <h4 className="text-sm font-black text-slate-900 dark:text-white">{hotspot.label}</h4>
                             <span className={`rounded-full px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] ${hotspot.status === 'published' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : hotspot.status === 'approved' ? 'bg-sky-50 text-sky-700 dark:bg-sky-950/30 dark:text-sky-300' : 'bg-slate-100 text-slate-600 dark:bg-white/10 dark:text-white/60'}`}>{hotspot.status}</span>
-                            {hotspot.isPublic ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">público</span> : null}
+                            {hotspot.isPublic ? <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">pÃºblico</span> : null}
                           </div>
-                          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{hotspot.roomOrZone ? `${hotspot.roomOrZone} · ` : ''}{hotspot.description}</p>
+                          <p className="mt-1 text-xs font-semibold leading-5 text-slate-500 dark:text-white/50">{hotspot.roomOrZone ? `${hotspot.roomOrZone} Â· ` : ''}{hotspot.description}</p>
                           <p className="mt-1 text-[10px] font-bold text-slate-400">
-                            {hotspot.hotspotType} · {hotspot.priority}{hotspot.cta ? ` · CTA: ${hotspot.cta}` : ''}
-                            {typeof hotspot.position?.x === 'number' && typeof hotspot.position?.y === 'number' ? ` · overlay ${hotspot.position.x}%/${hotspot.position.y}%` : ' · overlay auto'}
+                            {hotspot.hotspotType} Â· {hotspot.priority}{hotspot.cta ? ` Â· CTA: ${hotspot.cta}` : ''}
+                            {hotspot.position?.mode === 'native_3d' && typeof hotspot.position.x === 'number' && typeof hotspot.position.y === 'number' && typeof hotspot.position.z === 'number'
+                              ? ` · native 3D ${hotspot.position.x}/${hotspot.position.y}/${hotspot.position.z}`
+                              : typeof hotspot.position?.x === 'number' && typeof hotspot.position?.y === 'number'
+                                ? ` · overlay ${hotspot.position.x}%/${hotspot.position.y}%`
+                                : ' · overlay auto'}
                           </p>
                         </div>
                         <div className="flex flex-wrap gap-1">
@@ -2244,6 +2302,87 @@ export default function CaptureJobsPage(): JSX.Element {
                 </div>
               </div>
 
+              <div className="rounded-xl border border-violet-200 bg-violet-50/70 p-4 dark:border-violet-900/50 dark:bg-violet-950/20">
+                {(() => {
+                  const nativeOutput = getPrimaryPremium3dOutput(selectedJob);
+                  const canUseNative = canUseNativePointCloudViewer(nativeOutput);
+                  const selectedNativeHotspot = visibleHotspots.find((hotspot) => hotspot.id === selectedNativeHotspotId) ?? visibleHotspots[0] ?? null;
+                  return (
+                    <div>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-violet-700 dark:text-violet-300">Editor de hotspots 3D</p>
+                          <h3 className="mt-1 text-base font-black text-slate-950 dark:text-white">Viewer propio experimental .PLY</h3>
+                          <p className="mt-1 text-xs font-bold leading-5 text-slate-500 dark:text-white/50">
+                            Asigna coordenadas native_3d a hotspots existentes. No publica automaticamente.
+                          </p>
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ring-1 ${canUseNative ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50' : 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-800/50'}`}>
+                          {canUseNative ? 'Disponible' : 'No disponible'}
+                        </span>
+                      </div>
+
+                      {!ENABLE_NATIVE_3D_VIEWER ? (
+                        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                          Editor 3D disponible solo con VITE_ENABLE_NATIVE_3D_VIEWER=true.
+                        </p>
+                      ) : !canUseNative || !nativeOutput ? (
+                        <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
+                          Editor 3D disponible solo para outputs .ply/native_point_cloud con viewer propio activado.
+                        </p>
+                      ) : (
+                        <div className="mt-4 grid gap-3 lg:grid-cols-[260px_minmax(0,1fr)]">
+                          <div className="space-y-3">
+                            <select
+                              value={selectedNativeHotspot?.id ?? ''}
+                              onChange={(event) => {
+                                setSelectedNativeHotspotId(event.target.value);
+                                setNativePointDraft(null);
+                              }}
+                              className="w-full rounded-lg border border-violet-200 bg-white px-3 py-2 text-sm font-black dark:border-violet-900/50 dark:bg-slate-950"
+                            >
+                              {visibleHotspots.map((hotspot) => (
+                                <option key={hotspot.id} value={hotspot.id}>{hotspot.label}</option>
+                              ))}
+                            </select>
+                            <p className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
+                              Output: {statusLabel(nativeOutput.type)} Â· {nativeOutput.format || 'ply'}
+                            </p>
+                            {nativePointDraft ? (
+                              <p className="rounded-lg bg-emerald-50 px-3 py-2 text-xs font-bold text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300">
+                                Punto capturado: {nativePointDraft.x}, {nativePointDraft.y}, {nativePointDraft.z}
+                              </p>
+                            ) : (
+                              <p className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
+                                Haz click sobre la nube para preparar una posicion 3D.
+                              </p>
+                            )}
+                            <div className="flex flex-wrap gap-2">
+                              <button type="button" onClick={() => { void saveNativeHotspotPosition(); }} disabled={saving || !nativePointDraft || !selectedNativeHotspot} className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950">
+                                Guardar posicion 3D
+                              </button>
+                              <button type="button" onClick={() => { void resetHotspotToOverlayAuto(); }} disabled={saving || !selectedNativeHotspot} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 hover:bg-white disabled:opacity-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5">
+                                Resetear a overlay auto
+                              </button>
+                            </div>
+                          </div>
+                          <div className="min-h-[420px] overflow-hidden rounded-xl bg-black ring-1 ring-violet-200 dark:ring-violet-900/50">
+                            <NativePointCloudViewer
+                              assetUrl={getOutputUrl(nativeOutput)}
+                              hotspots={visibleHotspots}
+                              activeHotspotId={selectedNativeHotspot?.id ?? null}
+                              onHotspotClick={(hotspotId) => setSelectedNativeHotspotId(hotspotId)}
+                              mode="edit"
+                              onPickPoint={setNativePointDraft}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
               <div>
                 {(() => {
                   const materialSummary = getGlobalMaterialSummary(selectedJob);
@@ -2253,7 +2392,7 @@ export default function CaptureJobsPage(): JSX.Element {
                         <div>
                           <h3 className="text-sm font-black uppercase tracking-[0.14em] text-slate-500 dark:text-white/40">Material guiado</h3>
                           <p className="mt-1 text-xs font-bold text-slate-400">
-                            {(selectedJob.inputAssets ?? []).length} assets privados · {materialSummary.coveredZones} zonas suficientes · {materialSummary.pendingZones} zonas pendientes
+                            {(selectedJob.inputAssets ?? []).length} assets privados Â· {materialSummary.coveredZones} zonas suficientes Â· {materialSummary.pendingZones} zonas pendientes
                           </p>
                         </div>
                         <label className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-slate-200 px-3 py-2 text-xs font-black text-slate-700 hover:bg-slate-50 dark:border-white/10 dark:text-white/70 dark:hover:bg-white/5">
@@ -2273,7 +2412,7 @@ export default function CaptureJobsPage(): JSX.Element {
                           return (
                             <button key={zone} type="button" onClick={() => setInputAssetForm((current) => ({ ...current, zone }))} className={`rounded-xl border px-3 py-2 text-left text-xs font-black ${stateClass}`}>
                               <span className="block">{zone}</span>
-                              <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.12em]">{qualityStatusLabel(state.status)} · {state.count}</span>
+                              <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.12em]">{qualityStatusLabel(state.status)} Â· {state.count}</span>
                             </button>
                           );
                         })}
@@ -2303,7 +2442,7 @@ export default function CaptureJobsPage(): JSX.Element {
                             <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
                               <a href={asset.url} target="_blank" rel="noreferrer" className="min-w-0 font-black text-slate-800 hover:text-ip-accent dark:text-white">
                                 {asset.filename || asset.type}
-                                <span className="ml-2 text-xs font-bold text-slate-400">{asset.status} · {asset.format || asset.type}</span>
+                                <span className="ml-2 text-xs font-bold text-slate-400">{asset.status} Â· {asset.format || asset.type}</span>
                               </a>
                               <div className="flex flex-wrap gap-1">
                                 <select value={asset.zone || 'Otros'} onChange={(event) => { void patchInputAsset(asset, { zone: event.target.value }); }} className="rounded-full border border-slate-200 px-2 py-1 text-[10px] font-black dark:border-white/10 dark:bg-slate-900">
@@ -2319,7 +2458,7 @@ export default function CaptureJobsPage(): JSX.Element {
                               </div>
                             </div>
                             <p className="mt-2 text-[11px] font-bold text-slate-400">
-                              {asset.zone || 'Sin zona'} · {inputAssetTypeLabel(asset.assetType || 'other')} · {qualityStatusLabel(asset.captureQualityStatus || 'pending')} · {asset.mimeType || asset.format || 'sin mime'} · {asset.sizeBytes ? `${Math.round(asset.sizeBytes / 1024)} KB` : 'sin tamaño'}
+                              {asset.zone || 'Sin zona'} Â· {inputAssetTypeLabel(asset.assetType || 'other')} Â· {qualityStatusLabel(asset.captureQualityStatus || 'pending')} Â· {asset.mimeType || asset.format || 'sin mime'} Â· {asset.sizeBytes ? `${Math.round(asset.sizeBytes / 1024)} KB` : 'sin tamaÃ±o'}
                             </p>
                             {asset.notes ? <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-xs font-semibold text-slate-500 dark:bg-white/5 dark:text-white/50">{asset.notes}</p> : null}
                           </div>
@@ -2342,7 +2481,7 @@ export default function CaptureJobsPage(): JSX.Element {
                   {(selectedJob.inputAssets ?? []).length === 0 ? <p className="text-sm font-semibold text-slate-400">Sin material registrado.</p> : selectedJob.inputAssets?.map((asset) => (
                     <a key={asset.id} href={asset.url} target="_blank" rel="noreferrer" className="block rounded-xl border border-slate-100 px-3 py-2 text-sm hover:bg-slate-50 dark:border-white/10 dark:hover:bg-white/5">
                       <span className="font-black text-slate-800 dark:text-white">{asset.filename || asset.type}</span>
-                      <span className="ml-2 text-xs font-bold text-slate-400">{asset.status} · {asset.format || asset.type}</span>
+                      <span className="ml-2 text-xs font-bold text-slate-400">{asset.status} Â· {asset.format || asset.type}</span>
                     </a>
                   ))}
                 </div>
@@ -2359,16 +2498,20 @@ export default function CaptureJobsPage(): JSX.Element {
                       {['planned', 'in_progress', 'ready', 'in_review', 'approved', 'published', 'archived'].map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
                     </select>
                     <select value={outputForm.format} onChange={(e) => updateOutputForm('format', e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
-                      {['url', 'external_url', 'iframe', 'splat', 'gaussian', 'video', 'pdf', 'image'].map((format) => <option key={format} value={format}>{statusLabel(format)}</option>)}
+                      {['url', 'external_url', 'iframe', 'ply', 'splat', 'gaussian', 'video', 'pdf', 'image'].map((format) => <option key={format} value={format}>{statusLabel(format)}</option>)}
                     </select>
                     <input value={outputForm.url} onChange={(e) => updateOutputForm('url', e.target.value)} placeholder={isPremium3dOutput(outputForm.type) ? 'URL viewer 3D externa' : 'URL interna/externa'} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
                     <input value={outputForm.publishedUrl} onChange={(e) => updateOutputForm('publishedUrl', e.target.value)} placeholder="URL publicada o embebible" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900 sm:col-span-2" />
                   </div>
                   {isPremium3dOutput(outputForm.type) ? (
                     <div className="space-y-2 rounded-lg bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700 dark:bg-violet-950/25 dark:text-violet-300">
-                      <p>Output premium 3D manual: registra una URL externa segura de SuperSplat, Spark, Luma o viewer propio. No subas .ply, .spz, .splat, .sog, html ni zip.</p>
+                      {isNativePointCloudOutput(outputForm.type) ? (
+                        <p>Output nativo experimental: registra una URL publica y segura a un archivo .ply. Solo se renderiza si VITE_ENABLE_NATIVE_3D_VIEWER=true.</p>
+                      ) : (
+                        <p>Output premium 3D manual: registra una URL externa segura de SuperSplat, Spark o Luma. No subas .spz, .splat, .sog, html ni zip.</p>
+                      )}
                       <p>Provider derivado: <span className="font-black">{getProviderLabel(outputForm.type, outputForm.publishedUrl || outputForm.url)}</span></p>
-                      <p>Si se publica, este output podrá actuar como principal según prioridad automática.</p>
+                      <p>Si se publica, este output podrÃ¡ actuar como principal segÃºn prioridad automÃ¡tica.</p>
                     </div>
                   ) : null}
                   <div className="flex flex-wrap gap-3 text-xs font-bold text-slate-500 dark:text-white/50">
@@ -2380,13 +2523,13 @@ export default function CaptureJobsPage(): JSX.Element {
                     value={outputForm.notes}
                     onChange={(e) => updateOutputForm('notes', e.target.value)}
                     rows={2}
-                    placeholder={isPremium3dOutput(outputForm.type) ? 'Observaciones QA internas: iframe, fallback, rendimiento, dispositivo móvil probado...' : 'Notas internas del output'}
+                    placeholder={isPremium3dOutput(outputForm.type) ? 'Observaciones QA internas: iframe, fallback, rendimiento, dispositivo mÃ³vil probado...' : 'Notas internas del output'}
                     className="w-full rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900"
                   />
                   {isPremium3dOutput(outputForm.type) && outputForm.status === 'published' ? (
                     <div className="space-y-1">
                       {!outputForm.viewerReady ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">Publicado sin validar desktop.</p> : null}
-                      {!outputForm.mobileReady ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">Publicado sin validar móvil.</p> : null}
+                      {!outputForm.mobileReady ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">Publicado sin validar mÃ³vil.</p> : null}
                       {!(outputForm.publishedUrl || outputForm.url).trim() ? <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">Falta URL del viewer o fallback externo.</p> : null}
                     </div>
                   ) : null}
@@ -2398,7 +2541,7 @@ export default function CaptureJobsPage(): JSX.Element {
                       <div className="flex items-start justify-between gap-3">
                         <div className="min-w-0">
                           <p className="font-black text-slate-800 dark:text-white">{statusLabel(asset.type)}</p>
-                          <p className="text-xs font-bold text-slate-400">{asset.status} · {asset.format || 'url'} · {asset.viewerReady ? 'Desktop OK' : 'Desktop pendiente'} · {asset.mobileReady ? 'Mobile OK' : 'Mobile pendiente'}</p>
+                          <p className="text-xs font-bold text-slate-400">{asset.status} Â· {asset.format || 'url'} Â· {asset.viewerReady ? 'Desktop OK' : 'Desktop pendiente'} Â· {asset.mobileReady ? 'Mobile OK' : 'Mobile pendiente'}</p>
                           {isPremium3dOutput(asset.type) ? (
                             <div className="mt-2 space-y-2">
                               <div className="flex flex-wrap gap-1.5">
@@ -2407,18 +2550,18 @@ export default function CaptureJobsPage(): JSX.Element {
                                 </span>
                                 {getPrimaryPremium3dOutput(selectedJob)?.id === asset.id ? (
                                   <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50">
-                                    Principal automático
+                                    Principal automÃ¡tico
                                   </span>
                                 ) : null}
                                 <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-600 ring-1 ring-slate-200 dark:bg-slate-950 dark:text-white/60 dark:ring-white/10">
-                                  {canEmbedOutput(asset) ? 'Iframe viable' : 'Fallback externo'}
+                                  {canUseNativePointCloudViewer(asset) ? 'Viewer propio' : canEmbedOutput(asset) ? 'Iframe viable' : 'Fallback externo'}
                                 </span>
                               </div>
                               <div className="grid gap-1 sm:grid-cols-2">
                                 {[
                                   ['URL', Boolean(getOutputUrl(asset))],
                                   ['Desktop', asset.viewerReady],
-                                  ['Móvil', asset.mobileReady],
+                                  ['MÃ³vil', asset.mobileReady],
                                   ['Fallback', Boolean(getOutputUrl(asset))],
                                 ].map(([label, ok]) => (
                                   <p key={String(label)} className="flex items-center justify-between rounded-lg bg-white px-2 py-1 text-[10px] font-bold dark:bg-slate-950">
@@ -2449,7 +2592,7 @@ export default function CaptureJobsPage(): JSX.Element {
                       </div>
                       {isPremium3dOutput(asset.type) ? (
                         <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.12em] text-slate-400">
-                          Uso interno / fallback técnico
+                          Uso interno / fallback tÃ©cnico
                         </p>
                       ) : null}
                     </div>

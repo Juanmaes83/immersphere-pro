@@ -33,6 +33,21 @@ Campos principales:
 
 Los estados se guardan como strings, igual que el resto del schema actual.
 
+## Paso 25B - Viewer propio experimental PLY
+
+Se añade un MVP experimental para visualizar nubes de puntos `.ply` con un viewer propio basado en Three.js, sin sustituir SuperSplat/Spark/Luma ni cambiar el flujo publico existente.
+
+- Flag: `VITE_ENABLE_NATIVE_3D_VIEWER=true`.
+- Default: desactivado. Si el flag no esta activo, `/capture/:id` mantiene iframe/fallback externo.
+- Outputs compatibles: `native_point_cloud` y `ply_viewer`.
+- Formato esperado: URL publica segura a un `.ply`.
+- Hotspots 2D existentes siguen usando `position.mode = overlay_2d`.
+- Hotspots 3D experimentales usan `position.mode = native_3d` dentro del JSON ya existente.
+
+El backend solo sanea y devuelve `native_3d` cuando existen `x`, `y`, `z` finitos. No se cambia Prisma: `CaptureHotspot.position` ya es JSON.
+
+SuperSplat externo, ASAS, QR, ficha publica, lead capture y overlays 2D quedan intactos. La seleccion/picking real dentro de `.splat` sigue fuera de este paso.
+
 ### CaptureInputAsset
 
 Registra material recibido:

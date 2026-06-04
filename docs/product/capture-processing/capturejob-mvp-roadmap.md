@@ -108,6 +108,22 @@ Se incorpora `CaptureViewerShell` para que `/capture/:id` no dependa solo de det
 
 Sigue fuera del MVP: controlar zoom/camara inicial internos de SuperSplat u otros iframes externos sin API documentada.
 
+## Paso 25B - Viewer propio experimental .PLY
+
+Se incorpora una via experimental y controlada para outputs `native_point_cloud` / `ply_viewer`:
+
+- Viewer propio Three.js para archivos `.ply`, activado solo con `VITE_ENABLE_NATIVE_3D_VIEWER=true`.
+- `/capture/:id` mantiene iframe/SuperSplat por defecto y solo usa el viewer nativo si el flag esta activo y el output publicado es compatible.
+- `/capture-jobs` permite seleccionar un hotspot existente, hacer click sobre la nube `.ply`, guardar `position.mode = native_3d` y resetear a overlay automatico.
+- `CaptureViewerShell` conserva overlays 2D y evita pintar como overlay los hotspots `native_3d`.
+- No hay cambio Prisma porque `CaptureHotspot.position` ya es JSON.
+
+Queda fuera:
+
+- Picking nativo real sobre `.splat`, `.spz` o viewers externos.
+- Sustituir SuperSplat/Spark/Luma.
+- Automatizar conversiones o procesado pesado de nubes.
+
 ## Paso 17 - Landing comercial premium desde CaptureJob
 
 La landing publica `/capture/:id` deja de ser solo una ficha tecnica y pasa a funcionar como entrega comercial:

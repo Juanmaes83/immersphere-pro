@@ -160,7 +160,7 @@ export interface CaptureHotspot {
   cta: string;
   mediaSuggestion: string;
   businessObjective: string;
-  position: Record<string, unknown> | null;
+  position: CaptureHotspotPosition | null;
   status: 'draft' | 'approved' | 'published' | 'archived';
   isPublic: boolean;
   sortOrder: number;
@@ -356,7 +356,7 @@ export interface PublicCaptureJob {
     priority: 'low' | 'medium' | 'high';
     cta: string;
     mediaSuggestion: string;
-    position: Record<string, unknown> | null;
+    position: CaptureHotspotPosition | null;
     sortOrder: number;
   }>;
   outputAssets: Array<{
@@ -369,6 +369,33 @@ export interface PublicCaptureJob {
     isPremium3d?: boolean;
     embeddable?: boolean;
   }>;
+}
+
+export type CaptureHotspotPosition = CaptureOverlay2dPosition | CaptureNative3dPosition | Record<string, unknown>;
+
+export interface CaptureOverlay2dPosition {
+  mode: 'overlay_2d';
+  x: number;
+  y: number;
+  anchor?: string;
+  mobileX?: number;
+  mobileY?: number;
+}
+
+export interface CaptureNative3dPosition {
+  mode: 'native_3d';
+  x: number;
+  y: number;
+  z: number;
+  normal?: {
+    x: number;
+    y: number;
+    z: number;
+  };
+  camera?: {
+    position?: [number, number, number];
+    target?: [number, number, number];
+  };
 }
 
 export interface PublicCaptureLeadInput {

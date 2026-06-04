@@ -105,6 +105,36 @@ Modelo persistente para convertir sugerencias IA o entradas manuales en hotspots
 
 No representa coordenadas 3D reales. `x/y` son relativos al contenedor visual del viewer y se limitan a 0-100.
 
+#### Position native 3D experimental
+
+`position` tambien admite coordenadas 3D para el viewer propio experimental `.ply`, sin migracion Prisma:
+
+```json
+{
+  "mode": "native_3d",
+  "x": 1.25,
+  "y": 0.4,
+  "z": -2.1,
+  "normal": {
+    "x": 0,
+    "y": 1,
+    "z": 0
+  },
+  "camera": {
+    "position": [2.5, 1.8, 4],
+    "target": [1.25, 0.4, -2.1]
+  }
+}
+```
+
+Uso actual:
+
+- Solo se usa con outputs `native_point_cloud` o `ply_viewer`.
+- Solo se renderiza si `VITE_ENABLE_NATIVE_3D_VIEWER=true`.
+- `x`, `y`, `z` deben ser numeros finitos.
+- `normal` y `camera` son opcionales.
+- Si el viewer nativo no aplica, el hotspot puede volver a `overlay_2d` o posicion automatica.
+
 ### CaptureLead
 
 Modelo publico para solicitudes recibidas desde la landing `/capture/:id`.
