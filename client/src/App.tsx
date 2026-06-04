@@ -23,6 +23,7 @@ import LeadsPage from '@/pages/LeadsPage';
 import PropertiesPage from '@/pages/PropertiesPage';
 import PropertyCreateWizardPage from '@/pages/PropertyCreateWizardPage';
 import HelpPage from '@/pages/HelpPage';
+import DemoPage from '@/pages/DemoPage';
 import PricingPage from '@/pages/PricingPage';
 import CaptureJobsPage from '@/pages/CaptureJobsPage';
 import CapturePublicPage from '@/pages/CapturePublicPage';
@@ -206,6 +207,7 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
           </Link>
 
           <nav className="hidden items-center gap-2 lg:flex">
+            <BrandNavLink to="/demo">Demo</BrandNavLink>
             <BrandNavLink to="/gallery">Galería</BrandNavLink>
             {!isAuthenticated ? <BrandNavLink to="/pricing">Precios</BrandNavLink> : null}
             {isAuthenticated ? (
@@ -288,11 +290,15 @@ function AppLayout({ children }: { children: React.ReactNode }): JSX.Element {
               <span className="mx-2 text-slate-200 dark:text-slate-700">·</span>
               <Link to="/pricing" className="font-black text-slate-500 hover:underline dark:text-slate-400">Precios</Link>
               <span className="mx-2 text-slate-200 dark:text-slate-700">·</span>
+              <Link to="/demo" className="font-black text-slate-500 hover:underline dark:text-slate-400">Demo</Link>
+              <span className="mx-2 text-slate-200 dark:text-slate-700">·</span>
               <Link to="/ayuda" className="font-black text-slate-500 hover:underline dark:text-slate-400">Ayuda</Link>
             </p>
           ) : (
             <p className="text-xs font-bold text-slate-400">
               <Link to="/pricing" className="font-black text-slate-500 hover:underline dark:text-slate-400">Precios</Link>
+              <span className="mx-2 text-slate-200 dark:text-slate-700">·</span>
+              <Link to="/demo" className="font-black text-slate-500 hover:underline dark:text-slate-400">Demo</Link>
               <span className="mx-2 text-slate-200 dark:text-slate-700">·</span>
               <Link to="/ayuda" className="font-black text-slate-500 hover:underline dark:text-slate-400">Ayuda</Link>
             </p>
@@ -348,6 +354,7 @@ function AppRoutes(): JSX.Element {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/gallery" element={<GalleryPage />} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/demo" element={<DemoPage />} />
         <Route path="/ayuda" element={<HelpPage />} />
         <Route path="/compare" element={<ComparePage />} />
         <Route path="/property/:id" element={<PropertyRoutePage />} />

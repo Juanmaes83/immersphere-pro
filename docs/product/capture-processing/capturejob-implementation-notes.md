@@ -143,6 +143,18 @@ Se ajusta el layout desktop del visor publico sin cambiar motor, datos ni backen
 - El boton `Volver` usa historial del navegador y cae a `/dashboard` si no hay historial util.
 - Mobile conserva el montaje anterior del visor dentro de la ficha; ASAS y `/capture/:id` no cambian.
 
+## Paso 26D - Empaquetado demo comercial
+
+`/demo` concentra la pagina comercial para explicar Immersphere Pro sin mezclarla con la guia de soporte de `/ayuda`.
+
+- Posicionamiento: convertir propiedades, espacios y capturas inmersivas en experiencias comerciales medibles.
+- Demos destacadas: ASAS `/capture/a5924f50-7e7b-4173-95d3-23dae72e5cae`, property `94f8929a-d156-421e-9802-dffd6cb69c21` y property `2fe0f03b-5631-4d21-8337-cf526428834c`.
+- Se explica que Immersphere demuestra landing compartible, viewer, hotspots, lead capture, QR/ficha, mobile horizontal, upload guiado e IA aplicada.
+- Se listan verticales comerciales: inmobiliaria, obra nueva, arquitectura/interiorismo, hoteles, espacios comerciales, turismo/patrimonio y asociaciones.
+- Se separa claramente produccion estable actual de I+D futura: viewer self-hosted, R2/SOG, splat-transform, hotspots 3D nativos y pipeline 3DGS avanzado.
+- `/ayuda` conserva su papel de soporte/guia y solo enlaza a `/demo` con un CTA corto.
+- Siguiente fase recomendada: validar `/demo` como material de ventas y convertirla en una demo deck/guion de presentacion.
+
 ### CaptureInputAsset
 
 Registra material recibido:

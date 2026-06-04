@@ -319,3 +319,13 @@ Se mantiene fuera:
 | Que no se implementa | No se cambia ASAS, SuperSplat, R2, Prisma, mobile landscape ni rutas API. |
 | Riesgo | Medio: el viewer property comparte renderers de panorama/gaussian y controles de tour; se aisla con prop explicita y media query desktop. |
 | Criterio de exito | Desktop property abre con viewer casi a pantalla completa, sin sidebar fija; Info no roba ancho permanente; hotspots y controles siguen accesibles. |
+
+## Paso 26D - Empaquetado demo comercial
+
+| Punto | Definicion |
+| --- | --- |
+| Objetivo | Crear `/demo` como pagina de demostracion comercial clara para ensenar Immersphere Pro a clientes, devolviendo `/ayuda` a soporte/guia. |
+| Que se implementa | Hero comercial, bloque de 3 demos, propuesta de valor, verticales, flujo de trabajo, produccion estable vs I+D futura y CTAs a demos/CaptureJobs en `/demo`; CTA corto desde `/ayuda`. |
+| Que no se implementa | No se tocan backend, Prisma, R2, SuperSplat self-hosted, splat-transform, ASAS ni viewers experimentales. |
+| Riesgo | Bajo: es empaquetado comercial sobre rutas ya existentes. El riesgo principal es mezclar venta y soporte, mitigado separando `/demo` de `/ayuda`. |
+| Criterio de exito | `/demo` permite entender que vende Immersphere, ver las 3 demos y distinguir producto estable de investigacion futura; `/ayuda` sigue sintiendose como soporte. |

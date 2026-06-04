@@ -508,7 +508,21 @@ export default function HelpPage(): JSX.Element {
         />
       </Helmet>
 
-      {/* ── HERO ────────────────────────────────────────────────── */}
+      <section className="bg-slate-950 px-5 py-4 text-white">
+        <div className="mx-auto flex max-w-7xl flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.04] p-4 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="text-sm font-black">Quieres ver Immersphere en accion?</p>
+            <p className="mt-1 text-xs font-semibold text-white/55">
+              Abre la pagina demo con las tres experiencias comerciales actuales.
+            </p>
+          </div>
+          <Link to="/demo" className="inline-flex items-center justify-center rounded-full px-5 py-2 text-sm font-black text-white transition hover:opacity-90" style={bgStyle}>
+            Ver pagina demo
+          </Link>
+        </div>
+      </section>
+
+      {/* HERO */}
       <section className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-violet-950 to-slate-900 px-5 py-20 text-white md:py-28">
         <div className="relative mx-auto max-w-6xl">
           <div className="grid items-center gap-10 md:grid-cols-2 md:gap-16">
