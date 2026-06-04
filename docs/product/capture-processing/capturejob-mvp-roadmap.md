@@ -124,6 +124,30 @@ Queda fuera:
 - Sustituir SuperSplat/Spark/Luma.
 - Automatizar conversiones o procesado pesado de nubes.
 
+## Paso 25C - Viewer propio Gaussian/Splat experimental
+
+Se añade una ruta controlada para probar SparkJS como viewer propio de splats:
+
+- Activacion solo con `VITE_ENABLE_NATIVE_SPLAT_VIEWER=true`.
+- Tipos permitidos: `native_splat`, `gaussian_splat_native`, `spark_splat_viewer`, `splat_native`.
+- No se activa para `gaussian_splat` existente, que conserva SuperSplat/iframe.
+- El viewer proyecta hotspots `native_3d` a pantalla con la camara propia.
+- En editor privado intenta picking real con `SplatMesh.raycast`.
+- Si no hay interseccion, puede guardar `approximate_ray` con `confidence: low`.
+
+Riesgos:
+
+- Raycasting en splats grandes puede tener coste.
+- Hay que validar con assets reales publicos y dispositivos moviles.
+- Los formatos declarados por SparkJS no implican que todos los pipelines de subida internos los acepten.
+
+Proximos pasos:
+
+- Medir rendimiento por formato y tamaño.
+- Confirmar picking real con muestras `.splat/.spz/.ksplat`.
+- Definir camara inicial por estancia.
+- Diseñar editor visual avanzado y analitica por hotspot.
+
 ## Paso 17 - Landing comercial premium desde CaptureJob
 
 La landing publica `/capture/:id` deja de ser solo una ficha tecnica y pasa a funcionar como entrega comercial:

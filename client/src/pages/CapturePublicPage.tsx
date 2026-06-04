@@ -3,13 +3,16 @@ import { Helmet } from 'react-helmet-async';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowDown, CheckCircle2, Copy, ExternalLink, Printer, Share2, ShieldCheck } from 'lucide-react';
 import CaptureViewerShell from '@/components/capture/CaptureViewerShell';
+import NativeGaussianSplatViewer from '@/components/capture/NativeGaussianSplatViewer';
 import NativePointCloudViewer from '@/components/capture/NativePointCloudViewer';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import type { PublicCaptureJob, PublicCaptureLeadInput, PublicCaptureLeadResponse } from '@/types/api';
 
-const PREMIUM_3D_PRIORITY = ['native_point_cloud', 'ply_viewer', 'gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
+const NATIVE_SPLAT_TYPES = ['native_splat', 'gaussian_splat_native', 'spark_splat_viewer', 'splat_native'];
+const PREMIUM_3D_PRIORITY = ['native_point_cloud', 'ply_viewer', ...NATIVE_SPLAT_TYPES, 'gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
 const NATIVE_POINT_CLOUD_TYPES = ['native_point_cloud', 'ply_viewer'];
 const ENABLE_NATIVE_3D_VIEWER = import.meta.env.VITE_ENABLE_NATIVE_3D_VIEWER === 'true';
+const ENABLE_NATIVE_SPLAT_VIEWER = import.meta.env.VITE_ENABLE_NATIVE_SPLAT_VIEWER === 'true';
 
 function statusLabel(value: string): string {
   return value.replace(/_/g, ' ');
@@ -56,11 +59,23 @@ function inferInterestType(value: string): PublicCaptureLeadInput['interestType'
 }
 
 function getProviderLabel(type: string): string {
+  if (NATIVE_SPLAT_TYPES.includes(type)) return 'Viewer propio SparkJS';
   if (NATIVE_POINT_CLOUD_TYPES.includes(type)) return 'Viewer propio PLY';
   if (type === 'supersplat' || type === 'splat_viewer' || type === 'gaussian_splat') return '3D / Gaussian / Splat';
   if (type === 'spark_viewer') return 'Spark viewer';
   if (type === 'external_3d_viewer') return 'Viewer 3D externo';
   return statusLabel(type);
+}
+
+function isNativeSplatUrl(rawUrl: string): boolean {
+  const supported = ['.ply', '.splat', '.spz', '.ksplat', '.sog', '.json', '.zip', '.rad'];
+  try {
+    const path = new URL(rawUrl).pathname.toLowerCase();
+    return supported.some((extension) => path.endsWith(extension));
+  } catch {
+    const path = rawUrl.toLowerCase().split('?')[0];
+    return supported.some((extension) => path.endsWith(extension));
+  }
 }
 
 function isPlyUrl(rawUrl: string): boolean {
@@ -308,6 +323,14 @@ export default function CapturePublicPage(): JSX.Element {
     isSafeHttpUrl(primaryUrl) &&
     isPlyUrl(primaryUrl)
   );
+  const canRenderNativeSplatPrimary = Boolean(
+    ENABLE_NATIVE_SPLAT_VIEWER &&
+    premiumOutput &&
+    NATIVE_SPLAT_TYPES.includes(premiumOutput.type) &&
+    primaryUrl &&
+    isSafeHttpUrl(primaryUrl) &&
+    isNativeSplatUrl(primaryUrl)
+  );
   const hasPublic3d = Boolean(premiumOutput);
   const providerLabel = premiumOutput ? getProviderLabel(premiumOutput.type) : null;
   const metaDescription = shortDescription || heroDescription || job.clientName;
@@ -315,7 +338,15 @@ export default function CapturePublicPage(): JSX.Element {
   const printUrl = `${publicUrl}?print=1`;
   const showSecondarySections = !isMobileLandscape;
 
-  const embeddedViewer = canRenderNativePrimary ? (
+  const embeddedViewer = canRenderNativeSplatPrimary ? (
+    <NativeGaussianSplatViewer
+      assetUrl={primaryUrl}
+      hotspots={job.hotspots}
+      activeHotspotId={activeHotspotId}
+      onHotspotClick={setActiveHotspotId}
+      mode="view"
+    />
+  ) : canRenderNativePrimary ? (
     <NativePointCloudViewer
       assetUrl={primaryUrl}
       hotspots={job.hotspots}
@@ -466,7 +497,7 @@ export default function CapturePublicPage(): JSX.Element {
                 </div>
               ) : null}
 
-              {canRenderNativePrimary || canEmbedPrimary ? (
+              {canRenderNativeSplatPrimary || canRenderNativePrimary || canEmbedPrimary ? (
                 renderEmbeddedViewer()
               ) : (
                 <div className="flex min-h-[360px] flex-col items-center justify-center gap-3 bg-slate-900 px-5 py-10 text-center">
@@ -632,7 +663,7 @@ export default function CapturePublicPage(): JSX.Element {
         ) : null}
       </main>
 
-      {isImmersiveMode && (canRenderNativePrimary || canEmbedPrimary) ? renderEmbeddedViewer(true) : null}
+      {isImmersiveMode && (canRenderNativeSplatPrimary || canRenderNativePrimary || canEmbedPrimary) ? renderEmbeddedViewer(true) : null}
     </>
   );
 }

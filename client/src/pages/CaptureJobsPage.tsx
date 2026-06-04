@@ -3,7 +3,9 @@ import type { ChangeEvent, FormEvent } from 'react';
 import { Helmet } from 'react-helmet-async';
 import { Link } from 'react-router-dom';
 import { Upload, QrCode, ExternalLink, Archive, RefreshCw, Copy, BrainCircuit, Smartphone, Printer, Download } from 'lucide-react';
+import NativeGaussianSplatViewer from '@/components/capture/NativeGaussianSplatViewer';
 import NativePointCloudViewer from '@/components/capture/NativePointCloudViewer';
+import type { GaussianSplatPickResult } from '@/engines/GaussianSplatRenderer';
 import type { NativePointPickData } from '@/components/capture/NativePointCloudViewer';
 import { api, getApiErrorMessage, unwrapApiResponse } from '@/services/api';
 import { usePropertyStore } from '@/store/propertyStore';
@@ -39,16 +41,22 @@ const OUTPUT_TYPES = [
   'gaussian_splat',
   'native_point_cloud',
   'ply_viewer',
+  'native_splat',
+  'gaussian_splat_native',
+  'spark_splat_viewer',
+  'splat_native',
   'splat_viewer',
   'supersplat',
   'spark_viewer',
   'external_3d_viewer'
 ];
-const PREMIUM_3D_OUTPUT_TYPES = ['gaussian_splat', 'native_point_cloud', 'ply_viewer', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
+const NATIVE_SPLAT_TYPES = ['native_splat', 'gaussian_splat_native', 'spark_splat_viewer', 'splat_native'];
+const PREMIUM_3D_OUTPUT_TYPES = ['gaussian_splat', 'native_point_cloud', 'ply_viewer', ...NATIVE_SPLAT_TYPES, 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
 const NATIVE_POINT_CLOUD_TYPES = ['native_point_cloud', 'ply_viewer'];
-const PREMIUM_3D_PRIORITY = ['native_point_cloud', 'ply_viewer', 'gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
+const PREMIUM_3D_PRIORITY = ['native_point_cloud', 'ply_viewer', ...NATIVE_SPLAT_TYPES, 'gaussian_splat', 'splat_viewer', 'supersplat', 'spark_viewer', 'external_3d_viewer'];
 const EMBEDDABLE_3D_HOSTS = ['superspl.at', 'sparkjs.dev', 'playcanvas.com', 'luma.ai', 'lumalabs.ai', 'immersphere.io', 'immersphere-pro.vercel.app'];
 const ENABLE_NATIVE_3D_VIEWER = import.meta.env.VITE_ENABLE_NATIVE_3D_VIEWER === 'true';
+const ENABLE_NATIVE_SPLAT_VIEWER = import.meta.env.VITE_ENABLE_NATIVE_SPLAT_VIEWER === 'true';
 const CAPTURE_GUIDE_TYPES = ['3d', 'tour_360', 'video', 'photos', 'document', 'general'] as const;
 const INPUT_ZONES = [
   'Entrada / acceso',
@@ -215,6 +223,11 @@ function isNativePointCloudOutput(assetOrType: CaptureOutputAsset | string | nul
   return NATIVE_POINT_CLOUD_TYPES.includes(type);
 }
 
+function isNativeSplatOutput(assetOrType: CaptureOutputAsset | string | null | undefined): boolean {
+  const type = typeof assetOrType === 'string' ? assetOrType : assetOrType?.type ?? '';
+  return NATIVE_SPLAT_TYPES.includes(type);
+}
+
 function getOutputUrl(asset: CaptureOutputAsset): string {
   return asset.publishedUrl || asset.url;
 }
@@ -234,6 +247,27 @@ function canUseNativePointCloudViewer(asset: CaptureOutputAsset | null): boolean
     isNativePointCloudOutput(asset) &&
     getOutputUrl(asset) &&
     isPlyUrl(getOutputUrl(asset))
+  );
+}
+
+function isNativeSplatUrl(rawUrl: string): boolean {
+  const supported = ['.ply', '.splat', '.spz', '.ksplat', '.sog', '.json', '.zip', '.rad'];
+  try {
+    const path = new URL(rawUrl).pathname.toLowerCase();
+    return supported.some((extension) => path.endsWith(extension));
+  } catch {
+    const path = rawUrl.toLowerCase().split('?')[0];
+    return supported.some((extension) => path.endsWith(extension));
+  }
+}
+
+function canUseNativeSplatViewer(asset: CaptureOutputAsset | null): boolean {
+  return Boolean(
+    ENABLE_NATIVE_SPLAT_VIEWER &&
+    asset &&
+    isNativeSplatOutput(asset) &&
+    getOutputUrl(asset) &&
+    isNativeSplatUrl(getOutputUrl(asset))
   );
 }
 
@@ -262,6 +296,7 @@ function getProviderLabel(assetOrType: CaptureOutputAsset | string, rawUrl = '')
   const type = typeof assetOrType === 'string' ? assetOrType : assetOrType.type;
   const url = typeof assetOrType === 'string' ? rawUrl : getOutputUrl(assetOrType);
   const normalizedUrl = url.toLowerCase();
+  if (isNativeSplatOutput(type)) return 'Viewer propio SparkJS';
   if (type === 'native_point_cloud' || type === 'ply_viewer') return 'Viewer propio PLY';
   if (type === 'supersplat' || normalizedUrl.includes('superspl.at')) return 'SuperSplat';
   if (type === 'spark_viewer' || normalizedUrl.includes('spark')) return 'Spark';
@@ -612,6 +647,7 @@ function getAiRunErrorMessage(error: string): string {
 
 function getSuggestedFormat(type: string): string {
   if (type === 'native_point_cloud' || type === 'ply_viewer') return 'ply';
+  if (isNativeSplatOutput(type)) return 'splat';
   if (type === 'gaussian_splat') return 'gaussian';
   if (type === 'supersplat' || type === 'splat_viewer') return 'splat';
   if (type === 'spark_viewer') return 'external_url';
@@ -749,6 +785,8 @@ export default function CaptureJobsPage(): JSX.Element {
   const [editingHotspotId, setEditingHotspotId] = useState<string | null>(null);
   const [selectedNativeHotspotId, setSelectedNativeHotspotId] = useState<string | null>(null);
   const [nativePointDraft, setNativePointDraft] = useState<NativePointPickData | null>(null);
+  const [selectedSplatHotspotId, setSelectedSplatHotspotId] = useState<string | null>(null);
+  const [splatPointDraft, setSplatPointDraft] = useState<GaussianSplatPickResult | null>(null);
   const [filters, setFilters] = useState({ status: '', priority: '', riskLevel: '', q: '' });
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -822,6 +860,8 @@ export default function CaptureJobsPage(): JSX.Element {
       setEditingHotspotId(null);
       setSelectedNativeHotspotId(null);
       setNativePointDraft(null);
+      setSelectedSplatHotspotId(null);
+      setSplatPointDraft(null);
       setGuideTypeOverride('');
       await loadAiRuns(id);
     } catch (err) {
@@ -863,6 +903,8 @@ export default function CaptureJobsPage(): JSX.Element {
     setEditingHotspotId(null);
     setSelectedNativeHotspotId(null);
     setNativePointDraft(null);
+    setSelectedSplatHotspotId(null);
+    setSplatPointDraft(null);
     setGuideTypeOverride('');
     setAiRuns([]);
     setAiRunsOpen(false);
@@ -1136,6 +1178,22 @@ export default function CaptureJobsPage(): JSX.Element {
     if (!hotspot) return;
     await patchHotspot(hotspot, { position: null });
     setNativePointDraft(null);
+  }
+
+  async function saveSplatHotspotPosition(): Promise<void> {
+    if (!selectedJob || !splatPointDraft || !selectedSplatHotspotId) return;
+    const hotspot = visibleHotspots.find((item) => item.id === selectedSplatHotspotId);
+    if (!hotspot) return;
+    await patchHotspot(hotspot, { position: splatPointDraft });
+    setSplatPointDraft(null);
+  }
+
+  async function resetSplatHotspotToOverlayAuto(): Promise<void> {
+    if (!selectedJob || !selectedSplatHotspotId) return;
+    const hotspot = visibleHotspots.find((item) => item.id === selectedSplatHotspotId);
+    if (!hotspot) return;
+    await patchHotspot(hotspot, { position: null });
+    setSplatPointDraft(null);
   }
 
   async function archiveHotspot(hotspot: CaptureHotspot): Promise<void> {
@@ -2383,6 +2441,88 @@ export default function CaptureJobsPage(): JSX.Element {
                 })()}
               </div>
 
+              <div className="rounded-xl border border-fuchsia-200 bg-fuchsia-50/70 p-4 dark:border-fuchsia-900/50 dark:bg-fuchsia-950/20">
+                {(() => {
+                  const splatOutput = getPrimaryPremium3dOutput(selectedJob);
+                  const canUseSplat = canUseNativeSplatViewer(splatOutput);
+                  const selectedSplatHotspot = visibleHotspots.find((hotspot) => hotspot.id === selectedSplatHotspotId) ?? visibleHotspots[0] ?? null;
+                  return (
+                    <div>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                          <p className="text-xs font-black uppercase tracking-[0.14em] text-fuchsia-700 dark:text-fuchsia-300">Editor experimental Splat 3D</p>
+                          <h3 className="mt-1 text-base font-black text-slate-950 dark:text-white">Viewer propio SparkJS</h3>
+                          <p className="mt-1 text-xs font-bold leading-5 text-slate-500 dark:text-white/50">
+                            Usa solo outputs native_splat/gaussian_splat_native/spark_splat_viewer/splat_native. No sustituye SuperSplat.
+                          </p>
+                        </div>
+                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ring-1 ${canUseSplat ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50' : 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-800/50'}`}>
+                          {canUseSplat ? 'Disponible' : 'No disponible'}
+                        </span>
+                      </div>
+
+                      {!ENABLE_NATIVE_SPLAT_VIEWER ? (
+                        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                          Editor Splat disponible solo con VITE_ENABLE_NATIVE_SPLAT_VIEWER=true.
+                        </p>
+                      ) : !canUseSplat || !splatOutput ? (
+                        <p className="mt-3 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
+                          Registra un output nativo compatible con URL .ply/.splat/.spz/.ksplat/.sog/.json/.zip/.rad para probar SparkJS.
+                        </p>
+                      ) : (
+                        <div className="mt-4 grid gap-3 lg:grid-cols-[280px_minmax(0,1fr)]">
+                          <div className="space-y-3">
+                            <select
+                              value={selectedSplatHotspot?.id ?? ''}
+                              onChange={(event) => {
+                                setSelectedSplatHotspotId(event.target.value);
+                                setSplatPointDraft(null);
+                              }}
+                              className="w-full rounded-lg border border-fuchsia-200 bg-white px-3 py-2 text-sm font-black dark:border-fuchsia-900/50 dark:bg-slate-950"
+                            >
+                              {visibleHotspots.map((hotspot) => (
+                                <option key={hotspot.id} value={hotspot.id}>{hotspot.label}</option>
+                              ))}
+                            </select>
+                            <p className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
+                              Output: {statusLabel(splatOutput.type)} Â· {splatOutput.format || 'splat'}
+                            </p>
+                            {splatPointDraft ? (
+                              <p className={`rounded-lg px-3 py-2 text-xs font-bold ${splatPointDraft.picking === 'spark_raycast' ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300' : 'bg-amber-50 text-amber-700 dark:bg-amber-950/30 dark:text-amber-300'}`}>
+                                {splatPointDraft.picking === 'spark_raycast' ? 'Picking real' : 'Picking aproximado'} · confidence {splatPointDraft.confidence} · {splatPointDraft.x}, {splatPointDraft.y}, {splatPointDraft.z}
+                              </p>
+                            ) : (
+                              <p className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
+                                Click sobre el splat. Si SparkJS no intersecta, se usara approximate_ray con confianza baja.
+                              </p>
+                            )}
+                            <div className="flex flex-wrap gap-2">
+                              <button type="button" onClick={() => { void saveSplatHotspotPosition(); }} disabled={saving || !splatPointDraft || !selectedSplatHotspot} className="rounded-full bg-slate-950 px-4 py-2 text-xs font-black text-white hover:bg-slate-800 disabled:opacity-50 dark:bg-white dark:text-slate-950">
+                                Guardar posicion Splat 3D
+                              </button>
+                              <button type="button" onClick={() => { void resetSplatHotspotToOverlayAuto(); }} disabled={saving || !selectedSplatHotspot} className="rounded-full border border-slate-200 px-4 py-2 text-xs font-black text-slate-600 hover:bg-white disabled:opacity-50 dark:border-white/10 dark:text-white/60 dark:hover:bg-white/5">
+                                Resetear a overlay auto
+                              </button>
+                            </div>
+                          </div>
+                          <div className="min-h-[440px] overflow-hidden rounded-xl bg-black ring-1 ring-fuchsia-200 dark:ring-fuchsia-900/50">
+                            <NativeGaussianSplatViewer
+                              assetUrl={getOutputUrl(splatOutput)}
+                              hotspots={visibleHotspots}
+                              activeHotspotId={selectedSplatHotspot?.id ?? null}
+                              onHotspotClick={(hotspotId) => setSelectedSplatHotspotId(hotspotId)}
+                              mode="edit"
+                              onPickPoint={setSplatPointDraft}
+                              enableApproximatePicking
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
+              </div>
+
               <div>
                 {(() => {
                   const materialSummary = getGlobalMaterialSummary(selectedJob);
@@ -2498,7 +2638,7 @@ export default function CaptureJobsPage(): JSX.Element {
                       {['planned', 'in_progress', 'ready', 'in_review', 'approved', 'published', 'archived'].map((status) => <option key={status} value={status}>{statusLabel(status)}</option>)}
                     </select>
                     <select value={outputForm.format} onChange={(e) => updateOutputForm('format', e.target.value)} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900">
-                      {['url', 'external_url', 'iframe', 'ply', 'splat', 'gaussian', 'video', 'pdf', 'image'].map((format) => <option key={format} value={format}>{statusLabel(format)}</option>)}
+                      {['url', 'external_url', 'iframe', 'ply', 'splat', 'spz', 'ksplat', 'sog', 'json', 'zip', 'rad', 'gaussian', 'video', 'pdf', 'image'].map((format) => <option key={format} value={format}>{statusLabel(format)}</option>)}
                     </select>
                     <input value={outputForm.url} onChange={(e) => updateOutputForm('url', e.target.value)} placeholder={isPremium3dOutput(outputForm.type) ? 'URL viewer 3D externa' : 'URL interna/externa'} className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900" />
                     <input value={outputForm.publishedUrl} onChange={(e) => updateOutputForm('publishedUrl', e.target.value)} placeholder="URL publicada o embebible" className="rounded-lg border border-slate-200 px-3 py-2 text-sm font-semibold dark:border-white/10 dark:bg-slate-900 sm:col-span-2" />
@@ -2507,6 +2647,8 @@ export default function CaptureJobsPage(): JSX.Element {
                     <div className="space-y-2 rounded-lg bg-violet-50 px-3 py-2 text-xs font-bold text-violet-700 dark:bg-violet-950/25 dark:text-violet-300">
                       {isNativePointCloudOutput(outputForm.type) ? (
                         <p>Output nativo experimental: registra una URL publica y segura a un archivo .ply. Solo se renderiza si VITE_ENABLE_NATIVE_3D_VIEWER=true.</p>
+                      ) : isNativeSplatOutput(outputForm.type) ? (
+                        <p>Output Splat nativo experimental: registra una URL publica compatible con SparkJS. Solo se renderiza si VITE_ENABLE_NATIVE_SPLAT_VIEWER=true.</p>
                       ) : (
                         <p>Output premium 3D manual: registra una URL externa segura de SuperSplat, Spark o Luma. No subas .spz, .splat, .sog, html ni zip.</p>
                       )}
@@ -2554,7 +2696,7 @@ export default function CaptureJobsPage(): JSX.Element {
                                   </span>
                                 ) : null}
                                 <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.1em] text-slate-600 ring-1 ring-slate-200 dark:bg-slate-950 dark:text-white/60 dark:ring-white/10">
-                                  {canUseNativePointCloudViewer(asset) ? 'Viewer propio' : canEmbedOutput(asset) ? 'Iframe viable' : 'Fallback externo'}
+                                  {canUseNativePointCloudViewer(asset) || canUseNativeSplatViewer(asset) ? 'Viewer propio' : canEmbedOutput(asset) ? 'Iframe viable' : 'Fallback externo'}
                                 </span>
                               </div>
                               <div className="grid gap-1 sm:grid-cols-2">

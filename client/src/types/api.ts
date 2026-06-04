@@ -392,6 +392,8 @@ export interface CaptureNative3dPosition {
     y: number;
     z: number;
   };
+  picking?: 'spark_raycast' | 'approximate_ray' | 'manual' | 'unknown';
+  confidence?: 'high' | 'medium' | 'low';
   camera?: {
     position?: [number, number, number];
     target?: [number, number, number];

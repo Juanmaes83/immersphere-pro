@@ -48,6 +48,21 @@ El backend solo sanea y devuelve `native_3d` cuando existen `x`, `y`, `z` finito
 
 SuperSplat externo, ASAS, QR, ficha publica, lead capture y overlays 2D quedan intactos. La seleccion/picking real dentro de `.splat` sigue fuera de este paso.
 
+## Paso 25C - Viewer propio Gaussian/Splat experimental
+
+Se añade una base experimental para renderizar Gaussian/Splat con SparkJS sin reemplazar SuperSplat.
+
+- Flag: `VITE_ENABLE_NATIVE_SPLAT_VIEWER=true`.
+- Default: desactivado.
+- Tipos compatibles explicitos: `native_splat`, `gaussian_splat_native`, `spark_splat_viewer`, `splat_native`.
+- `gaussian_splat`, `splat_viewer`, `supersplat` y `spark_viewer` siguen usando el flujo externo/iframe existente.
+- Formatos URL admitidos en el cliente experimental: `.ply`, `.splat`, `.spz`, `.ksplat`, `.sog`, `.json`, `.zip`, `.rad`.
+- El renderer usa SparkJS `SplatMesh` con `raycastable: true`.
+- Si SparkJS devuelve interseccion, se guarda `picking: "spark_raycast"` y `confidence: "high"`.
+- Si no hay interseccion y el editor lo permite, se guarda `picking: "approximate_ray"` y `confidence: "low"`.
+
+El picking aproximado no debe venderse como posicion exacta. Es una ayuda operativa para evaluar viabilidad hasta tener validacion con assets reales y rendimiento medido.
+
 ### CaptureInputAsset
 
 Registra material recibido:

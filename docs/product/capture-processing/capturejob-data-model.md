@@ -123,7 +123,9 @@ No representa coordenadas 3D reales. `x/y` son relativos al contenedor visual de
   "camera": {
     "position": [2.5, 1.8, 4],
     "target": [1.25, 0.4, -2.1]
-  }
+  },
+  "picking": "spark_raycast",
+  "confidence": "high"
 }
 ```
 
@@ -133,7 +135,11 @@ Uso actual:
 - Solo se renderiza si `VITE_ENABLE_NATIVE_3D_VIEWER=true`.
 - `x`, `y`, `z` deben ser numeros finitos.
 - `normal` y `camera` son opcionales.
+- `picking` puede ser `spark_raycast`, `approximate_ray`, `manual` o `unknown`.
+- `confidence` puede ser `high`, `medium` o `low`.
 - Si el viewer nativo no aplica, el hotspot puede volver a `overlay_2d` o posicion automatica.
+
+`spark_raycast/high` indica una interseccion devuelta por SparkJS sobre `SplatMesh`. `approximate_ray/low` indica un punto calculado sobre el rayo de camara cuando no hubo interseccion real.
 
 ### CaptureLead
 

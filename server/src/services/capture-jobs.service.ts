@@ -29,6 +29,10 @@ const PRIORITIES = ['low', 'medium', 'high', 'urgent'] as const;
 const RISK_LEVELS = ['low', 'medium', 'high', 'blocked'] as const;
 const PREMIUM_3D_OUTPUT_TYPES = [
   'gaussian_splat',
+  'native_splat',
+  'gaussian_splat_native',
+  'spark_splat_viewer',
+  'splat_native',
   'splat_viewer',
   'supersplat',
   'spark_viewer',
@@ -39,6 +43,10 @@ const PREMIUM_3D_OUTPUT_TYPES = [
 const PREMIUM_3D_PRIORITY = [
   'native_point_cloud',
   'ply_viewer',
+  'native_splat',
+  'gaussian_splat_native',
+  'spark_splat_viewer',
+  'splat_native',
   'gaussian_splat',
   'splat_viewer',
   'supersplat',
@@ -269,12 +277,18 @@ function getSafePosition(value: unknown): unknown {
     const camera = toRecord(position.camera);
     const cameraPosition = finiteTuple(camera.position);
     const cameraTarget = finiteTuple(camera.target);
+    const picking = cleanString(position.picking);
+    const confidence = cleanString(position.confidence);
+    const safePicking = ['spark_raycast', 'approximate_ray', 'manual', 'unknown'].includes(picking) ? picking : '';
+    const safeConfidence = ['high', 'medium', 'low'].includes(confidence) ? confidence : '';
     return {
       mode: 'native_3d',
       x,
       y,
       z,
       ...(normal ? { normal } : {}),
+      ...(safePicking ? { picking: safePicking } : {}),
+      ...(safeConfidence ? { confidence: safeConfidence } : {}),
       ...((cameraPosition || cameraTarget) ? {
         camera: {
           ...(cameraPosition ? { position: cameraPosition } : {}),

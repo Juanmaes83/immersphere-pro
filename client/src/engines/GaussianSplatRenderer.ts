@@ -14,6 +14,28 @@ import type {
   RendererLifecycle
 } from '@/types/viewer';
 
+export interface GaussianSplatScreenPoint {
+  left: number;
+  top: number;
+  visible: boolean;
+}
+
+export interface GaussianSplatCameraSnapshot {
+  position: [number, number, number];
+  target: [number, number, number];
+}
+
+export interface GaussianSplatPickResult {
+  mode: 'native_3d';
+  x: number;
+  y: number;
+  z: number;
+  normal?: { x: number; y: number; z: number };
+  picking: 'spark_raycast' | 'approximate_ray';
+  confidence: 'high' | 'low';
+  camera: GaussianSplatCameraSnapshot;
+}
+
 export class GaussianSplatRenderer implements RendererLifecycle {
   private readonly container: HTMLDivElement;
   private readonly canvas: HTMLCanvasElement;
@@ -31,6 +53,8 @@ export class GaussianSplatRenderer implements RendererLifecycle {
   private isDisposed = false;
   private currentAssetUrl: string | null = null;
   private lastTime = 0;
+  private readonly initialPosition: THREE.Vector3;
+  private readonly initialQuaternion: THREE.Quaternion;
 
   public constructor(config: GaussianSplatRendererConfig) {
     this.container = config.container;
@@ -62,6 +86,8 @@ export class GaussianSplatRenderer implements RendererLifecycle {
       config.initialPosition?.y ?? 0,
       config.initialPosition?.z ?? 2.8
     );
+    this.initialPosition = this.camera.position.clone();
+    this.initialQuaternion = this.camera.quaternion.clone();
 
     this.spark = new SparkRenderer({ renderer: this.threeRenderer });
     this.scene.add(this.spark);
@@ -115,6 +141,7 @@ export class GaussianSplatRenderer implements RendererLifecycle {
 
     const splat = new SplatMesh({
       url: sourceUrl,
+      raycastable: true,
       onLoad: () => {
         loadResolved = true;
         clearTimeout(loadTimeoutId);
@@ -232,6 +259,81 @@ export class GaussianSplatRenderer implements RendererLifecycle {
     raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
     const pos = raycaster.ray.origin.clone().addScaledVector(raycaster.ray.direction, 1.5);
     return { x: pos.x, y: pos.y, z: pos.z };
+  }
+
+  public projectPointToScreen(position: { x: number; y: number; z: number }): GaussianSplatScreenPoint | null {
+    const width = this.container.clientWidth || this.canvas.clientWidth;
+    const height = this.container.clientHeight || this.canvas.clientHeight;
+    if (!width || !height) return null;
+    const projected = new THREE.Vector3(position.x, position.y, position.z).project(this.camera);
+    return {
+      left: ((projected.x + 1) / 2) * width,
+      top: ((-projected.y + 1) / 2) * height,
+      visible: projected.z >= -1 && projected.z <= 1 && projected.x >= -1 && projected.x <= 1 && projected.y >= -1 && projected.y <= 1
+    };
+  }
+
+  public pickPointFromClient(clientX: number, clientY: number, enableApproximatePicking = false): GaussianSplatPickResult | null {
+    const rect = this.canvas.getBoundingClientRect();
+    if (!rect.width || !rect.height) return null;
+    const ndcX = ((clientX - rect.left) / rect.width) * 2 - 1;
+    const ndcY = -(((clientY - rect.top) / rect.height) * 2 - 1);
+    const raycaster = new THREE.Raycaster();
+    raycaster.setFromCamera(new THREE.Vector2(ndcX, ndcY), this.camera);
+
+    if (this.splatMesh?.raycastable) {
+      const hits = raycaster.intersectObject(this.splatMesh, false);
+      const hit = hits[0];
+      if (hit?.point) {
+        const normal = hit.face?.normal;
+        return {
+          mode: 'native_3d',
+          x: Number(hit.point.x.toFixed(4)),
+          y: Number(hit.point.y.toFixed(4)),
+          z: Number(hit.point.z.toFixed(4)),
+          ...(normal ? { normal: { x: Number(normal.x.toFixed(4)), y: Number(normal.y.toFixed(4)), z: Number(normal.z.toFixed(4)) } } : {}),
+          picking: 'spark_raycast',
+          confidence: 'high',
+          camera: this.getCameraSnapshot()
+        };
+      }
+    }
+
+    if (!enableApproximatePicking) return null;
+    const distance = Math.max(1.5, this.camera.position.length());
+    const point = raycaster.ray.origin.clone().addScaledVector(raycaster.ray.direction, distance);
+    return {
+      mode: 'native_3d',
+      x: Number(point.x.toFixed(4)),
+      y: Number(point.y.toFixed(4)),
+      z: Number(point.z.toFixed(4)),
+      picking: 'approximate_ray',
+      confidence: 'low',
+      camera: this.getCameraSnapshot()
+    };
+  }
+
+  public getCameraSnapshot(): GaussianSplatCameraSnapshot {
+    const direction = new THREE.Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+    const target = this.camera.position.clone().addScaledVector(direction, 2);
+    return {
+      position: [
+        Number(this.camera.position.x.toFixed(4)),
+        Number(this.camera.position.y.toFixed(4)),
+        Number(this.camera.position.z.toFixed(4))
+      ],
+      target: [
+        Number(target.x.toFixed(4)),
+        Number(target.y.toFixed(4)),
+        Number(target.z.toFixed(4))
+      ]
+    };
+  }
+
+  public resetView(): void {
+    this.camera.position.copy(this.initialPosition);
+    this.camera.quaternion.copy(this.initialQuaternion);
+    this.camera.updateProjectionMatrix();
   }
 
   private removeCurrentSplat(): void {
