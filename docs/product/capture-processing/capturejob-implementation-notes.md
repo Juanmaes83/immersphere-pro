@@ -923,3 +923,26 @@ Configuracion por entorno:
 - `CAPTURE_AI_DISABLE_PROCESSING`, default false.
 
 La estimacion de coste no es facturacion. Sirve para control interno mientras no exista billing completo, alertas automaticas o exportacion de uso.
+
+## Paso 24 - Worker / cola IA
+
+CaptureJob AI deja de depender del request HTTP para ejecutar Anthropic:
+
+- `POST /api/capture-jobs/:captureJobId/ai/process` valida tenant, limites y kill switches, crea un run `queued` y responde `202`.
+- El worker interno DB-backed toma runs `queued`, los bloquea con `lockedAt/lockedBy`, los marca `running` e incrementa `attempts`.
+- La ejecucion IA sigue usando modelo cheap por defecto, tool calling, parser/retry interno de JSON, max tokens y resumen de assets.
+- Estados soportados: `queued`, `running`, `completed`, `failed`, `cancelled`.
+- Cancelacion privada: `POST /api/capture-jobs/:captureJobId/ai/runs/:runId/cancel`.
+- Reintento manual privado: `POST /api/capture-jobs/:captureJobId/ai/runs/:runId/retry`.
+- Los runs atascados se recuperan por worker segun `CAPTURE_AI_RUN_STALE_MINUTES`.
+
+Variables:
+
+- `CAPTURE_AI_WORKER_ENABLED`, default true.
+- `CAPTURE_AI_WORKER_INTERVAL_MS`, default 5000.
+- `CAPTURE_AI_WORKER_CONCURRENCY`, default 1.
+- `CAPTURE_AI_RUN_STALE_MINUTES`, default 15.
+- `CAPTURE_AI_RUN_MAX_ATTEMPTS`, default 2.
+- `CAPTURE_AI_WORKER_ID`, opcional.
+
+Limitaciones: la cancelacion de un run ya dentro de la llamada al proveedor es best-effort; si Railway escala a varias instancias, el lock DB evita la doble toma basica, pero Redis/BullMQ o una cola dedicada sigue siendo el siguiente paso para volumen alto, metricas y observabilidad avanzada.

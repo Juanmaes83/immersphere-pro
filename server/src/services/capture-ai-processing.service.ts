@@ -14,6 +14,7 @@ const CAPTURE_AI_MODEL_BY_TIER = {
 const CAPTURE_AI_RESULT_TOOL_NAME = 'submit_capture_ai_processing_result';
 
 type CaptureAiModelTier = keyof typeof CAPTURE_AI_MODEL_BY_TIER;
+type CaptureAiRunStatus = 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
 
 type CaptureAiUsagePlanSource = 'subscription_plan' | 'tenant_plan' | 'default_limit';
 
@@ -430,13 +431,28 @@ function estimateCostUsd(tokensInput: number, tokensOutput: number): number | nu
   return Number((inputCost + outputCost).toFixed(6));
 }
 
+function getRetryDelayMs(attempts: number): number {
+  return attempts <= 1 ? 60_000 : 5 * 60_000;
+}
+
+function isRetryableCaptureAiError(message: string): boolean {
+  const normalized = message.toLowerCase();
+  if (normalized.includes('model_not_available')) return false;
+  if (normalized.includes('tool_use_missing')) return false;
+  if (normalized.includes('tool_input_schema_invalid')) return false;
+  if (normalized.includes('zod_validation_failed')) return false;
+  if (normalized.includes('json_parse_failed')) return false;
+  if (normalized.includes('anthropic_api_key')) return false;
+  return normalized.includes('anthropic_api_error') || normalized.includes('timeout') || normalized.includes('rate') || normalized.includes('overloaded');
+}
+
 export async function getCaptureAiUsageSummary(tenantId: string): Promise<CaptureAiUsageSummary> {
   const { date, start, end } = getUtcDayWindow();
   const plan = await resolveTenantAiPlan(tenantId);
   const where = {
     tenantId,
     createdAt: { gte: start, lt: end },
-    status: { in: ['running', 'completed', 'failed'] }
+    status: { in: ['queued', 'running', 'completed', 'failed'] }
   };
   const [used, tokenTotals] = await Promise.all([
     getDb().captureAiProcessingRun.count({ where }),
@@ -476,6 +492,9 @@ export async function getCaptureAiUsageSummary(tenantId: string): Promise<Captur
 async function assertCanStartCaptureAiRun(tenantId: string): Promise<void> {
   if (env.CAPTURE_AI_DISABLE_PROCESSING) {
     throw new AppError(503, 'El procesamiento IA esta temporalmente desactivado.');
+  }
+  if (!env.CAPTURE_AI_WORKER_ENABLED) {
+    throw new AppError(503, 'Worker IA desactivado temporalmente.');
   }
 
   const usage = await getCaptureAiUsageSummary(tenantId);
@@ -1235,7 +1254,14 @@ ${truncateText(rawText, 5000)}`
   return parseAiJson(repairedText);
 }
 
-async function completeCaptureAiProcessingRun(runId: string, inputSummary: unknown, model: string): Promise<void> {
+export async function executeCaptureAiProcessingRun(runId: string): Promise<void> {
+  const run = await getDb().captureAiProcessingRun.findUnique({ where: { id: runId } });
+  if (!run) throw new AppError(404, 'Procesamiento IA no encontrado.');
+  if (run.status === 'cancelled') return;
+  if (run.status !== 'running') throw new AppError(409, 'El procesamiento IA no esta en estado running.');
+
+  const inputSummary = run.inputSummary;
+  const model = run.model || resolveCaptureAiModel();
   let usage: { input_tokens?: number; output_tokens?: number } | null = null;
   try {
     if (!env.ANTHROPIC_API_KEY) {
@@ -1243,6 +1269,10 @@ async function completeCaptureAiProcessingRun(runId: string, inputSummary: unkno
     }
 
     const anthropic = new Anthropic({ apiKey: env.ANTHROPIC_API_KEY });
+    await getDb().captureAiProcessingRun.update({
+      where: { id: runId },
+      data: { lastHeartbeatAt: new Date() }
+    });
     const response = await anthropic.messages.create({
       model,
       max_tokens: 2500,
@@ -1268,14 +1298,41 @@ async function completeCaptureAiProcessingRun(runId: string, inputSummary: unkno
     }
     result = postProcessAiResult(result, inputSummary);
 
+    const tokensInput = usage?.input_tokens ?? response.usage.input_tokens;
+    const tokensOutput = usage?.output_tokens ?? response.usage.output_tokens;
+    const latestRun = await getDb().captureAiProcessingRun.findUnique({
+      where: { id: runId },
+      select: { status: true, cancelledAt: true }
+    });
+    if (latestRun?.status === 'cancelled' || latestRun?.cancelledAt) {
+      await getDb().captureAiProcessingRun.update({
+        where: { id: runId },
+        data: {
+          tokensInput,
+          tokensOutput,
+          estimatedCostUsd: estimateCostUsd(tokensInput, tokensOutput),
+          lockedAt: null,
+          lockedBy: null,
+          lastHeartbeatAt: new Date()
+        }
+      });
+      return;
+    }
+
     await getDb().captureAiProcessingRun.update({
       where: { id: runId },
       data: {
         status: 'completed',
         result,
-        tokensInput: usage?.input_tokens ?? response.usage.input_tokens,
-        tokensOutput: usage?.output_tokens ?? response.usage.output_tokens,
-        error: null
+        tokensInput,
+        tokensOutput,
+        estimatedCostUsd: estimateCostUsd(tokensInput, tokensOutput),
+        error: null,
+        finishedAt: new Date(),
+        lockedAt: null,
+        lockedBy: null,
+        nextRetryAt: null,
+        lastHeartbeatAt: new Date()
       }
     });
   } catch (error) {
@@ -1289,14 +1346,32 @@ async function completeCaptureAiProcessingRun(runId: string, inputSummary: unkno
     } else {
       message = `ANTHROPIC_API_ERROR: ${rawMessage}`;
     }
+    const latestRun = await getDb().captureAiProcessingRun.findUnique({
+      where: { id: runId },
+      select: { status: true, attempts: true, maxAttempts: true, cancelledAt: true }
+    });
+    if (latestRun?.status === 'cancelled' || latestRun?.cancelledAt) return;
+
+    const attempts = latestRun?.attempts ?? run.attempts ?? 1;
+    const maxAttempts = latestRun?.maxAttempts ?? run.maxAttempts ?? env.CAPTURE_AI_RUN_MAX_ATTEMPTS;
+    const canRetry = attempts < maxAttempts && isRetryableCaptureAiError(message);
+    const now = new Date();
+    const tokensInput = usage?.input_tokens ?? null;
+    const tokensOutput = usage?.output_tokens ?? null;
     await getDb().captureAiProcessingRun.update({
       where: { id: runId },
       data: {
-        status: 'failed',
+        status: canRetry ? 'queued' : 'failed',
         error: truncateText(message, 1000),
+        nextRetryAt: canRetry ? new Date(now.getTime() + getRetryDelayMs(attempts)) : null,
+        finishedAt: canRetry ? null : now,
+        lockedAt: null,
+        lockedBy: null,
+        lastHeartbeatAt: now,
         ...(usage ? {
-          tokensInput: usage.input_tokens ?? null,
-          tokensOutput: usage.output_tokens ?? null
+          tokensInput,
+          tokensOutput,
+          estimatedCostUsd: tokensInput !== null || tokensOutput !== null ? estimateCostUsd(tokensInput ?? 0, tokensOutput ?? 0) : null
         } : {})
       }
     });
@@ -1306,30 +1381,147 @@ async function completeCaptureAiProcessingRun(runId: string, inputSummary: unkno
 export async function processCaptureJobWithAi(captureJobId: string, tenantId: string, userId: string) {
   const job = await getJobForTenant(captureJobId, tenantId);
   const existingRunning = await getDb().captureAiProcessingRun.findFirst({
-    where: { captureJobId, tenantId, status: 'running' },
+    where: { captureJobId, tenantId, status: { in: ['queued', 'running'] } },
     orderBy: { createdAt: 'desc' }
   });
-  if (existingRunning) throw new AppError(409, 'Ya hay un procesamiento IA en curso para este CaptureJob.');
+  if (existingRunning) throw new AppError(409, 'Ya hay un procesamiento IA en cola o en curso para este CaptureJob.');
   await assertCanStartCaptureAiRun(tenantId);
 
   const inputSummary = buildInputSummary(job);
   const model = resolveCaptureAiModel();
+  const now = new Date();
   const run = await getDb().captureAiProcessingRun.create({
     data: {
       captureJobId,
       tenantId,
       userId,
-      status: 'running',
+      status: 'queued',
       promptVersion: PROMPT_VERSION,
       inputSummary,
-      model
+      model,
+      maxAttempts: env.CAPTURE_AI_RUN_MAX_ATTEMPTS,
+      queuedAt: now,
+      nextRetryAt: null
     }
   });
-
-  void completeCaptureAiProcessingRun(run.id, inputSummary, model).catch((error) => {
-    console.error('[capture-ai] Background processing failed:', error instanceof Error ? error.message : error);
-  });
   return run;
+}
+
+export async function lockNextQueuedCaptureAiRun(workerId: string) {
+  const now = new Date();
+  const candidate = await getDb().captureAiProcessingRun.findFirst({
+    where: {
+      status: 'queued',
+      OR: [
+        { nextRetryAt: null },
+        { nextRetryAt: { lte: now } }
+      ]
+    },
+    orderBy: [
+      { nextRetryAt: 'asc' },
+      { queuedAt: 'asc' },
+      { createdAt: 'asc' }
+    ]
+  });
+  if (!candidate) return null;
+
+  const locked = await getDb().captureAiProcessingRun.updateMany({
+    where: { id: candidate.id, status: 'queued' },
+    data: {
+      status: 'running',
+      attempts: { increment: 1 },
+      startedAt: now,
+      lockedAt: now,
+      lockedBy: workerId,
+      lastHeartbeatAt: now,
+      nextRetryAt: null
+    }
+  });
+  if (locked.count === 0) return null;
+  return getDb().captureAiProcessingRun.findUnique({ where: { id: candidate.id } });
+}
+
+export async function recoverStaleCaptureAiRuns(): Promise<{ requeued: number; failed: number }> {
+  const staleBefore = new Date(Date.now() - env.CAPTURE_AI_RUN_STALE_MINUTES * 60_000);
+  const staleRuns = await getDb().captureAiProcessingRun.findMany({
+    where: {
+      status: 'running',
+      OR: [
+        { lastHeartbeatAt: { lt: staleBefore } },
+        { lastHeartbeatAt: null, startedAt: { lt: staleBefore } },
+        { lastHeartbeatAt: null, startedAt: null, updatedAt: { lt: staleBefore } }
+      ]
+    },
+    take: 25,
+    orderBy: { updatedAt: 'asc' }
+  });
+
+  let requeued = 0;
+  let failed = 0;
+  for (const run of staleRuns) {
+    const canRetry = (run.attempts ?? 0) < (run.maxAttempts ?? env.CAPTURE_AI_RUN_MAX_ATTEMPTS);
+    const updated = await getDb().captureAiProcessingRun.updateMany({
+      where: { id: run.id, status: 'running' },
+      data: canRetry ? {
+        status: 'queued',
+        error: 'Run atascado recuperado por worker. Reintentando.',
+        lockedAt: null,
+        lockedBy: null,
+        nextRetryAt: new Date(),
+        lastHeartbeatAt: null
+      } : {
+        status: 'failed',
+        error: 'Run atascado recuperado por worker. Maximo de intentos agotado.',
+        lockedAt: null,
+        lockedBy: null,
+        finishedAt: new Date(),
+        lastHeartbeatAt: new Date()
+      }
+    });
+    if (updated.count > 0 && canRetry) requeued += 1;
+    if (updated.count > 0 && !canRetry) failed += 1;
+  }
+  return { requeued, failed };
+}
+
+export async function cancelCaptureAiProcessingRun(captureJobId: string, runId: string, tenantId: string) {
+  await getJobForTenant(captureJobId, tenantId);
+  const run = await getDb().captureAiProcessingRun.findFirst({
+    where: { id: runId, captureJobId, tenantId }
+  });
+  if (!run) throw new AppError(404, 'Procesamiento IA no encontrado.');
+  if (run.status === 'completed') throw new AppError(409, 'No se puede cancelar un procesamiento IA completado.');
+  if (run.status === 'failed') throw new AppError(409, 'No se puede cancelar un procesamiento IA fallido.');
+  if (run.status === 'cancelled') return run;
+
+  const now = new Date();
+  return getDb().captureAiProcessingRun.update({
+    where: { id: run.id },
+    data: {
+      status: 'cancelled',
+      cancelledAt: now,
+      finishedAt: now,
+      error: run.status === 'running'
+        ? 'Procesamiento cancelado best-effort. Si el proveedor ya estaba ejecutando, el resultado sera ignorado.'
+        : 'Procesamiento cancelado antes de ejecutarse.',
+      lockedAt: null,
+      lockedBy: null,
+      nextRetryAt: null,
+      lastHeartbeatAt: now
+    }
+  });
+}
+
+export async function retryCaptureAiProcessingRun(captureJobId: string, runId: string, tenantId: string, userId: string) {
+  await getJobForTenant(captureJobId, tenantId);
+  const run = await getDb().captureAiProcessingRun.findFirst({
+    where: { id: runId, captureJobId, tenantId }
+  });
+  if (!run) throw new AppError(404, 'Procesamiento IA no encontrado.');
+  if (!['failed', 'cancelled'].includes(run.status)) {
+    throw new AppError(409, 'Solo se pueden reintentar procesamientos fallidos o cancelados.');
+  }
+  return processCaptureJobWithAi(captureJobId, tenantId, userId);
 }
 
 export async function listCaptureAiProcessingRuns(captureJobId: string, tenantId: string) {

@@ -45,7 +45,13 @@ const envSchema = z.object({
   CAPTURE_AI_COST_INPUT_PER_MILLION_USD: z.coerce.number().nonnegative().default(1),
   CAPTURE_AI_COST_OUTPUT_PER_MILLION_USD: z.coerce.number().nonnegative().default(5),
   CAPTURE_AI_USAGE_WARNING_THRESHOLD: z.coerce.number().min(0).max(1).default(0.8),
-  CAPTURE_AI_DISABLE_PROCESSING: booleanEnv.default(false)
+  CAPTURE_AI_DISABLE_PROCESSING: booleanEnv.default(false),
+  CAPTURE_AI_WORKER_ENABLED: booleanEnv.default(true),
+  CAPTURE_AI_WORKER_INTERVAL_MS: z.coerce.number().int().positive().default(5000),
+  CAPTURE_AI_WORKER_CONCURRENCY: z.coerce.number().int().positive().default(1),
+  CAPTURE_AI_RUN_STALE_MINUTES: z.coerce.number().int().positive().default(15),
+  CAPTURE_AI_RUN_MAX_ATTEMPTS: z.coerce.number().int().positive().default(2),
+  CAPTURE_AI_WORKER_ID: z.string().default("")
 });
 
 const parsedEnv = envSchema.safeParse(process.env);

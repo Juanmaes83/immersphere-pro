@@ -216,3 +216,24 @@ Queda fuera de este paso:
 - panel historico mensual;
 - exportacion CSV;
 - presupuestos por usuario o proyecto.
+
+## Paso 24 - Worker / cola IA
+
+El procesamiento IA pasa a arquitectura de cola simple DB-backed:
+
+- el endpoint privado encola runs `queued`;
+- un worker interno arranca con el servidor si `CAPTURE_AI_WORKER_ENABLED=true`;
+- el worker toma runs con lock condicional en base de datos;
+- retries controlados con `attempts/maxAttempts`;
+- recuperacion de runs `running` atascados;
+- cancelacion best-effort;
+- reintento manual desde `/capture-jobs`.
+
+Se mantiene fuera:
+
+- Redis/BullMQ;
+- dashboard admin de cola;
+- metricas Prometheus;
+- alertas operativas;
+- workers separados por proceso;
+- cancelacion dura de llamadas Anthropic ya iniciadas.

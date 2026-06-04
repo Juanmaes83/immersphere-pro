@@ -5,10 +5,12 @@ import { AppError } from '../middleware/errorHandler.js';
 import { storeUploadFile } from '../services/cloudinary.service.js';
 import { checkTenantStorageQuota } from '../services/quota.service.js';
 import {
+  cancelCaptureAiProcessingRun,
   getCaptureAiUsageSummary,
   getCaptureAiProcessingRun,
   listCaptureAiProcessingRuns,
-  processCaptureJobWithAi
+  processCaptureJobWithAi,
+  retryCaptureAiProcessingRun
 } from '../services/capture-ai-processing.service.js';
 import {
   applyCaptureAiContent,
@@ -398,6 +400,26 @@ export async function getCaptureJobAiRunController(request: Request, response: R
     const { tenantId } = requireTenantUser(request);
     const data = await getCaptureAiProcessingRun(request.params.captureJobId, request.params.runId, tenantId);
     response.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function cancelCaptureJobAiRunController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const { tenantId } = requireTenantUser(request);
+    const data = await cancelCaptureAiProcessingRun(request.params.captureJobId, request.params.runId, tenantId);
+    response.status(200).json({ success: true, data });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function retryCaptureJobAiRunController(request: Request, response: Response, next: NextFunction): Promise<void> {
+  try {
+    const { tenantId, userId } = requireTenantUser(request);
+    const data = await retryCaptureAiProcessingRun(request.params.captureJobId, request.params.runId, tenantId, userId);
+    response.status(202).json({ success: true, data });
   } catch (error) {
     next(error);
   }

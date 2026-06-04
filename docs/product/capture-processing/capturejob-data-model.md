@@ -175,6 +175,33 @@ En Paso 23 no se crea un modelo nuevo. El uso IA se deriva de `CaptureAiProcessi
 
 El plan se resuelve desde `Subscription.plan` si existe, despues `Tenant.plan`, y finalmente un limite por defecto. La estimacion de coste usa variables de entorno, no datos de facturacion persistidos.
 
+### Campos de cola IA
+
+`CaptureAiProcessingRun` incorpora metadata minima de worker:
+
+| Campo | Uso |
+| --- | --- |
+| `status` | queued, running, completed, failed o cancelled. |
+| `attempts` / `maxAttempts` | Reintentos controlados del worker. |
+| `queuedAt` | Momento de entrada en cola. |
+| `startedAt` | Momento en que un worker toma el run. |
+| `finishedAt` | Fin del run, sea completed, failed o cancelled. |
+| `lockedAt` / `lockedBy` | Lock DB-backed para evitar doble ejecucion. |
+| `nextRetryAt` | Fecha minima para reintento automatico. |
+| `cancelledAt` | Fecha de cancelacion. |
+| `lastHeartbeatAt` | Pulso del worker para detectar runs atascados. |
+| `estimatedCostUsd` | Estimacion operativa del coste cuando hay tokens. |
+
+Transiciones principales:
+
+- queued -> running
+- running -> completed
+- running -> failed
+- running -> queued, si el error es recuperable y quedan intentos
+- queued/running -> cancelled
+
+La cancelacion de `running` es best-effort: si la llamada al proveedor ya empezo, el sistema marca el run como cancelado y evita publicar el resultado si llega despues.
+
 ## Reglas funcionales iniciales
 
 - Un CaptureJob puede existir sin `propertyId`, pero no sin titulo, cliente o fuente.

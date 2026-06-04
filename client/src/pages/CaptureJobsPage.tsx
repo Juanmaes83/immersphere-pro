@@ -530,7 +530,26 @@ function buildOverlayPosition(form: HotspotForm): Record<string, unknown> | null
 
 function isStaleRunningRun(run: CaptureAiProcessingRun | null): boolean {
   if (!run || run.status !== 'running') return false;
-  return Date.now() - new Date(run.createdAt).getTime() > 15 * 60 * 1000;
+  return Date.now() - new Date(run.lastHeartbeatAt ?? run.startedAt ?? run.createdAt).getTime() > 15 * 60 * 1000;
+}
+
+function isActiveAiRun(run: CaptureAiProcessingRun): boolean {
+  return run.status === 'queued' || run.status === 'running';
+}
+
+function getAiRunStatusLabel(status: CaptureAiProcessingRun['status']): string {
+  if (status === 'queued') return 'En cola';
+  if (status === 'running') return 'Procesando';
+  if (status === 'completed') return 'Completado';
+  if (status === 'failed') return 'Fallido';
+  return 'Cancelado';
+}
+
+function getAiRunStatusClass(status: CaptureAiProcessingRun['status']): string {
+  if (status === 'completed') return 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50';
+  if (status === 'failed') return 'bg-red-50 text-red-700 ring-red-200 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-800/50';
+  if (status === 'cancelled') return 'bg-slate-100 text-slate-600 ring-slate-200 dark:bg-white/5 dark:text-white/60 dark:ring-white/10';
+  return 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-800/50';
 }
 
 function isClientTimeout(error: unknown): boolean {
@@ -726,7 +745,7 @@ export default function CaptureJobsPage(): JSX.Element {
   }, [jobs]);
 
   const latestAiRun = aiRuns[0] ?? null;
-  const hasRunningAiRun = aiRuns.some((run) => run.status === 'running');
+  const hasRunningAiRun = aiRuns.some(isActiveAiRun);
   const hasStaleRunningAiRun = isStaleRunningRun(latestAiRun);
   const commercialBriefCompleteness = selectedJob?.commercialBriefCompleteness ?? getCommercialBriefCompleteness(commercialBriefForm);
   const contextLimited = (selectedJob?.inputAssets?.length ?? 0) === 0 || commercialBriefCompleteness < 40 || (latestAiRun?.result?.confidence.score ?? 100) <= 60;
@@ -778,7 +797,7 @@ export default function CaptureJobsPage(): JSX.Element {
     try {
       const data = await unwrapApiResponse<CaptureAiProcessingRun[]>(api.get(`/capture-jobs/${captureJobId}/ai/runs`));
       setAiRuns(Array.isArray(data) ? data : []);
-      if (!data.some((run) => run.status === 'running')) {
+      if (!data.some(isActiveAiRun)) {
         void loadAiUsage(true);
       }
     } catch (err) {
@@ -898,6 +917,42 @@ export default function CaptureJobsPage(): JSX.Element {
         setError(getApiErrorMessage(err));
       }
       await loadAiRuns(selectedJob.id);
+      await loadAiUsage(true);
+    } finally {
+      setAiProcessing(false);
+    }
+  }
+
+  async function cancelAiRun(runId: string): Promise<void> {
+    if (!selectedJob) return;
+    setSaving(true);
+    setError(null);
+    setMessage(null);
+    try {
+      await unwrapApiResponse<CaptureAiProcessingRun>(api.post(`/capture-jobs/${selectedJob.id}/ai/runs/${runId}/cancel`));
+      setMessage('Procesamiento IA cancelado.');
+      await loadAiRuns(selectedJob.id);
+      await loadAiUsage(true);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function retryAiRun(runId: string): Promise<void> {
+    if (!selectedJob || hasRunningAiRun) return;
+    setAiProcessing(true);
+    setError(null);
+    setMessage(null);
+    try {
+      const run = await unwrapApiResponse<CaptureAiProcessingRun>(api.post(`/capture-jobs/${selectedJob.id}/ai/runs/${runId}/retry`));
+      setAiRuns((current) => [run, ...current.filter((item) => item.id !== run.id)]);
+      setMessage('Procesamiento IA reintentado. En cola...');
+      await loadAiRuns(selectedJob.id);
+      await loadAiUsage(true);
+    } catch (err) {
+      setError(getApiErrorMessage(err));
       await loadAiUsage(true);
     } finally {
       setAiProcessing(false);
@@ -1827,9 +1882,24 @@ export default function CaptureJobsPage(): JSX.Element {
                       </p>
                     ) : (
                       <div className="mt-4 space-y-3">
+                        {latestRun.status === 'queued' ? (
+                          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                            Procesamiento en cola. El worker IA lo tomara automaticamente.
+                          </p>
+                        ) : null}
                         {latestRun.status === 'running' ? (
                           <p className="rounded-lg bg-sky-100 px-3 py-2 text-xs font-bold text-sky-700 dark:bg-sky-950/40 dark:text-sky-300">
-                            Procesamiento en curso. La pagina actualiza el resultado automaticamente cada pocos segundos.
+                            Procesando con IA. La pagina actualiza el resultado automaticamente cada pocos segundos.
+                          </p>
+                        ) : null}
+                        {latestRun.status === 'queued' && latestRun.nextRetryAt ? (
+                          <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs font-bold text-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                            Reintentando automaticamente: {formatRunDate(latestRun.nextRetryAt)}.
+                          </p>
+                        ) : null}
+                        {latestRun.status === 'cancelled' ? (
+                          <p className="rounded-lg bg-slate-100 px-3 py-2 text-xs font-bold text-slate-600 dark:bg-white/5 dark:text-white/60">
+                            Procesamiento cancelado.
                           </p>
                         ) : null}
                         {hasStaleRunningAiRun ? (
@@ -1838,12 +1908,28 @@ export default function CaptureJobsPage(): JSX.Element {
                           </p>
                         ) : null}
                         <div className="flex flex-wrap items-center gap-2">
-                          <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ring-1 ${latestRun.status === 'completed' ? 'bg-emerald-50 text-emerald-700 ring-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-300 dark:ring-emerald-800/50' : latestRun.status === 'failed' ? 'bg-red-50 text-red-700 ring-red-200 dark:bg-red-950/30 dark:text-red-300 dark:ring-red-800/50' : 'bg-amber-50 text-amber-700 ring-amber-200 dark:bg-amber-950/30 dark:text-amber-300 dark:ring-amber-800/50'}`}>
-                            {latestRun.status}
+                          <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[0.12em] ring-1 ${getAiRunStatusClass(latestRun.status)}`}>
+                            {getAiRunStatusLabel(latestRun.status)}
                           </span>
                           <span className="text-xs font-bold text-slate-500 dark:text-white/50">{formatRunDate(latestRun.createdAt)}</span>
                           {latestRun.model ? <span className="text-xs font-bold text-slate-400">{latestRun.model}</span> : null}
+                          <span className="text-xs font-bold text-slate-400">Intentos {latestRun.attempts}/{latestRun.maxAttempts}</span>
+                          {latestRun.nextRetryAt ? <span className="text-xs font-bold text-amber-600 dark:text-amber-300">Retry {formatRunDate(latestRun.nextRetryAt)}</span> : null}
+                          {latestRun.tokensInput || latestRun.tokensOutput ? <span className="text-xs font-bold text-slate-400">Tokens {formatNumber(latestRun.tokensInput ?? 0)} / {formatNumber(latestRun.tokensOutput ?? 0)}</span> : null}
                           {result ? <span className="text-xs font-black text-sky-700 dark:text-sky-300">Confidence {result.confidence.score}/100</span> : null}
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {['queued', 'running'].includes(latestRun.status) ? (
+                            <button type="button" onClick={() => { void cancelAiRun(latestRun.id); }} disabled={saving} className="rounded-full border border-red-200 px-4 py-2 text-xs font-black text-red-700 hover:bg-red-50 disabled:opacity-50 dark:border-red-900/50 dark:text-red-300 dark:hover:bg-red-950/30">
+                              Cancelar
+                            </button>
+                          ) : null}
+                          {['failed', 'cancelled'].includes(latestRun.status) ? (
+                            <button type="button" onClick={() => { void retryAiRun(latestRun.id); }} disabled={aiProcessing || hasRunningAiRun || Boolean(aiUsage?.disabled) || Boolean(aiUsage?.daily.isLimited)} className="rounded-full border border-sky-200 px-4 py-2 text-xs font-black text-sky-700 hover:bg-sky-50 disabled:opacity-50 dark:border-sky-900/50 dark:text-sky-300 dark:hover:bg-sky-950/30">
+                              Reintentar
+                            </button>
+                          ) : null}
                         </div>
 
                         {latestRun.status === 'completed' && result ? (
@@ -2021,7 +2107,7 @@ export default function CaptureJobsPage(): JSX.Element {
                               <div className="mt-2 space-y-1">
                                 {aiRuns.slice(1).map((run) => (
                                   <p key={run.id} className="rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-500 dark:bg-slate-950 dark:text-white/50">
-                                    {formatRunDate(run.createdAt)} · {run.status} · {run.model || 'modelo no registrado'} {run.result ? `· confidence ${run.result.confidence.score}/100` : ''}
+                                    {formatRunDate(run.createdAt)} Â· {getAiRunStatusLabel(run.status)} Â· intentos {run.attempts}/{run.maxAttempts} Â· {run.model || 'modelo no registrado'} {run.result ? `Â· confidence ${run.result.confidence.score}/100` : ''}
                                   </p>
                                 ))}
                               </div>

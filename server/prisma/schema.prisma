@@ -290,6 +290,17 @@ model CaptureAiProcessingRun {
   model         String?
   tokensInput   Int?
   tokensOutput  Int?
+  estimatedCostUsd Float?
+  attempts      Int        @default(0)
+  maxAttempts   Int        @default(2)
+  queuedAt      DateTime?
+  startedAt     DateTime?
+  finishedAt    DateTime?
+  lockedAt      DateTime?
+  lockedBy      String?
+  nextRetryAt   DateTime?
+  cancelledAt   DateTime?
+  lastHeartbeatAt DateTime?
   createdAt     DateTime   @default(now())
   updatedAt     DateTime   @updatedAt
 
@@ -297,6 +308,8 @@ model CaptureAiProcessingRun {
   @@index([tenantId])
   @@index([userId])
   @@index([status])
+  @@index([status, nextRetryAt])
+  @@index([lockedAt])
   @@index([createdAt])
 }
 

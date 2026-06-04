@@ -6,6 +6,7 @@ import multer from 'multer';
 import {
   applyCaptureJobAiContentController,
   archiveCaptureJobController,
+  cancelCaptureJobAiRunController,
   createCaptureHotspotController,
   createCaptureInputAssetController,
   createCaptureJobController,
@@ -24,6 +25,7 @@ import {
   listCaptureJobAiRunsController,
   listCaptureJobsController,
   processCaptureJobAiController,
+  retryCaptureJobAiRunController,
   updateCaptureHotspotController,
   updateCaptureInputAssetController,
   updateCaptureJobController,
@@ -111,6 +113,8 @@ captureJobsRoutes.post('/:captureJobId/qr', requireAuth, generateCaptureJobQrCon
 captureJobsRoutes.post('/:captureJobId/ai/process', requireAuth, processCaptureJobAiController);
 captureJobsRoutes.get('/:captureJobId/ai/runs', requireAuth, listCaptureJobAiRunsController);
 captureJobsRoutes.get('/:captureJobId/ai/runs/:runId', requireAuth, getCaptureJobAiRunController);
+captureJobsRoutes.post('/:captureJobId/ai/runs/:runId/cancel', requireAuth, cancelCaptureJobAiRunController);
+captureJobsRoutes.post('/:captureJobId/ai/runs/:runId/retry', requireAuth, retryCaptureJobAiRunController);
 captureJobsRoutes.post('/:captureJobId/ai/runs/:runId/apply-content', requireAuth, applyCaptureJobAiContentController);
 captureJobsRoutes.post('/:captureJobId/ai/runs/:runId/create-hotspots', requireAuth, createCaptureJobHotspotsFromAiController);
 

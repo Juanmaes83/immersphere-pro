@@ -15,6 +15,7 @@ import { chatRoutes } from './routes/chat.routes.js';
 import { leadReminderRoutes } from './routes/lead-reminder.routes.js';
 import { captureJobsRoutes } from './routes/capture-jobs.routes.js';
 import { errorHandler, notFoundHandler } from './middleware/errorHandler.js';
+import { startCaptureAiWorker } from './workers/capture-ai-worker.js';
 
 export const prisma = new PrismaClient();
 
@@ -36,6 +37,7 @@ function isAllowedCorsOrigin(origin: string | undefined): boolean {
 }
 
 const app = express();
+let captureAiWorker: ReturnType<typeof startCaptureAiWorker> = null;
 
 app.use(
   cors({
@@ -188,12 +190,14 @@ app.use(errorHandler);
 
 async function startServer(): Promise<void> {
   await prisma.$connect();
+  captureAiWorker = startCaptureAiWorker();
   app.listen(env.PORT, () => {
     process.stdout.write('Immersphere Pro API escuchando en http://localhost:' + env.PORT + '\n');
   });
 }
 
 async function shutdown(): Promise<void> {
+  captureAiWorker?.stop();
   await prisma.$disconnect();
   process.exit(0);
 }

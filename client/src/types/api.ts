@@ -287,7 +287,7 @@ export interface CaptureAiProcessingRun {
   captureJobId: string;
   tenantId: string;
   userId: string | null;
-  status: 'running' | 'completed' | 'failed';
+  status: 'queued' | 'running' | 'completed' | 'failed' | 'cancelled';
   promptVersion: string;
   inputSummary: unknown;
   result: CaptureAiProcessingResult | null;
@@ -295,6 +295,17 @@ export interface CaptureAiProcessingRun {
   model: string | null;
   tokensInput: number | null;
   tokensOutput: number | null;
+  estimatedCostUsd: number | null;
+  attempts: number;
+  maxAttempts: number;
+  queuedAt: string | null;
+  startedAt: string | null;
+  finishedAt: string | null;
+  lockedAt: string | null;
+  lockedBy: string | null;
+  nextRetryAt: string | null;
+  cancelledAt: string | null;
+  lastHeartbeatAt: string | null;
   createdAt: string;
   updatedAt: string;
 }
