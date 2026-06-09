@@ -49,6 +49,16 @@ function translateHotspotType(type: string): string {
   return HOTSPOT_TYPE_LABELS[type] ?? type;
 }
 
+function buildRoomDesignerUrl(property: Pick<ImmersiveProperty, 'id' | 'title' | 'type' | 'tenantId'>): string {
+  const url = new URL('https://immersphere-asset-lab.vercel.app/scenes/room-designer/index.html');
+  url.searchParams.set('source', 'saas');
+  url.searchParams.set('propertyId', property.id);
+  url.searchParams.set('propertyTitle', property.title);
+  url.searchParams.set('propertyType', property.type);
+  if (property.tenantId) url.searchParams.set('tenantId', property.tenantId);
+  return url.toString();
+}
+
 // ─── Progress & guidance system ──────────────────────────────────────────────
 interface ProgressStep { label: string; ok: boolean }
 
@@ -1192,6 +1202,22 @@ export default function PropertiesPage(): JSX.Element {
                 >
                   {property.spaces.length === 0 ? 'Crear recorrido' : 'Diseñar'}
                 </button>
+
+                {/* Room Designer proposal CTA */}
+                <a
+                  href={buildRoomDesignerUrl(property)}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => { e.stopPropagation(); }}
+                  className="inline-flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-4 py-2.5 text-sm font-black text-violet-700 transition-colors hover:bg-violet-100"
+                >
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                    <path d="M2 7l10-5 10 5-10 5-10-5z" />
+                    <path d="M2 17l10 5 10-5" />
+                    <path d="M2 12l10 5 10-5" />
+                  </svg>
+                  Propuesta visual
+                </a>
 
                 {/* Publish toggle */}
                 <button
