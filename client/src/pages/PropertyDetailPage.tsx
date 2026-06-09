@@ -1044,6 +1044,17 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
   }
 
   const property = selectedProperty;
+
+  function buildRoomDesignerUrl(): string {
+    const url = new URL('https://immersphere-asset-lab.vercel.app/scenes/room-designer/index.html');
+    url.searchParams.set('source', 'saas');
+    url.searchParams.set('propertyId', property.id);
+    url.searchParams.set('propertyTitle', property.title);
+    url.searchParams.set('propertyType', property.type);
+    if (property.tenantId) url.searchParams.set('tenantId', property.tenantId);
+    return url.toString();
+  }
+
   const primaryColor = property.tenantPrimaryColor || '#7C3AED';
   const lang = property.language ?? 'es';
   const hasGaussian = property.spaces.some((s) => s.assets.some((a) => a.type === 'gaussian_splat'));
@@ -1365,6 +1376,37 @@ export default function PropertyDetailPage({ propertyId, embed = false }: Proper
                   </div>
                 </>
               ) : null}
+
+              {/* Room Designer proposal card — auth-only */}
+              {isAuthenticated ? (
+                <div className="mt-5 overflow-hidden rounded-[1.4rem] bg-white p-5 ring-1 ring-slate-200">
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em]" style={{ color: primaryColor }}>
+                    Room Designer
+                  </p>
+                  <h3 className="mt-2 text-sm font-black text-slate-900">Propuesta visual</h3>
+                  <p className="mt-2 text-xs leading-5 text-slate-500">
+                    Diseña una estancia amueblada con productos reales para esta propiedad y exporta una propuesta comercial.
+                  </p>
+                  <a
+                    href={buildRoomDesignerUrl()}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-4 flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3.5 text-sm font-black text-white transition hover:opacity-90"
+                    style={{ backgroundColor: primaryColor }}
+                  >
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
+                      <path d="M2 7l10-5 10 5-10 5-10-5z" />
+                      <path d="M2 17l10 5 10-5" />
+                      <path d="M2 12l10 5 10-5" />
+                    </svg>
+                    Crear propuesta visual
+                  </a>
+                  <p className="mt-2 text-center text-[10px] text-slate-400">
+                    Se abrirá en una nueva pestaña con el contexto de esta propiedad.
+                  </p>
+                </div>
+              ) : null}
+
               {/* Mortgage simulator — visible to all visitors, hidden when price = 0 */}
               <MortgageSimulator price={property.price} primaryColor={primaryColor} />
 
