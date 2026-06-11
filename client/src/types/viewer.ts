@@ -14,6 +14,15 @@ export type ViewerAssetFormat =
   | 'iframe';
 
 export type HotspotType = 'info' | 'cta' | 'navigation' | 'measurement' | 'price';
+export type HotspotActionType =
+  | 'info'
+  | 'navigate'
+  | 'lead_form'
+  | 'whatsapp'
+  | 'calendly'
+  | 'external_link'
+  | 'image'
+  | 'video';
 
 export type ViewerEventType =
   | 'viewer_ready'
@@ -54,6 +63,11 @@ export interface Hotspot {
   body?: string;
   metric?: string;
   targetSpaceId?: string;
+  actionType?: HotspotActionType | string;
+  actionPayload?: Record<string, unknown> | null;
+  ctaLabel?: string;
+  displayMode?: string;
+  trackingLabel?: string;
   data?: Record<string, unknown>;
 }
 
@@ -92,6 +106,13 @@ export interface Space {
   guidedDuration?: number;
 }
 
+export interface GuidedTourConfig {
+  enabled?: boolean;
+  finalCtaLabel?: string;
+  finalActionType?: HotspotActionType | string;
+  finalActionPayload?: Record<string, unknown> | null;
+}
+
 export interface ViewerEvent {
   id: string;
   type: ViewerEventType;
@@ -125,8 +146,11 @@ export interface UniversalViewerProps {
   agencyName?: string;
   /** Optional agency logo URL shown in the branded loading screen when present. */
   agencyLogoUrl?: string;
+  tenantWhatsapp?: string;
+  tenantCalendlyUrl?: string;
   /** Optional URL to a floorplan image (PNG/JPG). Enables the interactive floorplan view. */
   floorplanUrl?: string;
+  guidedConfig?: GuidedTourConfig | null;
   /**
    * Enable the native AR button on GLB/MESH assets (model-viewer).
    * Only activates on Android (Scene Viewer) and iOS (Quick Look).

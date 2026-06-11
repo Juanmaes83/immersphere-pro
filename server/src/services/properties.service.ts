@@ -72,6 +72,11 @@ interface HotspotInput {
   body?: string;
   metric?: string;
   targetSpaceId?: string;
+  actionType?: string;
+  actionPayload?: unknown;
+  ctaLabel?: string;
+  displayMode?: string;
+  trackingLabel?: string;
 }
 
 interface AssetInput {
@@ -117,6 +122,7 @@ interface PropertyInput {
   latitude?: number | null;
   longitude?: number | null;
   password?: string;
+  guidedConfig?: unknown;
   spaces?: SpaceInput[];
 }
 
@@ -224,7 +230,13 @@ function buildAssetsCreate(assets: AssetInput[] | undefined) {
         type: hotspot.type,
         position: JSON.stringify(hotspot.position ?? { x: 50, y: 50 }),
         body: hotspot.body ?? '',
-        metric: hotspot.metric ?? ''
+        metric: hotspot.metric ?? '',
+        targetSpaceId: hotspot.targetSpaceId ?? null,
+        actionType: hotspot.actionType ?? '',
+        actionPayload: hotspot.actionPayload == null ? Prisma.JsonNull : hotspot.actionPayload as Prisma.InputJsonValue,
+        ctaLabel: hotspot.ctaLabel ?? '',
+        displayMode: hotspot.displayMode ?? '',
+        trackingLabel: hotspot.trackingLabel ?? ''
       }))
     }
   }));
@@ -479,6 +491,7 @@ export async function createProperty(tenantId: string, input: PropertyInput) {
       address: input.address ?? '',
       latitude: input.latitude ?? null,
       longitude: input.longitude ?? null,
+      guidedConfig: input.guidedConfig == null ? Prisma.JsonNull : input.guidedConfig as Prisma.InputJsonValue,
       ...(input.password ? { passwordHash: hashPassword(input.password) } : {}),
       spaces: {
         create: buildSpacesCreate(input.spaces && input.spaces.length > 0 ? input.spaces : buildDefaultSpaces(input))
@@ -523,6 +536,9 @@ export async function updateProperty(tenantId: string, propertyId: string, input
         address: input.address ?? '',
         latitude: input.latitude ?? null,
         longitude: input.longitude ?? null,
+        ...(input.guidedConfig !== undefined
+          ? { guidedConfig: input.guidedConfig == null ? Prisma.JsonNull : input.guidedConfig as Prisma.InputJsonValue }
+          : {}),
         ...(input.password !== undefined
           ? { passwordHash: input.password ? hashPassword(input.password) : null }
           : {}),
@@ -595,6 +611,9 @@ async function validateNavigationHotspots(propertyId: string, hotspots: HotspotI
     if (hotspot.type.toLowerCase() === 'navigation' && hotspot.targetSpaceId) {
       await assertTargetSpaceInProperty(propertyId, hotspot.targetSpaceId);
     }
+    if ((hotspot.actionType ?? '').toLowerCase() === 'navigate' && hotspot.targetSpaceId) {
+      await assertTargetSpaceInProperty(propertyId, hotspot.targetSpaceId);
+    }
   }
 }
 
@@ -605,7 +624,12 @@ function buildHotspotsCreate(hotspots: HotspotInput[] | undefined) {
     position: JSON.stringify(hotspot.position ?? { x: 50, y: 50 }),
     body: hotspot.body ?? '',
     metric: hotspot.metric ?? '',
-    targetSpaceId: hotspot.targetSpaceId ?? null
+    targetSpaceId: hotspot.targetSpaceId ?? null,
+    actionType: hotspot.actionType ?? '',
+    actionPayload: hotspot.actionPayload == null ? Prisma.JsonNull : hotspot.actionPayload as Prisma.InputJsonValue,
+    ctaLabel: hotspot.ctaLabel ?? '',
+    displayMode: hotspot.displayMode ?? '',
+    trackingLabel: hotspot.trackingLabel ?? ''
   }));
 }
 

@@ -11,6 +11,11 @@ interface ApiHotspot {
   body?: string;
   metric?: string;
   targetSpaceId?: string;
+  actionType?: string;
+  actionPayload?: Record<string, unknown> | string | null;
+  ctaLabel?: string;
+  displayMode?: string;
+  trackingLabel?: string;
 }
 
 interface ApiAsset {
@@ -62,6 +67,7 @@ interface ApiProperty {
   latitude: number | null;
   longitude: number | null;
   isPasswordProtected?: boolean;
+  guidedConfig?: Record<string, unknown> | null;
   spaces: ApiSpace[];
   _count?: { leads: number };
   tenant?: { phone?: string; whatsappNumber?: string; calendlyUrl?: string; removeBranding?: boolean; primaryColor?: string; name?: string; logoUrl?: string; logoText?: string; plan?: string; subscription?: { status: string; updatedAt: string } };
@@ -117,6 +123,7 @@ export interface ImmersiveProperty {
   /** ISO date string of last subscription update (used for grace period calculation) */
   tenantSubscriptionUpdatedAt: string;
   spaces: Space[];
+  guidedConfig?: Record<string, unknown> | null;
 }
 
 export interface PropertyFilters {
@@ -150,6 +157,7 @@ export interface CreatePropertyPayload {
   latitude?: number | null;
   longitude?: number | null;
   password?: string;
+  guidedConfig?: Record<string, unknown> | null;
 }
 
 export interface CreateSpacePayload {
@@ -222,6 +230,23 @@ function normalizeHotspotType(type: string): Hotspot['type'] {
   return 'info';
 }
 
+function normalizeJsonRecord(value: unknown): Record<string, unknown> | null {
+  if (value == null) return null;
+  if (typeof value === 'string') {
+    try {
+      const parsed = JSON.parse(value) as unknown;
+      return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
+        ? parsed as Record<string, unknown>
+        : null;
+    } catch {
+      return null;
+    }
+  }
+  return typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
 function normalizeAsset(asset: ApiAsset): ViewerAsset {
   return {
     id: asset.id,
@@ -242,7 +267,12 @@ function normalizeAsset(asset: ApiAsset): ViewerAsset {
       })(),
       body: hotspot.body,
       metric: hotspot.metric,
-      ...(hotspot.targetSpaceId ? { targetSpaceId: hotspot.targetSpaceId } : {})
+      ...(hotspot.targetSpaceId ? { targetSpaceId: hotspot.targetSpaceId } : {}),
+      ...(hotspot.actionType ? { actionType: hotspot.actionType } : {}),
+      ...(hotspot.actionPayload != null ? { actionPayload: normalizeJsonRecord(hotspot.actionPayload) } : {}),
+      ...(hotspot.ctaLabel ? { ctaLabel: hotspot.ctaLabel } : {}),
+      ...(hotspot.displayMode ? { displayMode: hotspot.displayMode } : {}),
+      ...(hotspot.trackingLabel ? { trackingLabel: hotspot.trackingLabel } : {})
     }))
   };
 }
@@ -288,7 +318,12 @@ function buildAssetApiPayload(payload: CreateAssetPayload | UpdateAssetPayload):
       position: hotspot.position,
       body: hotspot.body,
       metric: hotspot.metric,
-      ...(hotspot.targetSpaceId ? { targetSpaceId: hotspot.targetSpaceId } : {})
+      ...(hotspot.targetSpaceId ? { targetSpaceId: hotspot.targetSpaceId } : {}),
+      ...(hotspot.actionType ? { actionType: hotspot.actionType } : {}),
+      ...(hotspot.actionPayload ? { actionPayload: hotspot.actionPayload } : {}),
+      ...(hotspot.ctaLabel ? { ctaLabel: hotspot.ctaLabel } : {}),
+      ...(hotspot.displayMode ? { displayMode: hotspot.displayMode } : {}),
+      ...(hotspot.trackingLabel ? { trackingLabel: hotspot.trackingLabel } : {})
     }));
   }
 
@@ -484,6 +519,7 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
       latitude: null,
       longitude: null,
       isPasswordProtected: true,
+      guidedConfig: null,
       leads: 0,
       tenantPhone: '',
       tenantWhatsapp: '',
@@ -534,6 +570,7 @@ function normalizeProperty(property: ApiProperty): ImmersiveProperty {
     tenantPlan: property.tenant?.plan ?? 'STARTER',
     tenantSubscriptionStatus: property.tenant?.subscription?.status ?? '',
     tenantSubscriptionUpdatedAt: property.tenant?.subscription?.updatedAt ?? '',
+    guidedConfig: normalizeJsonRecord(property.guidedConfig),
     spaces: normalizeSpacesWithFallbacks(property.spaces ?? [], property)
   };
 }

@@ -193,7 +193,10 @@ export default function UniversalViewer({
   propertyTitle,
   agencyName,
   agencyLogoUrl,
+  tenantWhatsapp = '',
+  tenantCalendlyUrl = '',
   floorplanUrl,
+  guidedConfig,
   arEnabled = false,
   onAnalyticsEvent,
   disableLeadCapture = false,
@@ -217,6 +220,13 @@ export default function UniversalViewer({
   const [activeSpaceId, setActiveSpaceId] = useState(initialSpaceId ?? firstSpaceId);
   const [activeHotspot, setActiveHotspot] = useState<Hotspot | null>(null);
   const [showLeadModal, setShowLeadModal] = useState(false);
+  const [leadContext, setLeadContext] = useState<Record<string, string | undefined> | undefined>();
+  const [mediaModal, setMediaModal] = useState<{
+    type: 'image' | 'video';
+    url: string;
+    title: string;
+    description?: string;
+  } | null>(null);
   const [mobileSheetOpen, setMobileSheetOpen] = useState(false);
   /** Spatial breadcrumb trail — records each space visited in order, capped at 12 */
   const [visitHistory, setVisitHistory] = useState<string[]>(
@@ -276,6 +286,7 @@ export default function UniversalViewer({
   const [showCinematicEnd, setShowCinematicEnd] = useState(false);
   const [cpTick,           setCpTick]           = useState(false); // drives progress animation
   const cinematicTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const guidedAutoStartedRef = useRef(false);
 
   // ── Contextual minimap ───────────────────────────────────────────────────────
   /** True while the minimap should be visible (briefly after space change) */
@@ -294,6 +305,201 @@ export default function UniversalViewer({
   const activeSpace = sortedSpaces.find((space) => space.id === activeSpaceId) ?? sortedSpaces[0];
   const activeAsset = selectPrimaryAsset(activeSpace);
 
+  function payloadValue(payload: Record<string, unknown> | null | undefined, key: string): string {
+    const value = payload?.[key];
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  function guidedConfigValue(key: string): string {
+    if (!guidedConfig || typeof guidedConfig !== 'object') return '';
+    const value = (guidedConfig as Record<string, unknown>)[key];
+    return typeof value === 'string' ? value.trim() : '';
+  }
+
+  function guidedFinalPayloadValue(key: string): string {
+    const payload = guidedConfig?.finalActionPayload;
+    return payloadValue(payload ?? null, key);
+  }
+
+  function isGuidedEnabled(): boolean {
+    return guidedConfig?.enabled === true;
+  }
+
+  function isSafePublicUrl(raw: string): boolean {
+    try {
+      const parsed = new URL(raw, window.location.origin);
+      return parsed.protocol === 'https:' || parsed.protocol === 'http:';
+    } catch {
+      return false;
+    }
+  }
+
+  function openSafeUrl(raw: string): boolean {
+    if (!isSafePublicUrl(raw)) return false;
+    window.open(raw, '_blank', 'noopener,noreferrer');
+    return true;
+  }
+
+  function getHotspotActionType(hotspot: Hotspot): string {
+    const explicit = String(hotspot.actionType ?? '').trim().toLowerCase();
+    if (explicit) return explicit;
+    if (hotspot.type === 'navigation') return 'navigate';
+    if (hotspot.type === 'cta') return 'lead_form';
+    return 'info';
+  }
+
+  function getLeadContext(source: string, hotspot?: Hotspot, overrides: Record<string, string | undefined> = {}): Record<string, string | undefined> {
+    return {
+      source,
+      propertyId,
+      spaceId: activeSpace?.id,
+      spaceName: activeSpace?.name,
+      assetId: activeAsset?.id,
+      hotspotId: hotspot?.id,
+      hotspotLabel: hotspot?.label,
+      actionType: hotspot ? getHotspotActionType(hotspot) : overrides.actionType,
+      ctaLabel: hotspot?.ctaLabel || overrides.ctaLabel,
+      sessionId: sessionId.current,
+      origin: window.location.origin,
+      referrer: document.referrer || undefined,
+      ...overrides
+    };
+  }
+
+  function trackHotspotAction(type: string, hotspot: Hotspot, extra: Record<string, unknown> = {}): void {
+    const actionType = getHotspotActionType(hotspot);
+    trackToBackend({
+      propertyId,
+      spaceId: activeSpace?.id,
+      assetId: activeAsset?.id,
+      hotspotId: hotspot.id,
+      type,
+      label: hotspot.trackingLabel || hotspot.label,
+      payload: {
+        hotspotLabel: hotspot.label,
+        actionType,
+        ctaLabel: hotspot.ctaLabel,
+        ...extra
+      },
+      sessionId: sessionId.current
+    });
+  }
+
+  function executeHotspotAction(hotspot: Hotspot): void {
+    const actionType = getHotspotActionType(hotspot);
+    const payload = hotspot.actionPayload ?? {};
+    trackHotspotAction('hotspot_action_clicked', hotspot);
+
+    if (actionType === 'navigate') {
+      const targetSpaceId = hotspot.targetSpaceId || payloadValue(payload, 'targetSpaceId');
+      if (!targetSpaceId) return;
+      transitionIntentRef.current = 'hotspot';
+      driftRef.current = computeDrift(hotspot.position);
+      runTransition(() => { handleSpaceChange(targetSpaceId); }, targetSpaceId);
+      return;
+    }
+
+    if (actionType === 'lead_form') {
+      setActiveHotspot(hotspot);
+      setLeadContext(getLeadContext('hotspot_action', hotspot));
+      setShowLeadModal(true);
+      trackHotspotAction('hotspot_lead_opened', hotspot);
+      return;
+    }
+
+    if (actionType === 'whatsapp') {
+      const rawNumber = payloadValue(payload, 'phone') || payloadValue(payload, 'number') || tenantWhatsapp;
+      const phone = rawNumber.replace(/\D/g, '');
+      if (!phone) return;
+      const message = payloadValue(payload, 'message') || `Hola, me interesa esta propiedad: ${propertyTitle ?? ''}`;
+      if (openSafeUrl(`https://wa.me/${phone}?text=${encodeURIComponent(message)}`)) {
+        trackHotspotAction('hotspot_external_opened', hotspot, { destination: 'whatsapp' });
+      }
+      return;
+    }
+
+    if (actionType === 'calendly') {
+      const url = payloadValue(payload, 'url') || tenantCalendlyUrl;
+      if (openSafeUrl(url)) {
+        trackHotspotAction('hotspot_external_opened', hotspot, { destination: 'calendly' });
+      }
+      return;
+    }
+
+    if (actionType === 'external_link') {
+      if (openSafeUrl(payloadValue(payload, 'url'))) {
+        trackHotspotAction('hotspot_external_opened', hotspot, { destination: 'external_link' });
+      }
+      return;
+    }
+
+    if (actionType === 'image' || actionType === 'video') {
+      const url = payloadValue(payload, 'url');
+      if (!isSafePublicUrl(url)) return;
+      setMediaModal({
+        type: actionType,
+        url,
+        title: payloadValue(payload, 'title') || hotspot.label,
+        description: payloadValue(payload, 'description') || hotspot.body
+      });
+      trackHotspotAction('hotspot_media_opened', hotspot, { mediaType: actionType });
+      return;
+    }
+
+    setActiveHotspot(hotspot);
+    if (desktopImmersive) setInfoPanelOpen(true);
+  }
+
+  function trackGuided(type: string, extra: Record<string, unknown> = {}): void {
+    trackToBackend({
+      propertyId,
+      spaceId: activeSpace?.id,
+      assetId: activeAsset?.id,
+      type,
+      label: activeSpace?.name,
+      payload: {
+        stepOrder: currentSpaceIdx + 1,
+        stepTitle: activeSpace?.storySubheadline || activeSpace?.name,
+        source: 'guided_autopilot',
+        ...extra
+      },
+      sessionId: sessionId.current
+    });
+  }
+
+  function executeGuidedFinalCta(): void {
+    const finalAction = guidedConfigValue('finalActionType') || 'lead_form';
+    const finalCtaLabel = guidedConfigValue('finalCtaLabel') || t(language, 'request_visit');
+    trackGuided('guided_cta_clicked', { actionType: finalAction, ctaLabel: finalCtaLabel });
+
+    if (finalAction === 'whatsapp') {
+      const rawNumber = guidedFinalPayloadValue('phone') || guidedFinalPayloadValue('url') || tenantWhatsapp;
+      const phone = rawNumber.replace(/\D/g, '');
+      if (phone) {
+        openSafeUrl(`https://wa.me/${phone}?text=${encodeURIComponent(`Hola, quiero hacer una visita guiada de ${propertyTitle ?? 'esta propiedad'}`)}`);
+      }
+      return;
+    }
+
+    if (finalAction === 'calendly') {
+      openSafeUrl(guidedFinalPayloadValue('url') || tenantCalendlyUrl);
+      return;
+    }
+
+    if (finalAction === 'external_link') {
+      openSafeUrl(guidedFinalPayloadValue('url'));
+      return;
+    }
+
+    handleLeadCtaOpen(getLeadContext('guided_autopilot', undefined, {
+      actionType: finalAction,
+      ctaLabel: finalCtaLabel,
+      guidedStepId: activeSpace?.id,
+      guidedStepTitle: activeSpace?.storySubheadline || activeSpace?.name
+    }));
+    trackGuided('guided_lead_opened', { actionType: finalAction, ctaLabel: finalCtaLabel });
+  }
+
   // Track initial viewer open
   useEffect(() => {
     if (!activeSpace) return;
@@ -307,6 +513,15 @@ export default function UniversalViewer({
     });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    if (guidedAutoStartedRef.current || sortedSpaces.length < 2 || !isGuidedEnabled()) return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('guided') !== '1') return;
+    guidedAutoStartedRef.current = true;
+    window.setTimeout(() => { startCinematicTour(); }, 350);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sortedSpaces.length]);
 
   // Fullscreen listener
   useEffect(() => {
@@ -502,9 +717,20 @@ export default function UniversalViewer({
       const curIdx = sortedSpaces.findIndex((s) => s.id === activeSpaceId);
       const isLast = curIdx < 0 || curIdx >= sortedSpaces.length - 1;
       if (isLast) {
+        trackGuided('guided_step_completed', { stepOrder: curIdx + 1 });
+        trackGuided('guided_completed', { totalSteps: sortedSpaces.length });
         setShowCinematicEnd(true);
       } else {
         const nextSpace = sortedSpaces[curIdx + 1]!;
+        trackGuided('guided_step_completed', { stepOrder: curIdx + 1 });
+        trackToBackend({
+          propertyId,
+          spaceId: nextSpace.id,
+          type: 'guided_step_viewed',
+          label: nextSpace.name,
+          payload: { source: 'guided_autopilot', stepOrder: curIdx + 2, stepTitle: nextSpace.storySubheadline || nextSpace.name },
+          sessionId: sessionId.current
+        });
         runTransition(() => { handleSpaceChange(nextSpace.id); }, nextSpace.id);
       }
     }, spaceDurationMs);
@@ -604,7 +830,7 @@ export default function UniversalViewer({
   }
 
   function startCinematicTour(): void {
-    if (prefersReducedMotion) return;
+    if (prefersReducedMotion || !isGuidedEnabled()) return;
     setIsCinematic(true);
     setCinematicPaused(false);
     setShowCinematicEnd(false);
@@ -626,9 +852,28 @@ export default function UniversalViewer({
       label: 'cinematic',
       sessionId: sessionId.current
     });
+    trackToBackend({
+      propertyId,
+      spaceId: firstSpace?.id ?? activeSpaceId,
+      type: 'guided_started',
+      label: 'Visita guiada automática',
+      payload: { source: 'guided_autopilot', totalSteps: sortedSpaces.length },
+      sessionId: sessionId.current
+    });
+    trackToBackend({
+      propertyId,
+      spaceId: firstSpace?.id ?? activeSpaceId,
+      type: 'guided_step_viewed',
+      label: firstSpace?.name,
+      payload: { source: 'guided_autopilot', stepOrder: 1, stepTitle: firstSpace?.storySubheadline || firstSpace?.name },
+      sessionId: sessionId.current
+    });
   }
 
   function stopCinematicTour(): void {
+    if (isCinematic) {
+      trackGuided('guided_exited');
+    }
     setIsCinematic(false);
     setCinematicPaused(false);
     setShowCinematicEnd(false);
@@ -636,6 +881,36 @@ export default function UniversalViewer({
       clearTimeout(cinematicTimerRef.current);
       cinematicTimerRef.current = null;
     }
+  }
+
+  function toggleCinematicPause(): void {
+    setCinematicPaused((paused) => {
+      trackGuided(paused ? 'guided_resumed' : 'guided_paused');
+      return !paused;
+    });
+  }
+
+  function stepCinematicTour(dir: 1 | -1): void {
+    const curIdx = sortedSpaces.findIndex((space) => space.id === activeSpaceId);
+    const nextIdx = curIdx + dir;
+    if (nextIdx < 0 || nextIdx >= sortedSpaces.length) return;
+    const nextSpace = sortedSpaces[nextIdx];
+    if (!nextSpace) return;
+    setShowCinematicEnd(false);
+    setCinematicPaused(true);
+    trackGuided('guided_skipped', { direction: dir > 0 ? 'next' : 'prev', targetStepOrder: nextIdx + 1 });
+    trackToBackend({
+      propertyId,
+      spaceId: nextSpace.id,
+      type: 'guided_step_viewed',
+      label: nextSpace.name,
+      payload: { source: 'guided_autopilot', stepOrder: nextIdx + 1, stepTitle: nextSpace.storySubheadline || nextSpace.name },
+      sessionId: sessionId.current
+    });
+    runTransition(() => {
+      setActiveSpaceId(nextSpace.id);
+      setActiveHotspot(null);
+    }, nextSpace.id);
   }
 
   function stepGuidedTour(dir: 1 | -1): void {
@@ -813,23 +1088,12 @@ export default function UniversalViewer({
       sessionId: sessionId.current
     });
 
-    // Navigation hotspots: switch space directly — do not open info panel
-    if (hotspot.type === 'navigation' && hotspot.targetSpaceId) {
-      transitionIntentRef.current = 'hotspot'; // cinematic zoom-in before transition
-      // Compute directional drift from hotspot position (yaw/pitch for panoramas, x/y otherwise).
-      // Only for navigation hotspots — CTA/info hotspots never trigger drift.
-      // prefersReducedMotion guard is applied at render time (driftRef read is safe here).
-      driftRef.current = computeDrift(hotspot.position);
-      runTransition(() => { handleSpaceChange(hotspot.targetSpaceId!); }, hotspot.targetSpaceId);
-      return;
-    }
-
-    setActiveHotspot(hotspot);
-    if (desktopImmersive) setInfoPanelOpen(true);
+    executeHotspotAction(hotspot);
   }
 
-  function handleLeadCtaOpen(): void {
+  function handleLeadCtaOpen(context?: Record<string, string | undefined>): void {
     if (disableLeadCapture) return; // grace period: readonly o blocked
+    setLeadContext(context ?? getLeadContext('viewer_cta', activeHotspot ?? undefined));
     setShowLeadModal(true);
     trackToBackend({
       propertyId,
@@ -852,8 +1116,13 @@ export default function UniversalViewer({
       propertyId,
       spaceId: activeSpace?.id,
       assetId: activeAsset?.id,
-      type: 'lead_submitted',
+      type: leadContext?.source === 'guided_autopilot'
+        ? 'guided_lead_submitted'
+        : leadContext?.source === 'hotspot_action'
+          ? 'hotspot_lead_submitted'
+          : 'lead_submitted',
       label: activeHotspot?.label ?? 'Tour guiado',
+      payload: leadContext,
       sessionId: sessionId.current
     });
   }
@@ -1006,9 +1275,56 @@ export default function UniversalViewer({
           primaryColor={primaryColor}
           agencyName={agencyName}
           lang={language}
-          onClose={() => setShowLeadModal(false)}
+          context={leadContext}
+          onClose={() => { setShowLeadModal(false); setLeadContext(undefined); }}
           onSubmitted={() => { handleLeadSubmitted(); }}
         />
+      ) : null}
+
+      {mediaModal ? (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm"
+          onClick={(e) => { if (e.target === e.currentTarget) setMediaModal(null); }}
+        >
+          <div className="w-full max-w-3xl overflow-hidden rounded-[1.6rem] bg-slate-950 text-white shadow-2xl ring-1 ring-white/10">
+            <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
+                  {mediaModal.type === 'image' ? 'Imagen' : 'Vídeo'}
+                </p>
+                <h3 className="mt-1 text-xl font-black">{mediaModal.title}</h3>
+                {mediaModal.description ? (
+                  <p className="mt-1 text-sm text-white/50">{mediaModal.description}</p>
+                ) : null}
+              </div>
+              <button
+                type="button"
+                onClick={() => setMediaModal(null)}
+                className="rounded-full p-2 text-white/45 transition hover:bg-white/10 hover:text-white"
+                aria-label="Cerrar"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="bg-black">
+              {mediaModal.type === 'image' ? (
+                <img
+                  src={mediaModal.url}
+                  alt={mediaModal.title}
+                  loading="lazy"
+                  className="max-h-[72vh] w-full object-contain"
+                />
+              ) : (
+                <video
+                  src={mediaModal.url}
+                  controls
+                  preload="metadata"
+                  className="max-h-[72vh] w-full"
+                />
+              )}
+            </div>
+          </div>
+        </div>
       ) : null}
 
       {/* ── Header ─────────────────────────────────────────────────────────── */}
@@ -1108,7 +1424,7 @@ export default function UniversalViewer({
               <>
                 <button
                   type="button"
-                  onClick={() => { setCinematicPaused((p) => !p); }}
+                  onClick={toggleCinematicPause}
                   className={`rounded-full px-4 py-2 text-sm font-black transition ${
                     cinematicPaused
                       ? 'bg-white/10 text-white/60 hover:bg-white/15'
@@ -1143,14 +1459,14 @@ export default function UniversalViewer({
                 >
                   {t(language, 'tour_btn')}
                 </button>
-                {!prefersReducedMotion ? (
+                {!prefersReducedMotion && isGuidedEnabled() ? (
                   <button
                     type="button"
                     onClick={startCinematicTour}
                     className="rounded-full bg-white/10 px-4 py-2 text-sm font-black text-white/70 transition hover:bg-white/15"
-                    title={t(language, 'cinematic_auto_title')}
+                    title="Ver visita guiada"
                   >
-                    {t(language, 'cinematic_btn')}
+                    Ver visita guiada
                   </button>
                 ) : null}
               </>
@@ -1494,11 +1810,11 @@ export default function UniversalViewer({
               </p>
               <button
                 type="button"
-                onClick={handleLeadCtaOpen}
+                onClick={executeGuidedFinalCta}
                 className="mt-2 rounded-2xl px-6 py-4 text-sm font-black text-white transition hover:opacity-90"
                 style={{ backgroundColor: primaryColor }}
               >
-                {t(language, 'request_visit')}
+                {guidedConfigValue('finalCtaLabel') || t(language, 'request_visit')}
               </button>
               <button
                 type="button"
@@ -1618,7 +1934,7 @@ export default function UniversalViewer({
             <>
               <div className="rounded-2xl bg-white/10 p-4">
                 <p className="text-xs font-black uppercase tracking-[0.2em] text-violet-300">
-                  {cinematicPaused ? t(language, 'cinematic_paused_label') : t(language, 'cinematic_live')}
+                  {cinematicPaused ? 'Visita guiada · En pausa' : 'Visita guiada automática'}
                 </p>
                 <div className="mt-3 flex items-center justify-between text-xs font-bold text-white/50">
                   <span>{t(language, 'space_of', { n: currentSpaceIdx + 1, m: sortedSpaces.length })}</span>
@@ -1642,17 +1958,23 @@ export default function UniversalViewer({
                   />
                 </div>
                 <h3 className="mt-4 text-2xl font-black">{activeSpace.name}</h3>
-                {activeSpace.storySubheadline ? (
-                  <p className="mt-2 text-sm font-light italic leading-snug text-white/45">
-                    {activeSpace.storySubheadline}
-                  </p>
-                ) : null}
+                <p className="mt-2 text-sm font-light italic leading-snug text-white/45">
+                  {activeSpace.storySubheadline || activeSpace.storyHighlight || 'Recorrido comercial para entender la vivienda antes de desplazarte.'}
+                </p>
               </div>
 
               <div className="mt-4 flex gap-2">
                 <button
                   type="button"
-                  onClick={() => { setCinematicPaused((p) => !p); }}
+                  disabled={currentSpaceIdx <= 0}
+                  onClick={() => stepCinematicTour(-1)}
+                  className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black text-white/70 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  ←
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleCinematicPause}
                   className={`flex-1 rounded-2xl px-4 py-3 text-sm font-black transition ${
                     cinematicPaused
                       ? 'bg-violet-600/70 text-white hover:bg-violet-600'
@@ -1660,6 +1982,14 @@ export default function UniversalViewer({
                   }`}
                 >
                   {cinematicPaused ? t(language, 'resume') : t(language, 'pause')}
+                </button>
+                <button
+                  type="button"
+                  disabled={currentSpaceIdx >= sortedSpaces.length - 1}
+                  onClick={() => stepCinematicTour(1)}
+                  className="rounded-2xl bg-white/10 px-4 py-3 text-sm font-black text-white/70 transition hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-30"
+                >
+                  →
                 </button>
               </div>
 
@@ -1709,7 +2039,7 @@ export default function UniversalViewer({
                 {isLastTourStep ? (
                   <button
                     type="button"
-                    onClick={handleLeadCtaOpen}
+                    onClick={() => handleLeadCtaOpen()}
                     className="flex-1 rounded-2xl px-4 py-3 text-sm font-black text-white transition hover:opacity-90"
                     style={{ backgroundColor: primaryColor }}
                   >
@@ -1774,14 +2104,14 @@ export default function UniversalViewer({
                         <p className="mt-1 text-xl font-black">{activeHotspot.metric}</p>
                       </div>
                     ) : null}
-                    {activeHotspot.type === 'cta' ? (
+                    {['lead_form', 'whatsapp', 'calendly', 'external_link', 'image', 'video'].includes(getHotspotActionType(activeHotspot)) ? (
                       <button
                         type="button"
-                        onClick={handleLeadCtaOpen}
+                        onClick={() => executeHotspotAction(activeHotspot)}
                         className="mt-4 w-full rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90"
                         style={{ backgroundColor: primaryColor }}
                       >
-                        {t(language, 'submit_cta')}
+                        {activeHotspot.ctaLabel || t(language, 'submit_cta')}
                       </button>
                     ) : null}
                     {/* Return to tour if guided tour is still active */}
@@ -1832,7 +2162,7 @@ export default function UniversalViewer({
                   </p>
                   <button
                     type="button"
-                    onClick={handleLeadCtaOpen}
+                    onClick={() => handleLeadCtaOpen(getLeadContext('viewer_cta', undefined, { ctaLabel: activeSpace.ctaLabel }))}
                     className="group flex w-full items-center justify-between rounded-2xl bg-white/[0.06] px-5 py-4 text-left transition hover:bg-white/[0.1]"
                     style={{ borderLeft: `2px solid ${primaryColor}` }}
                   >
@@ -1894,14 +2224,14 @@ export default function UniversalViewer({
                 <p className="mt-1 text-xl font-black">{activeHotspot.metric}</p>
               </div>
             ) : null}
-            {activeHotspot.type === 'cta' ? (
+            {['lead_form', 'whatsapp', 'calendly', 'external_link', 'image', 'video'].includes(getHotspotActionType(activeHotspot)) ? (
               <button
                 type="button"
-                onClick={() => { setActiveHotspot(null); handleLeadCtaOpen(); }}
+                onClick={() => { setMobileSheetOpen(false); executeHotspotAction(activeHotspot); }}
                 className="mt-5 w-full rounded-2xl px-5 py-4 text-sm font-black text-white transition hover:opacity-90"
                 style={{ backgroundColor: primaryColor }}
               >
-                {t(language, 'submit_cta')}
+                {activeHotspot.ctaLabel || t(language, 'submit_cta')}
               </button>
             ) : null}
           </div>

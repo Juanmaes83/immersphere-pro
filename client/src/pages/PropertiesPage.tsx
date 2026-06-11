@@ -49,6 +49,86 @@ function translateHotspotType(type: string): string {
   return HOTSPOT_TYPE_LABELS[type] ?? type;
 }
 
+type HotspotActionType = 'info' | 'navigate' | 'lead_form' | 'whatsapp' | 'calendly' | 'external_link' | 'image' | 'video';
+
+const HOTSPOT_ACTION_LABELS: Record<HotspotActionType, string> = {
+  info: 'Información',
+  navigate: 'Navegación',
+  lead_form: 'Formulario lead',
+  whatsapp: 'WhatsApp',
+  calendly: 'Calendly',
+  external_link: 'Link externo',
+  image: 'Imagen',
+  video: 'Vídeo'
+};
+
+interface HotspotDraft {
+  label: string;
+  type: Hotspot['type'];
+  x: number;
+  y: number;
+  body: string;
+  metric: string;
+  targetSpaceId: string;
+  actionType: HotspotActionType;
+  ctaLabel: string;
+  actionUrl: string;
+  actionMessage: string;
+}
+
+function defaultActionForType(type: Hotspot['type']): HotspotActionType {
+  if (type === 'navigation') return 'navigate';
+  if (type === 'cta') return 'lead_form';
+  return 'info';
+}
+
+function emptyHotspotDraft(): HotspotDraft {
+  return {
+    label: '',
+    type: 'info',
+    x: 50,
+    y: 50,
+    body: '',
+    metric: '',
+    targetSpaceId: '',
+    actionType: 'info',
+    ctaLabel: '',
+    actionUrl: '',
+    actionMessage: ''
+  };
+}
+
+function actionPayloadFromDraft(draft: HotspotDraft): Record<string, unknown> | undefined {
+  const payload: Record<string, unknown> = {};
+  if (draft.actionUrl.trim()) payload['url'] = draft.actionUrl.trim();
+  if (draft.actionMessage.trim()) payload['message'] = draft.actionMessage.trim();
+  if (draft.actionType === 'whatsapp' && draft.actionUrl.trim()) payload['phone'] = draft.actionUrl.trim();
+  if (draft.actionType === 'image' || draft.actionType === 'video') {
+    if (draft.label.trim()) payload['title'] = draft.label.trim();
+    if (draft.body.trim()) payload['description'] = draft.body.trim();
+  }
+  if (draft.actionType === 'navigate' && draft.targetSpaceId) payload['targetSpaceId'] = draft.targetSpaceId;
+  return Object.keys(payload).length ? payload : undefined;
+}
+
+function stringFromPayload(payload: unknown, key: string): string {
+  if (!payload || typeof payload !== 'object' || Array.isArray(payload)) return '';
+  const value = (payload as Record<string, unknown>)[key];
+  return typeof value === 'string' ? value : '';
+}
+
+function getGuidedConfigValue(config: unknown, key: string): string {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return '';
+  const value = (config as Record<string, unknown>)[key];
+  return typeof value === 'string' ? value : '';
+}
+
+function getGuidedConfigEnabled(config: unknown): boolean {
+  if (!config || typeof config !== 'object' || Array.isArray(config)) return true;
+  const value = (config as Record<string, unknown>)['enabled'];
+  return value !== false;
+}
+
 function buildRoomDesignerUrl(property: Pick<ImmersiveProperty, 'id' | 'title' | 'type' | 'tenantId'>): string {
   const url = new URL('https://immersphere-asset-lab.vercel.app/scenes/room-designer/index.html');
   url.searchParams.set('source', 'saas');
@@ -138,7 +218,13 @@ export default function PropertiesPage(): JSX.Element {
     latitude: null,
     longitude: null,
     password: '',
-    language: 'es'
+    language: 'es',
+    guidedConfig: {
+      enabled: true,
+      finalCtaLabel: 'Agendar visita',
+      finalActionType: 'lead_form',
+      finalActionPayload: {}
+    }
   });
 
   const [editingPropertyId, setEditingPropertyId] = useState<string | null>(null);
@@ -185,9 +271,7 @@ export default function PropertiesPage(): JSX.Element {
   const [leadsLoading, setLeadsLoading] = useState(false);
   const [leadsError, setLeadsError] = useState<string | null>(null);
   const [showHotspotForm, setShowHotspotForm] = useState(false);
-  const [hotspotDraft, setHotspotDraft] = useState<{ label: string; type: Hotspot['type']; x: number; y: number; body: string; metric: string; targetSpaceId: string }>({
-    label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: ''
-  });
+  const [hotspotDraft, setHotspotDraft] = useState<HotspotDraft>(() => emptyHotspotDraft());
   const { bgStyle, colorStyle } = useBrand();
   const tenant = useAuthStore((s) => s.user?.tenant);
 
@@ -248,7 +332,13 @@ export default function PropertiesPage(): JSX.Element {
       latitude: null,
       longitude: null,
       password: '',
-      language: 'es'
+      language: 'es',
+      guidedConfig: {
+        enabled: true,
+        finalCtaLabel: 'Agendar visita',
+        finalActionType: 'lead_form',
+        finalActionPayload: {}
+      }
     });
 
     setEditingPropertyId(null);
@@ -295,7 +385,7 @@ export default function PropertiesPage(): JSX.Element {
     setAssetPreviewUrl(null);
     setAssetPreviewType(null);
     setShowHotspotForm(false);
-    setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: '' });
+    setHotspotDraft(emptyHotspotDraft());
     setEditingHotspotIndex(null);
     setShowAdvancedAsset(false);
   }
@@ -451,7 +541,7 @@ export default function PropertiesPage(): JSX.Element {
 
   function handleAddHotspot(): void {
     if (!hotspotDraft.label.trim()) return;
-    if (hotspotDraft.type === 'navigation' && !hotspotDraft.targetSpaceId) return;
+    if (hotspotDraft.actionType === 'navigate' && !hotspotDraft.targetSpaceId) return;
     const newHotspot: Hotspot = {
       id: `draft-${Date.now()}`,
       label: hotspotDraft.label.trim(),
@@ -459,10 +549,13 @@ export default function PropertiesPage(): JSX.Element {
       position: { x: hotspotDraft.x, y: hotspotDraft.y },
       body: hotspotDraft.body.trim(),
       metric: hotspotDraft.metric.trim(),
+      actionType: hotspotDraft.actionType,
+      ctaLabel: hotspotDraft.ctaLabel.trim(),
+      ...(actionPayloadFromDraft(hotspotDraft) ? { actionPayload: actionPayloadFromDraft(hotspotDraft) } : {}),
       ...(hotspotDraft.targetSpaceId ? { targetSpaceId: hotspotDraft.targetSpaceId } : {})
     };
     setAssetForm((current) => ({ ...current, hotspots: [...(current.hotspots ?? []), newHotspot] }));
-    setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: '' });
+    setHotspotDraft(emptyHotspotDraft());
     setShowHotspotForm(false);
   }
 
@@ -474,7 +567,7 @@ export default function PropertiesPage(): JSX.Element {
     // If editing this hotspot, cancel edit mode too
     if (editingHotspotIndex === index) {
       setEditingHotspotIndex(null);
-      setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: '' });
+      setHotspotDraft(emptyHotspotDraft());
       setShowHotspotForm(false);
     }
   }
@@ -489,7 +582,11 @@ export default function PropertiesPage(): JSX.Element {
       y: hotspot.position.y,
       body: hotspot.body ?? '',
       metric: hotspot.metric ?? '',
-      targetSpaceId: hotspot.targetSpaceId ?? ''
+      targetSpaceId: hotspot.targetSpaceId ?? '',
+      actionType: (hotspot.actionType as HotspotActionType) || defaultActionForType(hotspot.type),
+      ctaLabel: hotspot.ctaLabel ?? '',
+      actionUrl: stringFromPayload(hotspot.actionPayload, 'phone') || stringFromPayload(hotspot.actionPayload, 'url'),
+      actionMessage: stringFromPayload(hotspot.actionPayload, 'message')
     });
     setEditingHotspotIndex(index);
     setShowHotspotForm(true);
@@ -498,7 +595,7 @@ export default function PropertiesPage(): JSX.Element {
   function handleSaveHotspotEdit(): void {
     if (editingHotspotIndex === null) return;
     if (!hotspotDraft.label.trim()) return;
-    if (hotspotDraft.type === 'navigation' && !hotspotDraft.targetSpaceId) return;
+    if (hotspotDraft.actionType === 'navigate' && !hotspotDraft.targetSpaceId) return;
     setAssetForm((current) => ({
       ...current,
       hotspots: (current.hotspots ?? []).map((h, i) =>
@@ -510,13 +607,16 @@ export default function PropertiesPage(): JSX.Element {
               position: { x: hotspotDraft.x, y: hotspotDraft.y },
               body: hotspotDraft.body.trim(),
               metric: hotspotDraft.metric.trim(),
+              actionType: hotspotDraft.actionType,
+              ctaLabel: hotspotDraft.ctaLabel.trim(),
+              actionPayload: actionPayloadFromDraft(hotspotDraft),
               targetSpaceId: hotspotDraft.targetSpaceId || undefined
             }
           : h
       )
     }));
     setEditingHotspotIndex(null);
-    setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: '' });
+    setHotspotDraft(emptyHotspotDraft());
     setShowHotspotForm(false);
   }
 
@@ -539,6 +639,7 @@ export default function PropertiesPage(): JSX.Element {
       latitude: form.latitude ?? null,
       longitude: form.longitude ?? null,
       language: String(form.language ?? 'es'),
+      guidedConfig: form.guidedConfig ?? null,
       ...(form.password ? { password: form.password } : {})
     };
   }
@@ -563,7 +664,13 @@ export default function PropertiesPage(): JSX.Element {
       address: property.address ?? '',
       latitude: property.latitude ?? null,
       longitude: property.longitude ?? null,
-      language: property.language ?? 'es'
+      language: property.language ?? 'es',
+      guidedConfig: property.guidedConfig ?? {
+        enabled: true,
+        finalCtaLabel: 'Agendar visita',
+        finalActionType: 'lead_form',
+        finalActionPayload: {}
+      }
     });
 
     setMessage('Editando propiedad seleccionada.');
@@ -993,6 +1100,95 @@ export default function PropertiesPage(): JSX.Element {
               className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold outline-none focus:border-violet-400"
             />
           </label>
+
+          <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-sm font-black text-slate-700">Visita guiada automática</p>
+                <p className="mt-1 text-xs leading-5 text-slate-400">
+                  Recorre las estancias en orden y muestra una llamada a la acción final.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  const currentConfig = form.guidedConfig ?? {};
+                  setForm((current) => ({
+                    ...current,
+                    guidedConfig: {
+                      ...(currentConfig as Record<string, unknown>),
+                      enabled: !getGuidedConfigEnabled(currentConfig)
+                    }
+                  }));
+                }}
+                className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${
+                  getGuidedConfigEnabled(form.guidedConfig)
+                    ? 'bg-emerald-100 text-emerald-700'
+                    : 'bg-slate-200 text-slate-500'
+                }`}
+              >
+                {getGuidedConfigEnabled(form.guidedConfig) ? 'Activa' : 'Inactiva'}
+              </button>
+            </div>
+            <div className="mt-4 grid grid-cols-1 gap-3">
+              <label className="block">
+                <span className="mb-1 block text-xs font-black text-slate-700">CTA final</span>
+                <input
+                  type="text"
+                  value={getGuidedConfigValue(form.guidedConfig, 'finalCtaLabel') || 'Agendar visita'}
+                  onChange={(event) => {
+                    const currentConfig = form.guidedConfig ?? {};
+                    setForm((current) => ({
+                      ...current,
+                      guidedConfig: { ...(currentConfig as Record<string, unknown>), finalCtaLabel: event.target.value }
+                    }));
+                  }}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-black text-slate-700">Acción final</span>
+                <select
+                  value={getGuidedConfigValue(form.guidedConfig, 'finalActionType') || 'lead_form'}
+                  onChange={(event) => {
+                    const currentConfig = form.guidedConfig ?? {};
+                    setForm((current) => ({
+                      ...current,
+                      guidedConfig: { ...(currentConfig as Record<string, unknown>), finalActionType: event.target.value }
+                    }));
+                  }}
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
+                >
+                  <option value="lead_form">Formulario lead</option>
+                  <option value="whatsapp">WhatsApp</option>
+                  <option value="calendly">Calendly</option>
+                  <option value="external_link">Link externo</option>
+                </select>
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-xs font-black text-slate-700">URL o teléfono opcional</span>
+                <input
+                  type="text"
+                  value={getGuidedConfigValue((form.guidedConfig as Record<string, unknown> | null | undefined)?.finalActionPayload, 'url') || getGuidedConfigValue((form.guidedConfig as Record<string, unknown> | null | undefined)?.finalActionPayload, 'phone')}
+                  onChange={(event) => {
+                    const currentConfig = form.guidedConfig ?? {};
+                    const actionType = getGuidedConfigValue(currentConfig, 'finalActionType') || 'lead_form';
+                    setForm((current) => ({
+                      ...current,
+                      guidedConfig: {
+                        ...(currentConfig as Record<string, unknown>),
+                        finalActionPayload: actionType === 'whatsapp'
+                          ? { phone: event.target.value }
+                          : { url: event.target.value }
+                      }
+                    }));
+                  }}
+                  placeholder="Fallback: WhatsApp/Calendly del tenant"
+                  className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
+                />
+              </label>
+            </div>
+          </div>
 
           {/* ── Vídeo principal ───────────────────────────────────────────── */}
           <div className="mt-6 rounded-2xl border border-slate-200 bg-slate-50 p-5">
@@ -1897,7 +2093,7 @@ export default function PropertiesPage(): JSX.Element {
                                       if (showHotspotForm) {
                                         setShowHotspotForm(false);
                                         setEditingHotspotIndex(null);
-                                        setHotspotDraft({ label: '', type: 'info', x: 50, y: 50, body: '', metric: '', targetSpaceId: '' });
+                                        setHotspotDraft(emptyHotspotDraft());
                                       } else {
                                         setShowHotspotForm(true);
                                       }
@@ -1967,8 +2163,8 @@ export default function PropertiesPage(): JSX.Element {
                                             setHotspotDraft((d) => ({
                                               ...d,
                                               type: newType,
-                                              // clear targetSpaceId when leaving navigation type
-                                              targetSpaceId: newType === 'navigation' ? d.targetSpaceId : ''
+                                              actionType: d.actionType === defaultActionForType(d.type) ? defaultActionForType(newType) : d.actionType,
+                                              targetSpaceId: newType === 'navigation' || d.actionType === 'navigate' ? d.targetSpaceId : ''
                                             }));
                                           }}
                                           className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
@@ -1980,6 +2176,25 @@ export default function PropertiesPage(): JSX.Element {
                                           <option value="price">💰 Precio</option>
                                         </select>
                                       </label>
+                                      <label className="block">
+                                        <span className="mb-1 block text-xs font-black text-slate-700">Acción comercial</span>
+                                        <select
+                                          value={hotspotDraft.actionType}
+                                          onChange={(e) => {
+                                            const actionType = e.target.value as HotspotActionType;
+                                            setHotspotDraft((d) => ({
+                                              ...d,
+                                              actionType,
+                                              targetSpaceId: actionType === 'navigate' ? d.targetSpaceId : ''
+                                            }));
+                                          }}
+                                          className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
+                                        >
+                                          {(Object.keys(HOTSPOT_ACTION_LABELS) as HotspotActionType[]).map((action) => (
+                                            <option key={action} value={action}>{HOTSPOT_ACTION_LABELS[action]}</option>
+                                          ))}
+                                        </select>
+                                      </label>
 
                                       {hotspotDraft.type === 'price' ? (
                                         <p className="col-span-2 rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2 text-xs font-semibold text-emerald-700">
@@ -1987,7 +2202,7 @@ export default function PropertiesPage(): JSX.Element {
                                         </p>
                                       ) : null}
 
-                                      {hotspotDraft.type === 'navigation' ? (
+                                      {hotspotDraft.actionType === 'navigate' ? (
                                         <label className="col-span-2 block">
                                           <span className="mb-1 block text-xs font-black text-slate-700">Conectar con estancia</span>
                                           <select
@@ -2039,6 +2254,44 @@ export default function PropertiesPage(): JSX.Element {
                                           className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
                                         />
                                       </label>
+                                      {hotspotDraft.actionType !== 'info' && hotspotDraft.actionType !== 'navigate' ? (
+                                        <label className="block">
+                                          <span className="mb-1 block text-xs font-black text-slate-700">Texto del botón</span>
+                                          <input
+                                            type="text"
+                                            value={hotspotDraft.ctaLabel}
+                                            onChange={(e) => setHotspotDraft((d) => ({ ...d, ctaLabel: e.target.value }))}
+                                            placeholder="Ej: Agendar visita"
+                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
+                                          />
+                                        </label>
+                                      ) : null}
+                                      {['whatsapp', 'calendly', 'external_link', 'image', 'video'].includes(hotspotDraft.actionType) ? (
+                                        <label className="block">
+                                          <span className="mb-1 block text-xs font-black text-slate-700">
+                                            {hotspotDraft.actionType === 'whatsapp' ? 'Teléfono o fallback' : 'URL'}
+                                          </span>
+                                          <input
+                                            type="text"
+                                            value={hotspotDraft.actionUrl}
+                                            onChange={(e) => setHotspotDraft((d) => ({ ...d, actionUrl: e.target.value }))}
+                                            placeholder={hotspotDraft.actionType === 'whatsapp' ? '+34...' : 'https://...'}
+                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
+                                          />
+                                        </label>
+                                      ) : null}
+                                      {hotspotDraft.actionType === 'whatsapp' || hotspotDraft.actionType === 'lead_form' ? (
+                                        <label className="col-span-2 block">
+                                          <span className="mb-1 block text-xs font-black text-slate-700">Mensaje comercial</span>
+                                          <input
+                                            type="text"
+                                            value={hotspotDraft.actionMessage}
+                                            onChange={(e) => setHotspotDraft((d) => ({ ...d, actionMessage: e.target.value }))}
+                                            placeholder="Ej: Quiero organizar una visita guiada de esta terraza"
+                                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm font-semibold outline-none focus:border-violet-400"
+                                          />
+                                        </label>
+                                      ) : null}
                                       {/* X/Y inputs hidden: drag on the preview image to position */}
                                     </div>
                                     <button
@@ -2046,7 +2299,7 @@ export default function PropertiesPage(): JSX.Element {
                                       onClick={editingHotspotIndex !== null ? handleSaveHotspotEdit : handleAddHotspot}
                                       disabled={
                                         !hotspotDraft.label.trim() ||
-                                        (hotspotDraft.type === 'navigation' && !hotspotDraft.targetSpaceId)
+                                        (hotspotDraft.actionType === 'navigate' && !hotspotDraft.targetSpaceId)
                                       }
                                       className={`mt-3 rounded-xl px-4 py-2 text-xs font-black text-white disabled:opacity-50 ${
                                         editingHotspotIndex !== null

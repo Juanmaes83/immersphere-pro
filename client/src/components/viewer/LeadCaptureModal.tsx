@@ -7,6 +7,7 @@ interface LeadCaptureModalProps {
   primaryColor: string;
   agencyName?: string;
   lang?: string;
+  context?: Record<string, string | undefined>;
   onClose: () => void;
   onSubmitted: () => void;
 }
@@ -27,6 +28,7 @@ export default function LeadCaptureModal({
   primaryColor,
   agencyName,
   lang,
+  context,
   onClose,
   onSubmitted
 }: LeadCaptureModalProps): JSX.Element {
@@ -64,7 +66,10 @@ export default function LeadCaptureModal({
           email: email.trim(),
           phone: phone.trim() || undefined,
           notes: notes.trim() || undefined,
-          source: 'viewer_cta'
+          source: context?.source || 'viewer_cta',
+          ...context,
+          origin: context?.origin || window.location.origin,
+          referrer: context?.referrer || document.referrer || undefined
         })
       });
 

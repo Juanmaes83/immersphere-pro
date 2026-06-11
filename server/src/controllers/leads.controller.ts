@@ -37,7 +37,26 @@ export async function createLeadController(
   next: NextFunction
 ): Promise<void> {
   try {
-    const { propertyId, email, phone, notes, source } = request.body;
+    const {
+      propertyId,
+      email,
+      phone,
+      notes,
+      source,
+      propertySlug,
+      spaceId,
+      spaceName,
+      assetId,
+      hotspotId,
+      hotspotLabel,
+      actionType,
+      ctaLabel,
+      sessionId,
+      origin,
+      referrer,
+      guidedStepId,
+      guidedStepTitle
+    } = request.body;
 
     if (!propertyId || typeof propertyId !== 'string') {
       response.status(400).json({ success: false, error: 'propertyId requerido.' });
@@ -67,7 +86,20 @@ export async function createLeadController(
       email,
       phone: typeof phone === 'string' ? phone : undefined,
       notes: typeof notes === 'string' ? notes : undefined,
-      source: typeof source === 'string' ? source : 'viewer'
+      source: typeof source === 'string' ? source : 'viewer',
+      propertySlug: typeof propertySlug === 'string' ? propertySlug : undefined,
+      spaceId: typeof spaceId === 'string' ? spaceId : undefined,
+      spaceName: typeof spaceName === 'string' ? spaceName : undefined,
+      assetId: typeof assetId === 'string' ? assetId : undefined,
+      hotspotId: typeof hotspotId === 'string' ? hotspotId : undefined,
+      hotspotLabel: typeof hotspotLabel === 'string' ? hotspotLabel : undefined,
+      actionType: typeof actionType === 'string' ? actionType : undefined,
+      ctaLabel: typeof ctaLabel === 'string' ? ctaLabel : undefined,
+      sessionId: typeof sessionId === 'string' ? sessionId : undefined,
+      origin: typeof origin === 'string' ? origin : undefined,
+      referrer: typeof referrer === 'string' ? referrer : undefined,
+      guidedStepId: typeof guidedStepId === 'string' ? guidedStepId : undefined,
+      guidedStepTitle: typeof guidedStepTitle === 'string' ? guidedStepTitle : undefined
     });
 
     response.status(201).json({ success: true, data: { id: lead.id } });

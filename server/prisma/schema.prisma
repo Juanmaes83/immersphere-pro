@@ -77,6 +77,7 @@ model Property {
   language      String   @default("es")
   passwordHash  String?
   views         Int      @default(0)
+  guidedConfig  Json?
   spaces        Space[]
   leads         Lead[]
   captureJobs   CaptureJob[]
@@ -142,6 +143,11 @@ model Hotspot {
   body          String   @default("")
   metric        String   @default("")
   targetSpaceId String?
+  actionType    String   @default("")
+  actionPayload Json?
+  ctaLabel      String   @default("")
+  displayMode   String   @default("")
+  trackingLabel String   @default("")
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -162,6 +168,19 @@ model Lead {
   internalNote   String    @default("")
   nextActionAt   DateTime?
   nextActionText String    @default("")
+  propertySlug   String    @default("")
+  spaceId        String    @default("")
+  spaceName      String    @default("")
+  assetId        String    @default("")
+  hotspotId      String    @default("")
+  hotspotLabel   String    @default("")
+  actionType     String    @default("")
+  ctaLabel       String    @default("")
+  sessionId      String    @default("")
+  origin         String    @default("")
+  referrer       String    @default("")
+  guidedStepId   String    @default("")
+  guidedStepTitle String   @default("")
   updatedAt      DateTime  @default(now()) @updatedAt
   captureJobs    CaptureJob[]
 

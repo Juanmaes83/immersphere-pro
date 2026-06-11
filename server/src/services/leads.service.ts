@@ -9,6 +9,19 @@ export interface CreateLeadInput {
   phone?: string;
   notes?: string;
   source?: string;
+  propertySlug?: string;
+  spaceId?: string;
+  spaceName?: string;
+  assetId?: string;
+  hotspotId?: string;
+  hotspotLabel?: string;
+  actionType?: string;
+  ctaLabel?: string;
+  sessionId?: string;
+  origin?: string;
+  referrer?: string;
+  guidedStepId?: string;
+  guidedStepTitle?: string;
 }
 
 export const LEAD_STATUSES = [
@@ -33,6 +46,19 @@ export interface LeadRecord {
   internalNote: string;
   nextActionAt: Date | null;
   nextActionText: string;
+  propertySlug: string;
+  spaceId: string;
+  spaceName: string;
+  assetId: string;
+  hotspotId: string;
+  hotspotLabel: string;
+  actionType: string;
+  ctaLabel: string;
+  sessionId: string;
+  origin: string;
+  referrer: string;
+  guidedStepId: string;
+  guidedStepTitle: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -51,7 +77,20 @@ export async function createLead(input: CreateLeadInput): Promise<LeadRecord> {
       email: input.email.trim().toLowerCase(),
       phone: input.phone?.trim() ?? '',
       notes: input.notes?.trim() ?? '',
-      source: input.source ?? 'viewer'
+      source: input.source ?? 'viewer',
+      propertySlug: input.propertySlug?.trim() ?? '',
+      spaceId: input.spaceId?.trim() ?? '',
+      spaceName: input.spaceName?.trim() ?? '',
+      assetId: input.assetId?.trim() ?? '',
+      hotspotId: input.hotspotId?.trim() ?? '',
+      hotspotLabel: input.hotspotLabel?.trim() ?? '',
+      actionType: input.actionType?.trim() ?? '',
+      ctaLabel: input.ctaLabel?.trim() ?? '',
+      sessionId: input.sessionId?.trim() ?? '',
+      origin: input.origin?.trim() ?? '',
+      referrer: input.referrer?.trim() ?? '',
+      guidedStepId: input.guidedStepId?.trim() ?? '',
+      guidedStepTitle: input.guidedStepTitle?.trim() ?? ''
     }
   });
 
@@ -154,9 +193,9 @@ export async function exportPropertyLeadsCsv(
     orderBy: { createdAt: 'desc' }
   });
 
-  const header = ['id', 'email', 'phone', 'notes', 'source', 'status', 'internalNote', 'nextActionAt', 'nextActionText', 'createdAt', 'updatedAt'].map(csvEscape).join(',');
+  const header = ['id', 'email', 'phone', 'notes', 'source', 'status', 'internalNote', 'nextActionAt', 'nextActionText', 'spaceId', 'spaceName', 'assetId', 'hotspotId', 'hotspotLabel', 'actionType', 'ctaLabel', 'sessionId', 'origin', 'referrer', 'guidedStepId', 'guidedStepTitle', 'createdAt', 'updatedAt'].map(csvEscape).join(',');
 
-  const rows = leads.map((l: { id: string; email: string; phone: string; notes: string; source: string; status: string; internalNote: string; nextActionAt: Date | null; nextActionText: string; createdAt: Date; updatedAt: Date }) =>
+  const rows = leads.map((l) =>
     [
       l.id,
       l.email,
@@ -167,6 +206,18 @@ export async function exportPropertyLeadsCsv(
       l.internalNote,
       l.nextActionAt ? l.nextActionAt.toISOString() : '',
       l.nextActionText,
+      l.spaceId,
+      l.spaceName,
+      l.assetId,
+      l.hotspotId,
+      l.hotspotLabel,
+      l.actionType,
+      l.ctaLabel,
+      l.sessionId,
+      l.origin,
+      l.referrer,
+      l.guidedStepId,
+      l.guidedStepTitle,
       l.createdAt.toISOString(),
       l.updatedAt.toISOString()
     ]
@@ -231,6 +282,19 @@ export async function getAllTenantLeads(
     internalNote: l.internalNote,
     nextActionAt: l.nextActionAt,
     nextActionText: l.nextActionText,
+    propertySlug: l.propertySlug,
+    spaceId: l.spaceId,
+    spaceName: l.spaceName,
+    assetId: l.assetId,
+    hotspotId: l.hotspotId,
+    hotspotLabel: l.hotspotLabel,
+    actionType: l.actionType,
+    ctaLabel: l.ctaLabel,
+    sessionId: l.sessionId,
+    origin: l.origin,
+    referrer: l.referrer,
+    guidedStepId: l.guidedStepId,
+    guidedStepTitle: l.guidedStepTitle,
     createdAt: l.createdAt,
     updatedAt: l.updatedAt
   }));
@@ -242,7 +306,7 @@ export async function exportAllTenantLeadsCsv(
 ): Promise<string> {
   const leads = await getAllTenantLeads(tenantId, filters);
 
-  const header = ['id', 'propertyTitle', 'email', 'phone', 'notes', 'source', 'status', 'internalNote', 'nextActionAt', 'nextActionText', 'createdAt', 'updatedAt'].map(csvEscape).join(',');
+  const header = ['id', 'propertyTitle', 'email', 'phone', 'notes', 'source', 'status', 'internalNote', 'nextActionAt', 'nextActionText', 'spaceId', 'spaceName', 'assetId', 'hotspotId', 'hotspotLabel', 'actionType', 'ctaLabel', 'sessionId', 'origin', 'referrer', 'guidedStepId', 'guidedStepTitle', 'createdAt', 'updatedAt'].map(csvEscape).join(',');
   const rows = leads.map((l) =>
     [
       l.id,
@@ -255,6 +319,18 @@ export async function exportAllTenantLeadsCsv(
       l.internalNote,
       l.nextActionAt ? new Date(l.nextActionAt).toISOString() : '',
       l.nextActionText,
+      l.spaceId,
+      l.spaceName,
+      l.assetId,
+      l.hotspotId,
+      l.hotspotLabel,
+      l.actionType,
+      l.ctaLabel,
+      l.sessionId,
+      l.origin,
+      l.referrer,
+      l.guidedStepId,
+      l.guidedStepTitle,
       new Date(l.createdAt).toISOString(),
       new Date(l.updatedAt).toISOString()
     ]
@@ -423,6 +499,18 @@ async function fireLeadWebhook(lead: LeadRecord): Promise<void> {
       propertyId: lead.propertyId,
       propertyTitle: property?.title ?? '',
       tenantId: property?.tenantId ?? '',
+      spaceId: lead.spaceId,
+      spaceName: lead.spaceName,
+      assetId: lead.assetId,
+      hotspotId: lead.hotspotId,
+      hotspotLabel: lead.hotspotLabel,
+      actionType: lead.actionType,
+      ctaLabel: lead.ctaLabel,
+      sessionId: lead.sessionId,
+      origin: lead.origin,
+      referrer: lead.referrer,
+      guidedStepId: lead.guidedStepId,
+      guidedStepTitle: lead.guidedStepTitle,
       createdAt: lead.createdAt.toISOString()
     }),
     signal: AbortSignal.timeout(8000)

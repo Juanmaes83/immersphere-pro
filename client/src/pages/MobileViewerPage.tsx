@@ -132,6 +132,12 @@ export default function MobileViewerPage(): JSX.Element {
           primaryColor={selectedProperty.tenantPrimaryColor || '#7C3AED'}
           removeBranding={selectedProperty.removeBranding}
           propertyTitle={selectedProperty.title}
+          agencyName={selectedProperty.tenantLogoText || selectedProperty.tenantName || 'Agencia inmobiliaria'}
+          agencyLogoUrl={selectedProperty.tenantLogoUrl || undefined}
+          tenantWhatsapp={selectedProperty.tenantWhatsapp}
+          tenantCalendlyUrl={selectedProperty.tenantCalendlyUrl}
+          floorplanUrl={selectedProperty.floorplanUrl || undefined}
+          guidedConfig={selectedProperty.guidedConfig}
           className="h-full rounded-none border-0"
           onAnalyticsEvent={handleAnalyticsEvent}
         />

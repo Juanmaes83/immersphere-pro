@@ -27,7 +27,23 @@ const ALLOWED_EVENT_TYPES = new Set([
   'pin_clicked',
   'share_clicked',
   'qr_opened',
-  'space_time'
+  'space_time',
+  'hotspot_action_clicked',
+  'hotspot_lead_opened',
+  'hotspot_lead_submitted',
+  'hotspot_external_opened',
+  'hotspot_media_opened',
+  'guided_started',
+  'guided_step_viewed',
+  'guided_step_completed',
+  'guided_paused',
+  'guided_resumed',
+  'guided_skipped',
+  'guided_completed',
+  'guided_cta_clicked',
+  'guided_lead_opened',
+  'guided_lead_submitted',
+  'guided_exited'
 ]);
 
 export async function createViewerEventController(

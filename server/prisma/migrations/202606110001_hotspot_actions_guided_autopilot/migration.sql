@@ -1,0 +1,26 @@
+ALTER TABLE "Property" ADD COLUMN "guidedConfig" JSONB;
+
+ALTER TABLE "Hotspot"
+  ADD COLUMN "actionType" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "actionPayload" JSONB,
+  ADD COLUMN "ctaLabel" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "displayMode" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "trackingLabel" TEXT NOT NULL DEFAULT '';
+
+ALTER TABLE "Lead"
+  ADD COLUMN "propertySlug" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "spaceId" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "spaceName" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "assetId" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "hotspotId" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "hotspotLabel" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "actionType" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "ctaLabel" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "sessionId" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "origin" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "referrer" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "guidedStepId" TEXT NOT NULL DEFAULT '',
+  ADD COLUMN "guidedStepTitle" TEXT NOT NULL DEFAULT '';
+
+CREATE INDEX "Lead_hotspotId_idx" ON "Lead"("hotspotId");
+CREATE INDEX "Lead_source_idx" ON "Lead"("source");

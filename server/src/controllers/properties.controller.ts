@@ -29,7 +29,12 @@ const hotspotSchema = z.object({
   position: z.record(z.unknown()),
   body: z.string().optional(),
   metric: z.string().optional(),
-  targetSpaceId: z.string().optional()
+  targetSpaceId: z.string().optional(),
+  actionType: z.string().optional(),
+  actionPayload: z.record(z.unknown()).nullable().optional(),
+  ctaLabel: z.string().optional(),
+  displayMode: z.string().optional(),
+  trackingLabel: z.string().optional()
 });
 
 const assetSchema = z.object({
@@ -91,6 +96,7 @@ const propertySchema = z.object({
   latitude: z.number().nullable().optional(),
   longitude: z.number().nullable().optional(),
   password: z.string().optional(),
+  guidedConfig: z.record(z.unknown()).nullable().optional(),
   spaces: z.array(spaceSchema).optional()
 });
 
